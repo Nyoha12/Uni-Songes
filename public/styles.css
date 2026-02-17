@@ -34,8 +34,9 @@ body {
   color: #fff;
   background: var(--wood);
 }
-.sub-cta { display: flex; gap: .8rem; padding-bottom: .7rem; font-size: .95rem; flex-wrap: wrap; }
-.sub-cta a { color: var(--accent); font-weight: 600; }
+.account-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: .35rem; }
+.header-quicklinks { display: flex; gap: .6rem; flex-wrap: wrap; justify-content: flex-end; font-size: .95rem; }
+.header-quicklinks a { color: var(--accent); text-decoration: none; font-weight: 600; }
 .content { padding: 2rem 0 3rem; }
 .lead { font-size: 1.1rem; }
 .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
