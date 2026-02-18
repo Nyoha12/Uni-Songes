@@ -1,4 +1,4 @@
-const FORM_ENDPOINT = "REPLACE_WITH_ENDPOINT_URL";
+const FORM_ENDPOINT = "https://script.google.com/macros/s/AKfycbyrkDVrf3v36pGHd8frQM_pt5A9VYZhTpawURJdQrpDWEJ6FEUY3S94CQK4zKJ2Az6SIg/exec";
 
 const form = document.getElementById("contactForm");
 const statusBox = document.getElementById("formStatus");
@@ -75,7 +75,7 @@ if (form) {
       message: messageInput ? messageInput.value : "",
       pageUrl: location.href,
       userAgent: navigator.userAgent,
-      honeypot: honeypotInput ? safeTrim(honeypotInput.value) : ""
+      company: honeypotInput ? safeTrim(honeypotInput.value) : ""
     });
 
     setStatus("Envoi en cours…", "info");
