@@ -6,25 +6,37 @@ const subjectSelect = document.getElementById("subjectChoice");
 const otherTitleWrapper = document.getElementById("otherTitleWrapper");
 const otherTitleInput = document.getElementById("otherTitle");
 const honeypotInput = document.getElementById("company");
+const fullNameInput = document.getElementById("fullName");
+const emailInput = document.getElementById("email");
+const phoneInput = document.getElementById("phone");
+const messageInput = document.getElementById("message");
 
-function setStatus(message, type = "info") {
+function setStatus(message, type) {
   if (!statusBox) {
     return;
   }
 
   statusBox.textContent = message;
-  statusBox.dataset.status = type;
+  statusBox.dataset.status = type || "info";
+}
+
+function safeTrim(value) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  return value.trim();
 }
 
 function toggleOtherTitle() {
-  const isOther = subjectSelect?.value === "Autre";
+  const isOther = subjectSelect && subjectSelect.value === "Autre";
 
   if (!otherTitleWrapper || !otherTitleInput) {
     return;
   }
 
   otherTitleWrapper.hidden = !isOther;
-  otherTitleInput.required = Boolean(isOther);
+  otherTitleInput.required = !!isOther;
 
   if (!isOther) {
     otherTitleInput.value = "";
@@ -37,15 +49,15 @@ if (subjectSelect) {
 }
 
 if (form) {
-  form.addEventListener("submit", async (event) => {
+  form.addEventListener("submit", async function (event) {
     event.preventDefault();
 
-    if (honeypotInput?.value?.trim()) {
+    if (honeypotInput && safeTrim(honeypotInput.value)) {
       setStatus("Impossible d’envoyer la demande. Merci de réessayer.", "error");
       return;
     }
 
-    if (FORM_ENDPOINT.includes("REPLACE_")) {
+    if (FORM_ENDPOINT.indexOf("REPLACE_") !== -1) {
       setStatus("Formulaire pas encore connecté (endpoint manquant).", "error");
       return;
     }
@@ -55,15 +67,15 @@ if (form) {
     }
 
     const params = new URLSearchParams({
-      subjectChoice: subjectSelect?.value || "",
-      otherTitle: otherTitleInput?.value?.trim() || "",
-      fullName: document.getElementById("fullName")?.value?.trim() || "",
-      email: document.getElementById("email")?.value?.trim() || "",
-      phone: document.getElementById("phone")?.value?.trim() || "",
-      message: document.getElementById("message")?.value || "",
+      subjectChoice: subjectSelect ? subjectSelect.value : "",
+      otherTitle: otherTitleInput ? safeTrim(otherTitleInput.value) : "",
+      fullName: fullNameInput ? safeTrim(fullNameInput.value) : "",
+      email: emailInput ? safeTrim(emailInput.value) : "",
+      phone: phoneInput ? safeTrim(phoneInput.value) : "",
+      message: messageInput ? messageInput.value : "",
       pageUrl: location.href,
       userAgent: navigator.userAgent,
-      honeypot: honeypotInput?.value?.trim() || ""
+      honeypot: honeypotInput ? safeTrim(honeypotInput.value) : ""
     });
 
     setStatus("Envoi en cours…", "info");
@@ -80,7 +92,7 @@ if (form) {
       setStatus("Message envoyé. Votre demande sera traitée par l’association.", "success");
       form.reset();
       toggleOtherTitle();
-    } catch {
+    } catch (error) {
       setStatus("Une erreur est survenue. Merci de réessayer plus tard.", "error");
     }
   });
