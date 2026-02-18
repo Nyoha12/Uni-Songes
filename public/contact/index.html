@@ -38,7 +38,57 @@
 </header>
 <main class="container content">
   <h1>Contact</h1>
-  <ul><li>Email : <a href="mailto:asso.unisonges@gmail.com">asso.unisonges@gmail.com</a></li><li>Zone : Paris, Aubervilliers, proche Paris, visio</li><li>Responsable : Yohan NIAUX</li></ul><p>Réseaux : Instagram / YouTube / Facebook (à venir).</p>
+  <p>Réponse par e-mail. Utilise ce formulaire pour les demandes (cours, stages, D’Jam, orchestre, etc.).</p>
+
+  <div id="formStatus" role="status" aria-live="polite"></div>
+
+  <form id="contactForm" novalidate>
+    <p>
+      <label for="subjectChoice">Objet</label><br>
+      <select id="subjectChoice" name="subjectChoice" required>
+        <option value="">Sélectionner un objet</option>
+        <option value="Cours">Cours</option>
+        <option value="Stages">Stages</option>
+        <option value="D’Jam">D’Jam</option>
+        <option value="À propos de l’Orchestre des rêveurs">À propos de l’Orchestre des rêveurs</option>
+        <option value="Autre">Autre</option>
+      </select>
+    </p>
+
+    <p id="otherTitleWrapper" hidden>
+      <label for="otherTitle">Titre</label><br>
+      <input id="otherTitle" name="otherTitle" type="text" maxlength="120" autocomplete="off">
+    </p>
+
+    <p>
+      <label for="fullName">Prénom + Nom</label><br>
+      <input id="fullName" name="fullName" type="text" maxlength="120" required autocomplete="name">
+    </p>
+
+    <p>
+      <label for="email">Email</label><br>
+      <input id="email" name="email" type="email" maxlength="254" required autocomplete="email">
+    </p>
+
+    <p>
+      <label for="phone">Téléphone</label><br>
+      <input id="phone" name="phone" type="tel" maxlength="40" autocomplete="tel">
+    </p>
+
+    <p>
+      <label for="message">Message</label><br>
+      <textarea id="message" name="message" rows="10" maxlength="40000" required></textarea>
+    </p>
+
+    <p style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;" aria-hidden="true">
+      <label for="company">Company</label>
+      <input id="company" type="text" name="company" autocomplete="off" tabindex="-1">
+    </p>
+
+    <button type="submit" class="btn">Envoyer</button>
+
+    <p>Votre demande est enregistrée avec un numéro interne (visible dans l’e-mail reçu par l’association).</p>
+  </form>
 </main>
 <footer class="site-footer">
   <div class="container footer-links">
@@ -47,5 +97,6 @@
     <a href="/contact/">Contact</a>
   </div>
 </footer>
+<script defer src="/contact/contact-form.js"></script>
 </body>
 </html>
