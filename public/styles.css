@@ -38,6 +38,16 @@ body {
 .header-quicklinks { display: flex; gap: .6rem; flex-wrap: wrap; justify-content: flex-end; font-size: .95rem; }
 .header-quicklinks a { color: var(--accent); text-decoration: none; font-weight: 600; }
 .content { padding: 2rem 0 3rem; }
+#formStatus {
+  margin: 0 0 1rem;
+  font-weight: 600;
+}
+
+#formStatus[data-status="success"] {
+  color: #1f5f2d;
+  font-size: 2em;
+}
+
 .lead { font-size: 1.1rem; }
 .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
 .card, .panel { background: var(--card); border: 1px solid #e5decd; border-radius: .6rem; padding: 1rem; }
