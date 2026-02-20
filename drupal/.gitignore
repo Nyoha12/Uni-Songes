@@ -1,0 +1,18 @@
+# Composer deps
+/vendor/
+
+# Drupal dependencies installed by composer (do not commit)
+/web/core/
+/web/modules/contrib/
+/web/themes/contrib/
+/web/profiles/contrib/
+/web/libraries/
+
+# Writable/runtime files (do not commit)
+/web/sites/*/files/
+/web/sites/*/settings.php
+/web/sites/*/settings.local.php
+/web/sites/*/services.yml
+
+# Local/backup noise
+composer.json.bak.*
