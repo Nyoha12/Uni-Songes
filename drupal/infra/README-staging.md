@@ -1,6 +1,6 @@
 # Staging — déploiement reproductible Drupal
 
-Ce guide décrit les commandes **exactes** pour déployer l'instance Drupal en staging depuis le dépôt GitHub, sans secrets en dur.
+Ce guide décrit les commandes **exactes** pour déployer l'instance Drupal en staging depuis le dépôt GitHub.
 
 ## Pré-requis
 - Accès SSH au serveur staging.
@@ -63,5 +63,6 @@ vendor/bin/drush watchdog:show --count=20
 ```
 
 ## Notes sécurité
-- Ne jamais commiter `.env`, `settings.php`, secrets ou clés privées.
-- Les credentials PayPal doivent être injectés par variables d'environnement / secret manager.
+- Repo privé : possible de committer les secrets si voulu.
+- Repo public : interdit de committer les secrets ou clés privées.
+- En cas de fuite de secret : rotation immédiate.
