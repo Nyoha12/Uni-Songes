@@ -1,0 +1,16 @@
+uuid: 8efe64e3-334b-4b2a-b078-674f16a4f4bc
+langcode: fr
+status: true
+dependencies:
+  module:
+    - profile
+  enforced:
+    module:
+      - profile
+_core:
+  default_config_hash: i6SUyw-h9LthgtmTiKGbqFIh-JXnBtXLG2NCV7CkI3M
+id: profile_unpublish_action
+label: 'Dépublier le profil sélectionné'
+type: profile
+plugin: 'entity:unpublish_action:profile'
+configuration: {  }

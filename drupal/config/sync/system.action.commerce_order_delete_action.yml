@@ -1,0 +1,16 @@
+uuid: 292e628b-6d4c-4396-bdc1-7f67cd068e17
+langcode: fr
+status: true
+dependencies:
+  module:
+    - commerce_order
+  enforced:
+    module:
+      - commerce_order
+_core:
+  default_config_hash: Cj_fREZCx0NVDUfo3pDHFMUuCGTzoag_MUFspBxr3AQ
+id: commerce_order_delete_action
+label: 'Supprimer la commande'
+type: commerce_order
+plugin: 'entity:delete_action:commerce_order'
+configuration: {  }
