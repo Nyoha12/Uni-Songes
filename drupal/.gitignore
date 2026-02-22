@@ -16,3 +16,4 @@
 
 # Local/backup noise
 composer.json.bak.*
+/web/sites/default/settings.php.bak.*
