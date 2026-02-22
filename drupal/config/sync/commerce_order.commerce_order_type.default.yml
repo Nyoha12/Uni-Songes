@@ -16,3 +16,4 @@ refresh_frequency: 300
 sendReceipt: true
 receiptBcc: ''
 receiptSubject: ''
+checkout_flow: default

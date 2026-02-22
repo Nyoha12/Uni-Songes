@@ -12,7 +12,7 @@ configuration:
   display_label: PayPal
   mode: sandbox
   payment_method_types:
-    - credit_card
+    - paypal
   collect_billing_information: false
   payment_solution: smart_payment_buttons
   client_id: AbthG-DcLgaXPgYDot9bC5YmhdksX-PUBlodoVebuqDKe2KAB__m9Zw3M1aJiH_RtZs55hh8sE7q2t_V
