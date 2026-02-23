@@ -1,0 +1,5 @@
+name: 'Unisonges Structure'
+type: module
+description: 'Creates and maintains core Uni-Songes pages and main menu structure.'
+package: Custom
+core_version_requirement: '^9 || ^10 || ^11'
