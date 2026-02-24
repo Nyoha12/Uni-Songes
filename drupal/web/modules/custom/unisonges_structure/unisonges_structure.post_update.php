@@ -79,6 +79,29 @@ function unisonges_structure_post_update_create_pages_and_navigation(array &$san
 }
 
 /**
+ * Ensure stage beginner/intermediate pages are distinct from course pages.
+ */
+function unisonges_structure_post_update_fix_stage_pages_distinct(array &$sandbox): void {
+  $logger = \Drupal::logger('unisonges_structure');
+
+  $stages_debutant_nid = _unisonges_structure_ensure_stage_page_distinct(
+    '/cours/debutant',
+    '/stages/debutant',
+    'Débutant',
+    $logger
+  );
+  $stages_intermediaire_nid = _unisonges_structure_ensure_stage_page_distinct(
+    '/cours/intermediaire',
+    '/stages/intermediaire',
+    'Intermédiaire',
+    $logger
+  );
+
+  _unisonges_structure_ensure_stages_menu_child_link('Débutant', $stages_debutant_nid, $logger);
+  _unisonges_structure_ensure_stages_menu_child_link('Intermédiaire', $stages_intermediaire_nid, $logger);
+}
+
+/**
  * Ensure a published basic page exists and receives the requested alias when possible.
  */
 function _unisonges_structure_ensure_basic_page(string $title, string $alias): Node {
@@ -208,4 +231,190 @@ function _unisonges_structure_ensure_menu_link(string $title, int $node_id, stri
   $link->save();
 
   return $link;
+}
+
+/**
+ * Ensure a stages page alias points to a node distinct from the corresponding course alias.
+ */
+function _unisonges_structure_ensure_stage_page_distinct(string $course_alias, string $stage_alias, string $title, $logger): int {
+  $course_path = _unisonges_structure_get_path_from_alias($course_alias);
+  $existing_stage_alias = _unisonges_structure_get_alias_entity($stage_alias);
+  $existing_stage_path = $existing_stage_alias ? $existing_stage_alias->getPath() : NULL;
+
+  if ($existing_stage_path && $existing_stage_path !== $course_path && preg_match('/^\/node\/(\d+)$/', $existing_stage_path, $matches)) {
+    $existing_node = Node::load((int) $matches[1]);
+    if ($existing_node && $existing_node->bundle() === 'page') {
+      if (!$existing_node->isPublished()) {
+        $existing_node->setPublished(TRUE);
+        $existing_node->save();
+        $logger->notice('Published existing stage node @nid for @alias.', [
+          '@nid' => $existing_node->id(),
+          '@alias' => $stage_alias,
+        ]);
+      }
+      $logger->notice('Stage alias @alias already points to distinct node @nid.', [
+        '@alias' => $stage_alias,
+        '@nid' => $existing_node->id(),
+      ]);
+      return (int) $existing_node->id();
+    }
+  }
+
+  $node = Node::create([
+    'type' => 'page',
+    'title' => $title,
+    'status' => Node::PUBLISHED,
+  ]);
+  $node->save();
+  $node_path = '/node/' . $node->id();
+
+  if ($existing_stage_alias) {
+    if ($existing_stage_alias->getPath() !== $node_path) {
+      $existing_stage_alias->set('path', $node_path);
+      $existing_stage_alias->save();
+      $logger->notice('Updated alias @alias to @path (new node created).', [
+        '@alias' => $stage_alias,
+        '@path' => $node_path,
+      ]);
+    }
+    else {
+      $logger->notice('Alias @alias already pointed to @path after node creation.', [
+        '@alias' => $stage_alias,
+        '@path' => $node_path,
+      ]);
+    }
+  }
+  else {
+    _unisonges_structure_create_alias($stage_alias, $node_path);
+    $logger->notice('Created alias @alias to @path.', [
+      '@alias' => $stage_alias,
+      '@path' => $node_path,
+    ]);
+  }
+
+  $logger->notice('Created new distinct stage node @nid for @alias.', [
+    '@nid' => $node->id(),
+    '@alias' => $stage_alias,
+  ]);
+
+  return (int) $node->id();
+}
+
+/**
+ * Return the source path for an alias if available.
+ */
+function _unisonges_structure_get_path_from_alias(string $alias): ?string {
+  $alias_entity = _unisonges_structure_get_alias_entity($alias);
+  return $alias_entity ? $alias_entity->getPath() : NULL;
+}
+
+/**
+ * Return one alias entity matching the alias.
+ */
+function _unisonges_structure_get_alias_entity(string $alias) {
+  if (!\Drupal::moduleHandler()->moduleExists('path_alias')) {
+    return NULL;
+  }
+
+  $alias_storage = \Drupal::entityTypeManager()->getStorage('path_alias');
+  $aliases = $alias_storage->loadByProperties(['alias' => $alias]);
+
+  return $aliases ? reset($aliases) : NULL;
+}
+
+/**
+ * Create an alias entity when path_alias is enabled.
+ */
+function _unisonges_structure_create_alias(string $alias, string $path): void {
+  if (!\Drupal::moduleHandler()->moduleExists('path_alias')) {
+    return;
+  }
+
+  \Drupal::entityTypeManager()->getStorage('path_alias')->create([
+    'path' => $path,
+    'alias' => $alias,
+  ])->save();
+}
+
+/**
+ * Ensure stages submenu links point to expected nodes.
+ */
+function _unisonges_structure_ensure_stages_menu_child_link(string $title, int $node_id, $logger): void {
+  if (!\Drupal::moduleHandler()->moduleExists('menu_link_content')) {
+    $logger->notice('menu_link_content module is not enabled; skip menu update for @title.', ['@title' => $title]);
+    return;
+  }
+
+  $menu_link_storage = \Drupal::entityTypeManager()->getStorage('menu_link_content');
+  $stages_parent = _unisonges_structure_get_stages_parent_menu_link();
+
+  if (!$stages_parent) {
+    $logger->notice('No parent "Stages" menu link found in main menu; skip child update for @title.', ['@title' => $title]);
+    return;
+  }
+
+  $parent_plugin_id = $stages_parent->getPluginId();
+  $expected_uri = 'entity:node/' . $node_id;
+  $links = $menu_link_storage->loadByProperties([
+    'menu_name' => 'main',
+    'title' => $title,
+    'parent' => $parent_plugin_id,
+  ]);
+
+  /** @var \Drupal\menu_link_content\Entity\MenuLinkContent|null $link */
+  $link = $links ? reset($links) : NULL;
+  if (!$link) {
+    $link = MenuLinkContent::create([
+      'title' => $title,
+      'menu_name' => 'main',
+      'link' => ['uri' => $expected_uri],
+      'enabled' => TRUE,
+      'parent' => $parent_plugin_id,
+      'expanded' => TRUE,
+    ]);
+    $link->save();
+    $logger->notice('Created menu link "@title" under Stages to @uri.', [
+      '@title' => $title,
+      '@uri' => $expected_uri,
+    ]);
+    return;
+  }
+
+  $current_uri = (string) ($link->get('link')->first()->getValue()['uri'] ?? '');
+  $has_change = FALSE;
+
+  if ($current_uri !== $expected_uri) {
+    $link->set('link', ['uri' => $expected_uri]);
+    $has_change = TRUE;
+  }
+  if (!(bool) $link->get('enabled')->value) {
+    $link->set('enabled', TRUE);
+    $has_change = TRUE;
+  }
+
+  if ($has_change) {
+    $link->save();
+    $logger->notice('Updated menu link "@title" under Stages to @uri.', [
+      '@title' => $title,
+      '@uri' => $expected_uri,
+    ]);
+  }
+}
+
+/**
+ * Find the top-level main-menu link titled "Stages".
+ */
+function _unisonges_structure_get_stages_parent_menu_link(): ?MenuLinkContent {
+  if (!\Drupal::moduleHandler()->moduleExists('menu_link_content')) {
+    return NULL;
+  }
+
+  $menu_link_storage = \Drupal::entityTypeManager()->getStorage('menu_link_content');
+  $links = $menu_link_storage->loadByProperties([
+    'menu_name' => 'main',
+    'title' => 'Stages',
+    'parent' => '',
+  ]);
+
+  return $links ? reset($links) : NULL;
 }
