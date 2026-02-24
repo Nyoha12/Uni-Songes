@@ -1,0 +1,10 @@
+global:
+  css:
+    theme:
+      css/styles.css: {}
+  js:
+    js/site.js: {}
+
+contact:
+  js:
+    js/contact-form.js: {}

@@ -1,0 +1,27 @@
+<?php
+
+/**
+ * @file
+ * Theme hooks and preprocess functions for UniSonges Theme.
+ */
+
+use Drupal\Core\Menu\MenuTreeParameters;
+
+/**
+ * Implements hook_preprocess_page().
+ */
+function unisonges_theme_preprocess_page(array &$variables): void {
+  $menu_name = 'main';
+  $menu_tree = \Drupal::menuTree();
+  $parameters = (new MenuTreeParameters())
+    ->setMaxDepth(2)
+    ->onlyEnabledLinks();
+
+  $tree = $menu_tree->load($menu_name, $parameters);
+  $manipulators = [
+    ['callable' => 'menu.default_tree_manipulators:checkAccess'],
+    ['callable' => 'menu.default_tree_manipulators:generateIndexAndSort'],
+  ];
+  $tree = $menu_tree->transform($tree, $manipulators);
+  $variables['unisonges_main_menu'] = $menu_tree->build($tree);
+}
