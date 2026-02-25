@@ -1,0 +1,15 @@
+{% if cards %}
+  <section class="card-grid">
+    {% for card in cards %}
+      <article class="card">
+        <h2>{{ card.title }}</h2>
+        {% if card.text %}
+          <p>{{ card.text }}</p>
+        {% endif %}
+        {% if card.url and card.link_label %}
+          <a href="{{ card.url }}">{{ card.link_label }}</a>
+        {% endif %}
+      </article>
+    {% endfor %}
+  </section>
+{% endif %}

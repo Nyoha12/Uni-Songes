@@ -1,0 +1,12 @@
+<article class="unisonges-node-page">
+  {% include '@unisonges_theme/includes/_hero.html.twig' with { title: label, intro: 'Un format avancé pour les pratiquants souhaitant approfondir leur jeu.' } only %}
+  {% if content.body %}
+    <section class="panel node-body">{{ content.body }}</section>
+  {% endif %}
+  {% include '@unisonges_theme/includes/_actions-row.html.twig' with {
+    actions: [
+      { url: '/stages', label: 'Retour aux stages' },
+      { url: '/contact', label: 'Demander des informations' }
+    ]
+  } only %}
+</article>

@@ -1,0 +1,7 @@
+{% if actions %}
+  <section class="actions-row">
+    {% for action in actions %}
+      <a class="btn" href="{{ action.url }}">{{ action.label }}</a>
+    {% endfor %}
+  </section>
+{% endif %}

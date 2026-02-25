@@ -1,0 +1,12 @@
+<article class="unisonges-node-page">
+  {% include '@unisonges_theme/includes/_hero.html.twig' with { title: label, intro: 'Réservation de cours de didgeridoo en présentiel ou en visio.' } only %}
+  {% if content.body %}
+    <section class="panel node-body">{{ content.body }}</section>
+  {% endif %}
+  {% include '@unisonges_theme/includes/_actions-row.html.twig' with {
+    actions: [
+      { url: '/cours', label: 'Voir les formules de cours' },
+      { url: '/contact', label: 'Nous contacter' }
+    ]
+  } only %}
+</article>

@@ -1,0 +1,16 @@
+{{ attach_library('unisonges_theme/contact') }}
+
+<article class="unisonges-node-page">
+  {% include '@unisonges_theme/includes/_hero.html.twig' with { title: label, intro: 'Une question sur les cours, stages, concerts ou créations collectives ?' } only %}
+
+  {% if content.body %}
+    <section class="panel node-body">{{ content.body }}</section>
+  {% endif %}
+
+  {% include '@unisonges_theme/includes/_actions-row.html.twig' with {
+    actions: [
+      { url: '/reserver', label: 'Réserver un cours' },
+      { url: '/stages', label: 'Voir les stages' }
+    ]
+  } only %}
+</article>

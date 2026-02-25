@@ -1,0 +1,14 @@
+<article class="unisonges-node-page">
+  {% include '@unisonges_theme/includes/_hero.html.twig' with { title: label, intro: 'Concerts, interventions et temps de partage autour du didgeridoo.' } only %}
+
+  {% include '@unisonges_theme/includes/_card-grid.html.twig' with {
+    cards: [
+      { title: 'Contact organisation', text: 'Programmez une date ou une intervention avec UniSonges.', url: '/contact', link_label: 'Contacter l’association' },
+      { title: 'D’Jam', text: 'Retrouvez les sessions jam conviviales ouvertes à tous.', url: '/djam', link_label: 'Voir les jams' }
+    ]
+  } only %}
+
+  {% if content.body %}
+    <section class="panel node-body">{{ content.body }}</section>
+  {% endif %}
+</article>

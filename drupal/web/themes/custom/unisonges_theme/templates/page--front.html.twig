@@ -1,62 +1,41 @@
-<header class="site-header" role="banner">
-  <div class="container header-inner">
-    <a class="brand" href="{{ path('<front>') }}">UniSonges</a>
-
-    <nav aria-label="Navigation principale">
-      <ul class="main-nav">
-        <li><a href="/cours">Cours</a></li>
-        <li><a href="/stages">Stages</a></li>
-        <li><a href="/concerts">Concerts &amp; dates à venir</a></li>
-        <li><a href="/orchestre-de-didgeridoo">Orchestre de didgeridoo</a></li>
-        <li><a href="/djam">D’Jam</a></li>
-        <li><a href="/contact">Contact</a></li>
-      </ul>
-    </nav>
-
-    <div class="account-wrap">
-      <a class="btn-wood" href="#" aria-label="Mon compte (bientôt)">Mon compte</a>
-      <div class="header-quicklinks" aria-label="Accès rapide">
-        <a href="/reserver">Réserver un cours</a>
-        <a href="/stages">Voir les stages</a>
-      </div>
-    </div>
-  </div>
-</header>
+{% include '@unisonges_theme/includes/_header.html.twig' %}
 
 <main class="container content" role="main">
   <a id="main-content" tabindex="-1"></a>
 
-  <h1>UniSonges</h1>
-  <p class="lead">Association artistique autour du didgeridoo à Paris, proche Paris (Aubervilliers) et en visio.</p>
+  {% include '@unisonges_theme/includes/_hero.html.twig' with {
+    title: 'UniSonges',
+    intro: 'Association artistique autour du didgeridoo à Paris, proche Paris (Aubervilliers) et en visio.'
+  } only %}
 
-  <section class="card-grid">
-    <article class="card">
-      <h2>Cours</h2>
-      <p>Cours individuels à domicile, en studio, extérieur ou visio, de 60 minutes, du niveau débutant à intermédiaire. Cours d’essai : 20€ (–50%).</p>
-      <a href="/cours">Découvrir les cours</a>
-    </article>
-    <article class="card">
-      <h2>Stages</h2>
-      <p>Formats débutant, intermédiaire, masterclass avancée et stages sur demande, avec capacité limitée à 12.</p>
-      <a href="/stages">Voir les stages</a>
-    </article>
-    <article class="card">
-      <h2>Orchestre de didgeridoo</h2>
-      <p>Création collective hebdomadaire guidée par la démarche de Yohan NIAUX.</p>
-      <a href="/orchestre-de-didgeridoo">Rejoindre l’orchestre</a>
-    </article>
-    <article class="card">
-      <h2>Des Jams de Didgeridoos !</h2>
-      <p>Venez passer un moment convivial lors des jams de didgéridoos, totalement gratuites, la participation y est ouverte à tous les instruments ainsi qu’au public !</p>
-      <a href="/djam">Plus d’informations</a>
-    </article>
-  </section>
+  {% include '@unisonges_theme/includes/_card-grid.html.twig' with {
+    cards: [
+      {
+        title: 'Cours',
+        text: 'Cours individuels à domicile, en studio, extérieur ou visio, de 60 minutes, du niveau débutant à intermédiaire. Cours d’essai : 20€ (–50%).',
+        url: '/cours',
+        link_label: 'Découvrir les cours'
+      },
+      {
+        title: 'Stages',
+        text: 'Formats débutant, intermédiaire, masterclass avancée et stages sur demande, avec capacité limitée à 12.',
+        url: '/stages',
+        link_label: 'Voir les stages'
+      },
+      {
+        title: 'Orchestre de didgeridoo',
+        text: 'Création collective hebdomadaire guidée par la démarche de Yohan NIAUX.',
+        url: '/orchestre-de-didgeridoo',
+        link_label: 'Rejoindre l’orchestre'
+      },
+      {
+        title: 'Des Jams de Didgeridoos !',
+        text: 'Venez passer un moment convivial lors des jams de didgéridoos, totalement gratuites, la participation y est ouverte à tous les instruments ainsi qu’au public ! Didgeridoos à l’honneur !',
+        url: '/djam',
+        link_label: 'Plus d’informations'
+      }
+    ]
+  } only %}
 </main>
 
-<footer class="site-footer" role="contentinfo">
-  <div class="container footer-links">
-    <a href="/contact">Contact</a>
-    <a href="/cours">Cours</a>
-    <a href="/concerts">Concerts</a>
-  </div>
-</footer>
+{% include '@unisonges_theme/includes/_footer.html.twig' %}
