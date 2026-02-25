@@ -1,31 +1,8 @@
-<header class="site-header" role="banner">
-  <div class="container header-inner">
-    <a class="brand" href="{{ path('<front>') }}">UniSonges</a>
-
-    <nav class="unisonges-main-nav" aria-label="Navigation principale">
-      {{ unisonges_main_menu }}
-    </nav>
-
-    <div class="account-wrap">
-      <a class="btn-wood" href="#" aria-label="Mon compte (bientôt)">Mon compte</a>
-      <div class="header-quicklinks" aria-label="Accès rapide">
-        <a href="{{ path('<front>') }}reserver-un-cours">Réserver un cours</a>
-        <a href="{{ path('<front>') }}stages">Voir les stages</a>
-      </div>
-    </div>
-  </div>
-</header>
+{% include '@unisonges_theme/includes/_header.html.twig' %}
 
 <main class="container content" role="main">
   <a id="main-content" tabindex="-1"></a>
   {{ page.content }}
 </main>
 
-<footer class="site-footer" role="contentinfo">
-  <div class="container footer-links">
-    <a href="{{ path('<front>') }}mentions-legales">Mentions légales</a>
-    <a href="{{ path('<front>') }}politique-confidentialite">Politique de confidentialité</a>
-    <a href="{{ path('<front>') }}contact">Contact</a>
-  </div>
-  {{ page.footer }}
-</footer>
+{% include '@unisonges_theme/includes/_footer.html.twig' %}

@@ -1,0 +1,12 @@
+<article class="unisonges-node-page">
+  {% include '@unisonges_theme/includes/_hero.html.twig' with { title: label, intro: 'Création collective hebdomadaire autour du didgeridoo et de l’écoute musicale.' } only %}
+  {% if content.body %}
+    <section class="panel node-body">{{ content.body }}</section>
+  {% endif %}
+  {% include '@unisonges_theme/includes/_actions-row.html.twig' with {
+    actions: [
+      { url: '/contact', label: 'Rejoindre le collectif' },
+      { url: '/concerts', label: 'Voir les concerts' }
+    ]
+  } only %}
+</article>
