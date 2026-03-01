@@ -25,3 +25,18 @@ function unisonges_theme_preprocess_page(array &$variables): void {
   $tree = $menu_tree->transform($tree, $manipulators);
   $variables['unisonges_main_menu'] = $menu_tree->build($tree);
 }
+
+/**
+ * Implements hook_theme_suggestions_page_alter().
+ *
+ * Force the front layout on /accueil even if Drupal doesn't treat it as <front>.
+ */
+function unisonges_theme_theme_suggestions_page_alter(array &$suggestions, array $variables) {
+  $path = \Drupal::service('path.current')->getPath();
+  $alias = \Drupal::service('path_alias.manager')->getAliasByPath($path);
+
+  if ($alias === '/accueil') {
+    $suggestions[] = 'page__front';
+  }
+}
+

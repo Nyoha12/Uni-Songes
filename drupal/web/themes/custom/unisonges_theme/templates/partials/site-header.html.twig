@@ -1,0 +1,34 @@
+{% set site_title = site_name|default('Uni-Songes') %}
+
+<header class="site-header">
+  <div class="site-header__inner">
+    <div class="site-header__left">
+      <a class="brand" href="{{ path('<front>') }}">
+        {% if logo %}
+          <img class="brand__logo" src="{{ logo }}" alt="{{ site_title|e }}" />
+        {% endif %}
+        <span class="brand__name">{{ site_title }}</span>
+      </a>
+    </div>
+
+    <nav class="site-header__center site-nav" aria-label="Menu principal">
+      {% if page.primary_menu %}
+        {{ page.primary_menu }}
+      {% elseif page.navigation %}
+        {{ page.navigation }}
+      {% endif %}
+    </nav>
+
+    <div class="site-header__right site-account">
+      <a class="btn btn--cta" href="/reserver">Réserver</a>
+
+      {% if logged_in %}
+        <a class="link" href="{{ path('user.page') }}">Mon compte</a>
+        <a class="link" href="{{ path('user.logout') }}">Se déconnecter</a>
+      {% else %}
+        <a class="link" href="{{ path('user.login') }}">Se connecter</a>
+        <a class="link" href="{{ path('user.register') }}">Créer un compte</a>
+      {% endif %}
+    </div>
+  </div>
+</header>

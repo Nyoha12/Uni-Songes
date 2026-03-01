@@ -1,41 +1,26 @@
-{% include '@unisonges_theme/includes/_header.html.twig' %}
+{{ attach_library('unisonges_theme/unisonges-layout') }}
+{% include '@unisonges_theme/partials/site-header.html.twig' %}
+{% set site_title = site_name|default('Uni-Songes') %}
 
-<main class="container content" role="main">
-  <a id="main-content" tabindex="-1"></a>
+<section class="home-hero">
+  <div class="container home-hero__inner">
+    <h1 class="home-hero__title">{{ site_title }}</h1>
+    <div class="home-hero__actions">
+      <a class="btn btn--cta" href="/reserver">Réserver</a>
+    </div>
+  </div>
+</section>
 
-  {% include '@unisonges_theme/includes/_hero.html.twig' with {
-    title: 'UniSonges',
-    intro: 'Association artistique autour du didgeridoo à Paris, proche Paris (Aubervilliers) et en visio.'
-  } only %}
-
-  {% include '@unisonges_theme/includes/_card-grid.html.twig' with {
-    cards: [
-      {
-        title: 'Cours',
-        text: 'Cours individuels à domicile, en studio, extérieur ou visio, de 60 minutes, du niveau débutant à intermédiaire. Cours d’essai : 20€ (–50%).',
-        url: '/cours',
-        link_label: 'Découvrir les cours'
-      },
-      {
-        title: 'Stages',
-        text: 'Formats débutant, intermédiaire, masterclass avancée et stages sur demande, avec capacité limitée à 12.',
-        url: '/stages',
-        link_label: 'Voir les stages'
-      },
-      {
-        title: 'Orchestre de didgeridoo',
-        text: 'Création collective hebdomadaire guidée par la démarche de Yohan NIAUX.',
-        url: '/orchestre-de-didgeridoo',
-        link_label: 'Rejoindre l’orchestre'
-      },
-      {
-        title: 'Des Jams de Didgeridoos !',
-        text: 'Venez passer un moment convivial lors des jams de didgéridoos, totalement gratuites, la participation y est ouverte à tous les instruments ainsi qu’au public ! Didgeridoos à l’honneur !',
-        url: '/djam',
-        link_label: 'Plus d’informations'
-      }
-    ]
-  } only %}
-</main>
-
-{% include '@unisonges_theme/includes/_footer.html.twig' %}
+<section class="section">
+  <div class="container">
+    <div class="home-cards">
+      <a class="home-card" href="/cours"><span class="home-card__title">Cours</span></a>
+      <a class="home-card" href="/stages"><span class="home-card__title">Stages</span></a>
+      <a class="home-card" href="/concerts"><span class="home-card__title">Concerts & dates à venir</span></a>
+      <a class="home-card" href="/association"><span class="home-card__title">L’Association</span></a>
+      <a class="home-card" href="/djam"><span class="home-card__title">D’Jam</span></a>
+      <a class="home-card" href="/orchestre-des-reveurs"><span class="home-card__title">Orchestre des rêveurs</span></a>
+      <a class="home-card" href="/contact"><span class="home-card__title">Contact</span></a>
+    </div>
+  </div>
+</section>

@@ -1,8 +1,16 @@
-{% include '@unisonges_theme/includes/_header.html.twig' %}
+{{ attach_library('unisonges_theme/unisonges-layout') }}
+{% include '@unisonges_theme/partials/site-header.html.twig' %}
 
-<main class="container content" role="main">
-  <a id="main-content" tabindex="-1"></a>
-  {{ page.content }}
+<main id="main-content" class="layout" role="main">
+  <div class="container">
+    {% if page.highlighted %}{{ page.highlighted }}{% endif %}
+    {% if page.help %}{{ page.help }}{% endif %}
+    {{ page.content }}
+  </div>
 </main>
 
-{% include '@unisonges_theme/includes/_footer.html.twig' %}
+{% if page.footer %}
+  <footer class="site-footer">
+    <div class="container">{{ page.footer }}</div>
+  </footer>
+{% endif %}
