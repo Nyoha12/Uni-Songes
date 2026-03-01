@@ -173,3 +173,19 @@ a{ color:var(--accent); }
   .site-nav{ order:3; width:100%; justify-content:flex-start; }
   .site-nav ul{ gap:.75rem; }
 }
+
+/* UNI-SONGES HOME TIDY v1 */
+.home-hero { padding: 1.5rem 0; } /* garde le bandeau beige sans doublons */
+
+.home-cards { margin-top: .5rem; }
+.home-card { display:flex; align-items:center; min-height: 72px; }
+.home-card__title { display:block; font-size: 1.05rem; line-height: 1.2; }
+
+@media (max-width: 860px){
+  .home-card { min-height: 64px; }
+}
+
+/* UNI-SONGES FRONT FIX v1 */
+.path-accueil .brand__name { display:none !important; }   /* évite "Uni-Songes" 2x */
+.path-accueil .home-cards { display:none !important; }    /* supprime le 2e menu (tuiles) */
+.path-accueil .home-hero { padding: 2.5rem 0; }           /* garde un bandeau propre */
