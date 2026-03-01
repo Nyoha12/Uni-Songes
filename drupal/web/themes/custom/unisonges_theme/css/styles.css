@@ -189,3 +189,40 @@ a{ color:var(--accent); }
 .path-accueil .brand__name { display:none !important; }   /* évite "Uni-Songes" 2x */
 .path-accueil .home-cards { display:none !important; }    /* supprime le 2e menu (tuiles) */
 .path-accueil .home-hero { padding: 2.5rem 0; }           /* garde un bandeau propre */
+
+/* UNI-SONGES HEADER POLISH v2 */
+.site-header__inner{
+  max-width:1100px;
+  margin:0 auto;
+  padding: .85rem 1.25rem;
+  gap: 1.25rem;
+}
+
+.site-header__left{ flex: 0 0 auto; }
+.site-header__center{ flex: 1 1 auto; }
+.site-header__right{ flex: 0 0 auto; }
+
+.site-nav{ justify-content:center; }
+.site-nav ul{ align-items:center; }
+.site-nav a{ display:inline-block; padding:.35rem .4rem; border-radius:10px; }
+.site-nav a:hover{ background: rgba(15,118,110,.08); text-decoration:none; }
+
+.site-account .link{ padding:.35rem .35rem; border-radius:10px; }
+.site-account .link:hover{ background: rgba(2,6,23,.06); }
+
+.btn--cta{
+  padding:.55rem .95rem;
+  box-shadow: 0 6px 14px rgba(2,6,23,.12);
+}
+.btn--cta:hover{ box-shadow: 0 10px 22px rgba(2,6,23,.16); }
+
+/* Harmonise le bandeau beige sous le header (accueil) */
+.home-hero{ border-bottom: 1px solid rgba(15,23,42,.10); }
+.path-accueil .layout{ padding-top: 1.25rem; }
+
+/* Mobile: menu passe en ligne 2, tout reste lisible */
+@media (max-width: 860px){
+  .site-header__inner{ padding: .75rem 1rem; }
+  .site-nav ul{ flex-wrap:wrap; gap:.5rem; }
+  .site-account{ width:100%; justify-content:flex-start; flex-wrap:wrap; }
+}
