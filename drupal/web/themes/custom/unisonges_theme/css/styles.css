@@ -112,33 +112,6 @@ body { background: #f3eee3 !important; }
   white-space: normal !important;
 }
 
-/* UNI-SONGES ACCESS v1 */
-.visually-hidden {
-  position: absolute !important;
-  width: 1px !important;
-  height: 1px !important;
-  padding: 0 !important;
-  margin: -1px !important;
-  overflow: hidden !important;
-  clip: rect(0, 0, 0, 0) !important;
-  white-space: nowrap !important;
-  border: 0 !important;
-}
-.visually-hidden.focusable:active,
-.visually-hidden.focusable:focus {
-  position: static !important;
-  width: auto !important;
-  height: auto !important;
-  margin: 0 !important;
-  overflow: visible !important;
-  clip: auto !important;
-  white-space: normal !important;
-}
-
-/* UNI-SONGES BEIGE v1 */
-body { background: #f3eee3; }
-.home-hero { background: #efe4d2; }
-
 /* UNI-SONGES POLISH v1 */
 :root{
   --bg:#f3eee3;
@@ -513,10 +486,6 @@ html, body { overflow-x: hidden; }
   margin:0 !important;
 }
 
-.site-banner img{
-  display: block !important;
-}
-
 /* UNI-SONGES HEADER FULL WIDTH BAR v1 */
 /* La barre (menu) prend toute la largeur */
 .site-header__inner{
@@ -738,8 +707,6 @@ body.compact-nav .site-account .link{ display:none !important; }
 
 /* drawer scroll (compte toujours accessible) */
 .mobile-drawer{ overflow-y:auto !important; max-height:100dvh !important; }
-JS
-
 /* UNI-SONGES FONTS v1 */
 /* We prefer vendor-provided CSS inside the zip. If none, we’ll add @font-face manually. */
 
@@ -761,6 +728,7 @@ body{ font-family: var(--font-body); }
 }
 
 
+/* ================= ACTIVE TYPOGRAPHY (runtime) ================= */
 /* UNI-SONGES FONTS APPLY v1 */
 :root{
   --font-body: "juraregular", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
@@ -953,6 +921,7 @@ html::before{
 /* /UNI-SONGES KILL HTML BEFORE v1 */
 
 
+/* ================= ACTIVE BACKGROUND VARIABLES (runtime) ================= */
 /* UNI-SONGES BG SYSTEM v3 (section-based, once full image, then mirror tile) */
 :root{
   --bg-once: url("/themes/custom/unisonges_theme/images/bgsrc/fontdefault.jpg");
@@ -1441,6 +1410,7 @@ html, body{
 /* /UNI-SONGES SCROLLFRAME MODE v2 */
 
 
+/* ================= ACTIVE SCROLLFRAME LAYOUT (runtime) ================= */
 /* UNI-SONGES SCROLLFRAME+BGFX FINAL v1 */
 
 /* hard kill any old html::before backgrounds */
@@ -1454,6 +1424,7 @@ html::before, body::before{
 }
 
 /* only the frame scrolls */
+/* WHY !important: prevents body scroll so BGFX sync remains tied to #unisonges-scrollframe only. */
 html, body{ height: 100% !important; overflow: hidden !important; }
 
 /* IMPORTANT: no transform on the scrollframe (avoid trapping fixed elements on /accueil) */
@@ -1568,10 +1539,12 @@ html, body{ height: 100% !important; overflow: hidden !important; }
 /* /UNI-SONGES ACCUEIL FIX v1 */
 
 
+/* ================= ACTIVE BGFX INTERACTION SAFETY (runtime) ================= */
 /* UNI-SONGES CLICK FIX v1 */
 /* BGFX must never block clicks */
 #unisonges-bgfx,
 #unisonges-bgfx *{
+  /* WHY !important: background layer must never intercept menu/content clicks. */
   pointer-events: none !important;
 }
 
@@ -1658,6 +1631,7 @@ html, body{ height: 100% !important; overflow: hidden !important; }
 }
 /* /UNI-SONGES BGFX MOTION BOOST v1 */
 
+/* ================= ACTIVE BGFX MOTION LAYER (runtime) ================= */
 /* UNI-SONGES BGFX PAN FIX v1 */
 /* Reason: #unisonges-bgfx-layer has transform:... !important in older blocks, so we animate a ::before instead (GPU-friendly). */
 
