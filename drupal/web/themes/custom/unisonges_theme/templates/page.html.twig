@@ -1,11 +1,21 @@
 {{ attach_library('unisonges_theme/unisonges-layout') }}
+<div id="unisonges-bgfx" aria-hidden="true">
+  <div id="unisonges-bgfx-scroll">
+    <div id="unisonges-bgfx-layer"></div>
+  </div>
+</div>
+
 {% include '@unisonges_theme/partials/site-header.html.twig' %}
 
 <main id="main-content" class="layout" role="main">
   <div class="container">
     {% if page.highlighted %}{{ page.highlighted }}{% endif %}
     {% if page.help %}{{ page.help }}{% endif %}
+    <div id="unisonges-scrollframe" class="scrollframe">
+  <div class="scrollframe__inner">
     {{ page.content }}
+  </div>
+</div>
   </div>
 </main>
 

@@ -1,4 +1,11 @@
 unisonges-layout:
   css:
     theme:
+      fonts/jura/webfont/stylesheet.css: { preprocess: false }
+      fonts/taga/webfont/stylesheet.css: { preprocess: false }
       css/styles.css: { preprocess: false }
+  js:
+    js/mobile-drawer.js: { preprocess: false }
+    js/auto-compact-nav.js: { preprocess: false }
+    js/bg-mirror-height.js: { preprocess: false }
+    js/bgfx-scroll-11.js: { preprocess: false }

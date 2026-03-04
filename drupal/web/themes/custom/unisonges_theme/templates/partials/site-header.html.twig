@@ -1,13 +1,14 @@
 {% set site_title = site_name|default('Uni-Songes') %}
 
 <header class="site-header">
-  <div class="site-header__inner">
+<div class="site-header__inner">
     <div class="site-header__left">
       <a class="brand" href="{{ path('<front>') }}">
         {% if logo %}
           <img class="brand__logo" src="{{ logo }}" alt="{{ site_title|e }}" />
         {% endif %}
         <span class="brand__name">{{ site_title }}</span>
+        <img class="brand__mark" src="/themes/custom/unisonges_theme/images/mark-latest.png" alt="" aria-hidden="true" />
       </a>
     </div>
 
@@ -20,15 +21,49 @@
     </nav>
 
     <div class="site-header__right site-account">
-      <a class="btn btn--cta" href="/reserver">Réserver</a>
+      
+      <button class="nav-toggle" type="button" aria-controls="mobile-drawer" aria-expanded="false" aria-label="Ouvrir le menu">
+        <span class="nav-toggle__icon" aria-hidden="true">
+          <span class="nav-toggle__bar"></span>
+          <span class="nav-toggle__bar"></span>
+          <span class="nav-toggle__bar"></span>
+        </span>
+      
+        <span class="nav-toggle__label">Menu</span>
+      </button>
+<a class="btn btn--cta" href="/reserver">Reserver</a>
 
       {% if logged_in %}
         <a class="link" href="{{ path('user.page') }}">Mon compte</a>
         <a class="link" href="{{ path('user.logout') }}">Se déconnecter</a>
       {% else %}
         <a class="link" href="{{ path('user.login') }}">Se connecter</a>
-        <a class="link" href="{{ path('user.register') }}">Créer un compte</a>
+        <a class="link" href="{{ path('user.register') }}">Creer un compte</a>
       {% endif %}
     </div>
   </div>
+<div class="mobile-backdrop" hidden></div>
+  <aside class="mobile-drawer" id="mobile-drawer" hidden>
+    <button class="mobile-drawer__close" type="button" aria-label="Fermer">×</button>
+
+    <nav class="mobile-drawer__nav" aria-label="Menu mobile">
+      {% if page.primary_menu %}
+        {{ page.primary_menu }}
+      {% elseif page.navigation %}
+        {{ page.navigation }}
+      {% endif %}
+    </nav>
+
+    <div class="mobile-drawer__account">
+      <a class="btn btn--cta" href="/reserver">Reserver</a>
+      {% if logged_in %}
+        <a class="link" href="{{ path('user.page') }}">Mon compte</a>
+        <a class="link" href="{{ path('user.logout') }}">Se déconnecter</a>
+      {% else %}
+        <a class="link" href="{{ path('user.login') }}">Se connecter</a>
+        <a class="link" href="{{ path('user.register') }}">Creer un compte</a>
+      {% endif %}
+    </div>
+  </aside>
+
 </header>

@@ -226,3 +226,1484 @@ a{ color:var(--accent); }
   .site-nav ul{ flex-wrap:wrap; gap:.5rem; }
   .site-account{ width:100%; justify-content:flex-start; flex-wrap:wrap; }
 }
+
+
+/* Image de fond floutée, très faible opacité */
+body::before{
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+
+  background-image: url("/themes/custom/unisonges_theme/images/bg.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+
+  filter: blur(20px);
+  transform: scale(1.06); /* évite les bords à cause du blur */
+  opacity: 0.06;          /* très très faible */
+}
+
+
+/* background layer */
+html::before{
+  content:"";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+
+  background-image: url("/themes/custom/unisonges_theme/images/bg.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+
+  filter: blur(16px);
+  transform: scale(1.06);
+  opacity: 0;   /* faible mais visible : tu pourras baisser ensuite */
+}
+
+
+/* Affiche l'image ENTIÈRE (contain), sans flou, opacité 1 */
+html{ background:#000 !important; }          /* pour voir les bords si l'image ne remplit pas */
+body{ background: transparent !important; }
+
+html::before{
+  filter: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+
+  background-size: contain !important;       /* pas de crop */
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+}
+
+
+/* Plein écran sans marges (cover), sans flou, opacité 1 */
+html{ background:#000 !important; }
+body{ background: transparent !important; }
+
+html::before{
+  filter: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+
+  background-size: cover !important;     /* pas de marges */
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+
+/* UNI-SONGES HEADER BANNER v1 (temp) */
+/* Bandeau tout en haut, pleine largeur, derrière le header */
+.site-header{
+  background-image: url("/themes/custom/unisonges_theme/images/banner.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Pour garder la lisibilité du menu par-dessus */
+.site-header::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background: rgba(255,255,255,0.60);
+}
+
+/* assure stacking propre */
+.site-header{ position: sticky; top:0; z-index:50; }
+.site-header__inner{ position: relative; z-index: 1; }
+
+/* UNI-SONGES HEADER BANNER v2 (temp, visible) */
+.site-header{
+  position: sticky;
+  top: 0;
+  z-index: 999;
+  background-image: url("/themes/custom/unisonges_theme/images/banner-latest.png") !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-color: transparent !important;
+}
+
+/* Overlay léger pour lisibilité (pas opaque) */
+.site-header::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background: rgba(255,255,255,0.15);
+}
+
+/* Donne une vraie hauteur au bandeau */
+.site-header__inner{
+  position: relative;
+  z-index: 1;
+  min-height: 140px;          /* rend la bannière visible */
+  align-items: flex-end;      /* menu en bas du bandeau */
+  padding-top: 1.25rem;
+  padding-bottom: 1rem;
+}
+
+/* UNI-SONGES HEADER BANNER TUNE v3 */
+/* 1) pas de marge en haut => bannière collée au bord de l’écran */
+html, body { margin: 0 !important; padding: 0 !important; }
+
+/* 2) bannière sans voile */
+.site-header::after { display: none !important; }
+
+/* 3) header vraiment collé en haut */
+.site-header{
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+}
+
+/* 4) évite un éventuel “gap” dû à padding interne */
+.site-header__inner{ padding-top: .5rem !important; }
+
+/* UNI-SONGES SKIPLINK FIX v1 */
+/* Cache le skip-link (mais reste accessible au clavier: visible au focus) */
+a.skip-link,
+a[href="#main-content"]{
+  position: absolute !important;
+  left: -9999px !important;
+  top: 0 !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+}
+
+a.skip-link:focus,
+a[href="#main-content"]:focus{
+  left: 12px !important;
+  top: 12px !important;
+  width: auto !important;
+  height: auto !important;
+  padding: .6rem .8rem !important;
+  background: #fff !important;
+  color: #000 !important;
+  border-radius: 10px !important;
+  z-index: 10000 !important;
+  box-shadow: 0 10px 24px rgba(2,6,23,.18) !important;
+}
+
+/* Assure que rien ne pousse le header */
+.site-header{ margin-top: 0 !important; }
+
+
+/* UNI-SONGES HEADER BANNER HEIGHT v1 */
+@media (max-width: 860px){
+  .site-header__inner{ min-height: 260px !important; }
+}
+
+/* UNI-SONGES BANNER NO CROP v1 */
+.site-header{
+  background-image: none !important; /* stop cover-crop mode */
+  position: relative !important;
+  top: auto !important;
+}
+
+/* Image pleine largeur, hauteur auto (aucun crop) */
+.site-banner img{
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Le menu reste lisible et collé juste sous la bannière */
+.site-header__inner{
+  min-height: unset !important;
+  background: #fff;
+  border-bottom: 1px solid rgba(0,0,0,.08);
+}
+
+/* Option: si tu veux que le menu reste sticky mais pas la bannière */
+.site-header__inner{
+  position: sticky;
+  top: 0;
+  z-index: 999;
+}
+
+/* UNI-SONGES HEADER LAYOUT v3 */
+
+/* bannière sous le header (full width, no crop) */
+.site-banner img{
+  display:block;
+  width:100%;
+  height:auto;
+}
+
+/* le header (menu + compte) reste en haut */
+.site-header__inner{
+  background:#fff;
+  border-bottom: 1px solid rgba(0,0,0,.08);
+  position: sticky;
+  top: 0;
+  z-index: 999;
+}
+
+/* desktop: 3 zones */
+.site-header__inner{
+  display:flex;
+  align-items:center;
+  gap: 1.25rem;
+}
+.site-header__left{ flex:0 0 auto; }
+.site-header__center{ flex:1 1 auto; }
+.site-header__right{ flex:0 0 auto; }
+
+/* mobile: logo gauche + account droite (ligne 1), menu en dessous (ligne 2) */
+@media (max-width: 860px){
+  .site-header__inner{ flex-wrap:wrap; }
+
+  .site-header__left{ order:1; }
+  .site-header__right{
+    order:2;
+    margin-left:auto;
+    width:auto !important;
+    white-space:nowrap;
+  }
+
+  .site-header__center{
+    order:3;
+    flex-basis:100%;
+    width:100%;
+  }
+  .site-nav{ justify-content:flex-start; }
+  .site-nav ul{ flex-wrap:wrap; gap:.5rem; }
+}
+
+/* UNI-SONGES BANNER FULL BLEED v1 */
+.site-banner{
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  padding: 0 !important;
+}
+.site-banner img{
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* UNI-SONGES BANNER FULL BLEED v2 (strong) */
+/* évite un “bord” dû à la scrollbar */
+html, body { overflow-x: hidden; }
+
+/* forcer full-bleed même si un parent a une contrainte */
+.site-banner{
+  display:block !important;
+  max-width:none !important;
+  width:100vw !important;
+  margin-left:calc(50% - 50vw) !important;
+  margin-right:calc(50% - 50vw) !important;
+  padding:0 !important;
+}
+
+/* neutralise tout max-width global sur img */
+.site-banner img{
+  display:block !important;
+  max-width:none !important;
+  width:100vw !important;
+  height:auto !important;
+  margin:0 !important;
+}
+
+.site-banner img{
+  display: block !important;
+}
+
+/* UNI-SONGES HEADER FULL WIDTH BAR v1 */
+/* La barre (menu) prend toute la largeur */
+.site-header__inner{
+  width: 100% !important;
+  max-width: none !important;   /* annule le container */
+  margin: 0 !important;
+  padding-left: 24px !important;
+  padding-right: 24px !important;
+}
+
+/* Pour éviter un débordement sur très grands écrans : optionnel, tu peux enlever si tu veux full full */
+@media (min-width: 1400px){
+  .site-header__inner{
+    padding-left: 40px !important;
+    padding-right: 40px !important;
+  }
+}
+
+/* UNI-SONGES ACCOUNT OVERFLOW FIX v1 */
+.site-header__inner{ box-sizing: border-box; }
+.site-header__center{ min-width: 0; } /* permet au centre de rétrécir au lieu de pousser à droite */
+
+@media (max-width: 520px){
+  .site-account{ white-space: normal !important; flex-wrap: wrap; justify-content: flex-end; }
+  .site-account .btn--cta{ padding: .45rem .75rem; font-size: .95rem; }
+  .site-account .link{ padding: .3rem .4rem; font-size: .95rem; }
+}
+
+
+/* fond global sous la bannière/menu */
+html::before{
+  content:"";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+
+  background-image: url("/themes/custom/unisonges_theme/images/bg-latest.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+
+  filter: none;
+  opacity: 1;
+  transform: none;
+}
+/* UNI-SONGES LOGO OVERLAY + MOBILE DRAWER v1 */
+
+/* Desktop: tout reste sur une ligne (pas de retour sous Uni-Songes) */
+@media (min-width: 641px){
+  .site-header__inner{ flex-wrap: nowrap !important; }
+  .site-nav ul{ flex-wrap: nowrap !important; }
+}
+
+/* Le “mark” sous Uni-Songes, déborde dans la bannière (overlay) */
+.brand{ position: relative; }
+.site-header__inner{ overflow: visible; }
+.brand__mark{
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  width: 88px;
+  height: auto;
+  z-index: 1001;
+}
+
+/* Sur petit écran, le mark plus petit */
+@media (max-width: 640px){
+  .brand__mark{ width: 64px; top: calc(100% + 4px); }
+}
+
+/* Nav-toggle (3 barres) : visible seulement en mobile */
+.nav-toggle{ display:none; }
+.nav-toggle__bar{
+  display:block;
+  width: 22px;
+  height: 2px;
+  margin: 4px 0;
+  background: currentColor;
+}
+@media (max-width: 640px){
+  .nav-toggle{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:.45rem .55rem;
+    border-radius: 10px;
+    border: 1px solid rgba(0,0,0,.14);
+    background: #fff;
+  }
+
+  /* mobile: on cache la nav centrale + les liens compte desktop (ils sont dans le drawer) */
+  .site-header__center{ display:none !important; }
+  .site-account .btn--cta,
+  .site-account .link{ display:none !important; }
+
+  /* on garde la zone droite à droite */
+  .site-header__right{ margin-left:auto; }
+}
+
+/* Drawer + backdrop */
+.mobile-backdrop{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.25);
+  opacity: 0;
+  transition: opacity .18s ease;
+  z-index: 2000;
+}
+.mobile-backdrop.is-open{ opacity: 1; }
+
+.mobile-drawer{
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100dvh;
+  width: min(360px, 88vw);
+  background: #fff;
+  border-left: 1px solid rgba(0,0,0,.12);
+  transform: translateX(100%);
+  transition: transform .18s ease;
+  z-index: 2001;
+  padding: 1rem;
+  display:flex;
+  flex-direction:column;
+  gap: 1rem;
+}
+.mobile-drawer.is-open{ transform: translateX(0); }
+
+.mobile-drawer__close{
+  align-self:flex-end;
+  border: 1px solid rgba(0,0,0,.14);
+  background:#fff;
+  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.mobile-drawer__nav ul{
+  list-style:none;
+  padding:0;
+  margin:0;
+  display:flex;
+  flex-direction:column;
+  gap: .5rem;
+}
+.mobile-drawer__nav a{ text-decoration:none; color: inherit; }
+
+.mobile-drawer__account{
+  display:flex;
+  flex-direction:column;
+  gap: .5rem;
+  margin-top:auto;
+}
+
+/* Drawer seulement en mobile */
+@media (min-width: 641px){
+  .mobile-backdrop, .mobile-drawer{ display:none !important; }
+}
+
+/* UNI-SONGES AUTO COMPACT v1 */
+/* Desktop normal: tout sur une ligne (pas de menu qui tombe sous Uni-Songes) */
+.site-header__inner{ flex-wrap: nowrap !important; }
+.site-nav ul{ flex-wrap: nowrap !important; }
+
+/* Par défaut (desktop), on cache le bouton 3 barres */
+.nav-toggle{ display:none !important; }
+
+/* Mode compact auto: on cache la nav centrale + les liens compte desktop, on affiche le bouton */
+body.compact-nav .site-header__center{ display:none !important; }
+body.compact-nav .site-account .btn--cta,
+body.compact-nav .site-account .link{ display:none !important; }
+body.compact-nav .nav-toggle{
+  display:inline-flex !important;
+  align-items:center;
+  justify-content:center;
+}
+
+/* Drawer: toujours scrollable pour ne jamais couper “se connecter / créer un compte” */
+.mobile-drawer{ overflow-y: auto !important; -webkit-overflow-scrolling: touch; }
+
+/* UNI-SONGES AUTO COMPACT FIX v2 */
+
+/* état desktop (par défaut) */
+body:not(.compact-nav) .site-header__center{ display:block !important; }
+body:not(.compact-nav) .nav-toggle{ display:none !important; }
+body:not(.compact-nav) .site-account .btn--cta,
+body:not(.compact-nav) .site-account .link{ display:inline-flex !important; }
+
+/* état compact (drawer) */
+body.compact-nav .site-header__center{ display:none !important; }
+body.compact-nav .nav-toggle{ display:inline-flex !important; align-items:center; justify-content:center; }
+body.compact-nav .site-account .btn--cta,
+body.compact-nav .site-account .link{ display:none !important; }
+
+/* drawer scroll (compte toujours visible) */
+.mobile-drawer{
+  overflow-y: auto !important;
+  max-height: 100dvh !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* UNI-SONGES OVERLAP FIX v1 */
+.site-header__center{ min-width: 0 !important; }
+.site-header__right{ position: relative; z-index: 5; }
+
+/* UNI-SONGES COMPACT TRIGGER NAV v1 */
+/* évite que les liens nav passent derrière la zone droite */
+.site-header__center{ overflow: hidden; min-width: 0 !important; }
+.site-header__right{ position: relative; z-index: 5; }
+
+/* compact: menu central caché + burger visible */
+body.compact-nav .site-header__center{ display:none !important; }
+body.compact-nav .nav-toggle{ display:inline-flex !important; }
+body.compact-nav .site-account .btn--cta,
+body.compact-nav .site-account .link{ display:none !important; }
+
+/* drawer scroll (compte toujours accessible) */
+.mobile-drawer{ overflow-y:auto !important; max-height:100dvh !important; }
+JS
+
+/* UNI-SONGES FONTS v1 */
+/* We prefer vendor-provided CSS inside the zip. If none, we’ll add @font-face manually. */
+
+/* Default body font */
+:root{
+  --font-body: "Jura", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  --font-brand: "Tagapagsalaysay", "Taga", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+body{ font-family: var(--font-body); }
+
+/* Brand + navigation */
+.brand__name,
+.site-nav,
+.mobile-drawer__nav,
+.nav-toggle{
+  font-family: var(--font-brand);
+  letter-spacing: .02em;
+}
+
+
+/* UNI-SONGES FONTS APPLY v1 */
+:root{
+  --font-body: "juraregular", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  --font-brand: "tagapagsalaysay_caps_narratBd", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+body{ font-family: var(--font-body); }
+
+/* logo + menus (desktop + drawer) */
+.brand__name,
+.site-nav,
+.mobile-drawer__nav,
+.nav-toggle{
+  font-family: var(--font-brand);
+}
+/* /UNI-SONGES FONTS APPLY v1 */
+
+
+/* UNI-SONGES MENU+DRAWER POLISH v1 */
+
+/* 1) Uni-Songes bigger */
+.brand__name{
+  font-size: 1.55rem;
+  line-height: 1;
+}
+
+/* 7) Apply menu font to Reservation/Login/Register (desktop + drawer) */
+.site-account .btn--cta,
+.site-account .link,
+.mobile-drawer__account .btn--cta,
+.mobile-drawer__account .link{
+  font-family: var(--font-brand);
+}
+
+/* Keep header one-line; prevent painting behind right */
+.site-header__center{ min-width: 0; overflow: hidden; }
+.site-header__right{ position: relative; z-index: 5; }
+
+/* 4) "Menu" label next to burger */
+.nav-toggle{
+  gap: .5rem;
+  padding: .45rem .65rem;
+}
+.nav-toggle__label{
+  font-family: var(--font-brand);
+  font-size: 1rem;
+}
+
+/* 5) Drawer must show all account links */
+.mobile-drawer{
+  overflow-y: auto;
+  max-height: 100dvh;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Put account block after nav (not pushed off-screen) */
+.mobile-drawer__account{
+  margin-top: 1.25rem;
+}
+
+/* 6) More spacing between drawer menu items */
+.mobile-drawer__nav ul{
+  gap: 1rem;
+}
+.mobile-drawer__nav a{
+  padding: .25rem 0;
+}
+
+/* States: desktop vs compact */
+body:not(.compact-nav) .site-header__center{ display:block; }
+body:not(.compact-nav) .nav-toggle{ display:none !important; }
+body:not(.compact-nav) .site-account .btn--cta,
+body:not(.compact-nav) .site-account .link{ display:inline-flex; }
+
+body.compact-nav .site-header__center{ display:none !important; }
+body.compact-nav .nav-toggle{ display:inline-flex !important; }
+body.compact-nav .site-account .btn--cta,
+body.compact-nav .site-account .link{ display:none !important; }
+
+/* /UNI-SONGES MENU+DRAWER POLISH v1 */
+
+
+/* UNI-SONGES TOGGLE+DRAWER TUNE v1 */
+
+/* hamburger: bars stacked vertically */
+.nav-toggle{
+  display:inline-flex;
+  align-items:center;
+  gap:.55rem;
+}
+.nav-toggle__icon{
+  display:inline-flex;
+  flex-direction:column;
+  gap:4px;
+}
+.nav-toggle__bar{
+  display:block;
+  width:22px;
+  height:2px;
+  margin:0 !important;
+  background: currentColor;
+}
+
+/* drawer: extra line/gap after CTA */
+.mobile-drawer__account .btn--cta{
+  margin-bottom: .9rem;
+}
+
+/* /UNI-SONGES TOGGLE+DRAWER TUNE v1 */
+
+/* UNI-SONGES DRAWER DISPLAY FIX v1 */
+/* Si un vieux media-query cache le drawer sur desktop, on le réactive en mode compact */
+body.compact-nav .mobile-backdrop:not([hidden]){
+  display: block !important;
+  z-index: 2000 !important;
+}
+body.compact-nav .mobile-drawer:not([hidden]){
+  display: flex !important;
+  z-index: 2001 !important;
+}
+
+
+
+
+/* UNI-SONGES BG SYSTEM v2 (once full image, then mirror tile repeat) */
+/* Base vars (default) */
+:root{
+  --bg-once: url("/themes/custom/unisonges_theme/images/bgsrc/fontdefault.jpg");
+  --bg-tile: url("/themes/custom/unisonges_theme/images/bgtile/default_tile.jpg");
+}
+
+/* Per-page overrides (page + enfants via substring) */
+body.path-accueil, body.path-frontpage{
+  --bg-once: url("/themes/custom/unisonges_theme/images/bgsrc/accueil.jpg");
+  --bg-tile: url("/themes/custom/unisonges_theme/images/bgtile/accueil_tile.jpg");
+}
+body[class*="path-cours"]{
+  --bg-once: url("/themes/custom/unisonges_theme/images/bgsrc/cours.jpg");
+  --bg-tile: url("/themes/custom/unisonges_theme/images/bgtile/cours_tile.jpg");
+}
+body[class*="path-stages"]{
+  --bg-once: url("/themes/custom/unisonges_theme/images/bgsrc/yoksel-zok-LdDewlTIn34-unsplash.jpg");
+  --bg-tile: url("/themes/custom/unisonges_theme/images/bgtile/stages_tile.jpg");
+}
+body[class*="path-concert"]{
+  --bg-once: url("/themes/custom/unisonges_theme/images/bgsrc/concerrts.jpg");
+  --bg-tile: url("/themes/custom/unisonges_theme/images/bgtile/concerts_tile.jpg");
+}
+body[class*="path-association"]{
+  --bg-once: url("/themes/custom/unisonges_theme/images/bgsrc/asso.jpg");
+  --bg-tile: url("/themes/custom/unisonges_theme/images/bgtile/asso_tile.jpg");
+}
+body[class*="path-djam"]{
+  --bg-once: url("/themes/custom/unisonges_theme/images/bgsrc/djams.jpg");
+  --bg-tile: url("/themes/custom/unisonges_theme/images/bgtile/djam_tile.jpg");
+}
+body[class*="path-orchestre"]{
+  --bg-once: url("/themes/custom/unisonges_theme/images/bgsrc/orchestre.jpg");
+  --bg-tile: url("/themes/custom/unisonges_theme/images/bgtile/orchestre_tile.jpg");
+}
+
+/*
+Goal:
+- Always show the image ONCE entirely (full width, height auto).
+- If page is short: min-height grows to image height via --bg-img-h computed in JS.
+- After the first image, show alternating mirror motif via the tile (repeat-y).
+*/
+html, body { margin:0 !important; padding:0 !important; }
+body{
+  /* ensure at least one full image can be seen by scrolling even on short pages */
+  min-height: var(--bg-img-h, 120vh);
+
+  background-image: var(--bg-once), var(--bg-tile);
+  background-repeat: no-repeat, repeat-y;
+  background-position: center top, center top;
+  background-size: 100% auto, 100% auto;
+  background-attachment: scroll, scroll;
+}
+
+/* UNI-SONGES BG SYSTEM v2 */
+
+/* UNI-SONGES KILL HTML BEFORE v1 */
+/* On n'utilise plus html::before pour les backgrounds -> on le neutralise */
+html::before{
+  content: none !important;
+  display: none !important;
+  background: none !important;
+  background-image: none !important;
+}
+/* /UNI-SONGES KILL HTML BEFORE v1 */
+
+
+/* UNI-SONGES BG SYSTEM v3 (section-based, once full image, then mirror tile) */
+:root{
+  --bg-once: url("/themes/custom/unisonges_theme/images/bgsrc/fontdefault.jpg");
+  --bg-tile: url("/themes/custom/unisonges_theme/images/bgtile/default_tile.jpg");
+}
+
+/* section overrides (also applies to children pages) */
+body.section-accueil, body.section-frontpage{
+  --bg-once: url("/themes/custom/unisonges_theme/images/bgsrc/accueil.jpg");
+  --bg-tile: url("/themes/custom/unisonges_theme/images/bgtile/accueil_tile.jpg");
+}
+body.section-cours{
+  --bg-once: url("/themes/custom/unisonges_theme/images/bgsrc/cours.jpg");
+  --bg-tile: url("/themes/custom/unisonges_theme/images/bgtile/cours_tile.jpg");
+}
+body.section-stages{
+  --bg-once: url("/themes/custom/unisonges_theme/images/bgsrc/yoksel-zok-LdDewlTIn34-unsplash.jpg");
+  --bg-tile: url("/themes/custom/unisonges_theme/images/bgtile/stages_tile.jpg");
+}
+body.section-concerts, body.section-concert{
+  --bg-once: url("/themes/custom/unisonges_theme/images/bgsrc/concerrts.jpg");
+  --bg-tile: url("/themes/custom/unisonges_theme/images/bgtile/concerts_tile.jpg");
+}
+body.section-association, body.section-asso{
+  --bg-once: url("/themes/custom/unisonges_theme/images/bgsrc/asso.jpg");
+  --bg-tile: url("/themes/custom/unisonges_theme/images/bgtile/asso_tile.jpg");
+}
+body.section-djam, body.section-djams{
+  --bg-once: url("/themes/custom/unisonges_theme/images/bgsrc/djams.jpg");
+  --bg-tile: url("/themes/custom/unisonges_theme/images/bgtile/djam_tile.jpg");
+}
+body.section-orchestre, body.section-orchestre-des-reveurs{
+  --bg-once: url("/themes/custom/unisonges_theme/images/bgsrc/orchestre.jpg");
+  --bg-tile: url("/themes/custom/unisonges_theme/images/bgtile/orchestre_tile.jpg");
+}
+
+/* Always show at least one full image, then repeat mirrored motif */
+html, body { margin:0 !important; padding:0 !important; }
+body{
+  min-height: var(--bg-img-h, 120vh);
+  background-image: var(--bg-once), var(--bg-tile);
+  background-repeat: no-repeat, repeat-y;
+  background-position: center top, center top;
+  background-size: 100% auto, 100% auto;
+  background-attachment: scroll, scroll;
+}
+/* /UNI-SONGES BG SYSTEM v3 */
+
+/* UNI-SONGES BG VISIBILITY v1 */
+.layout,
+main,
+.region-content,
+.page-content{
+  background: transparent !important;
+}
+
+/* on garde le header lisible */
+.site-header__inner{
+  background: rgba(255,255,255,.86) !important;
+  backdrop-filter: blur(6px);
+}
+
+/* UNI-SONGES BG FORCE v1 (override old beige !important) */
+body{
+  background-color: transparent !important;
+
+  /* force the per-page background images to win */
+  background-image: var(--bg-once), var(--bg-tile) !important;
+  background-repeat: no-repeat, repeat-y !important;
+  background-position: center top, center top !important;
+  background-size: 100% auto, 100% auto !important;
+}
+/* /UNI-SONGES BG FORCE v1 */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* UNI-SONGES BG IDLE DRIFT v1 (no scroll dependency, ultra smooth) */
+html, body{ overflow-x: hidden !important; }
+
+body{
+  background-image: none !important;
+  background-color: transparent !important;
+}
+
+/* background layer stays fixed (no extra scrollbar), motion is transform-only */
+body::before{
+  content:"";
+  position: fixed !important;
+  inset: -7vh -7vw !important;   /* overscan to avoid edges */
+  z-index: -1 !important;
+  pointer-events: none !important;
+
+  background-image: var(--bg-once), var(--bg-tile) !important;
+  background-repeat: no-repeat, repeat-y !important;
+  background-position: center top, center top !important;
+  background-size: 100% auto, 100% auto !important;
+
+  opacity: 1 !important;
+  filter: none !important;
+
+  will-change: transform;
+  transform: translate3d(0,0,0) scale(1.06);
+  animation: uniBgIdleDrift 90s ease-in-out infinite alternate;
+}
+
+@keyframes uniBgIdleDrift{
+  0%   { transform: translate3d(0px, 0px, 0) scale(1.06); }
+  100% { transform: translate3d(-8px, -10px, 0) scale(1.06); }
+}
+
+@media (prefers-reduced-motion: reduce){
+  body::before{ animation: none !important; }
+}
+/* /UNI-SONGES BG IDLE DRIFT v1 */
+
+
+
+
+/* UNI-SONGES BG LAYER ABS DRIFT v1 */
+html, body { overflow-x: hidden !important; }
+
+body{
+  position: relative !important;
+  z-index: 0 !important;
+
+  /* keep at least one full image height; bg-mirror-height.js may set --bg-img-h */
+  min-height: var(--bg-img-h, 120vh) !important;
+
+  /* ensure old shorthand backgrounds don't wipe the layer */
+  background: transparent !important;
+  background-image: none !important;
+}
+
+/* Real background layer (scrolls with document) */
+body::before{
+  content:"" !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: -1 !important;
+  pointer-events: none !important;
+
+  background-image: var(--bg-once), var(--bg-tile) !important;
+  background-repeat: no-repeat, repeat-y !important;
+  background-position: center top, center top !important;
+  background-size: 100% auto, 100% auto !important;
+
+  opacity: 1 !important;
+  filter: none !important;
+
+  /* ultra smooth: transform only (GPU) */
+  will-change: transform;
+  transform: translate3d(0,0,0) scale(1.04);
+  animation: uniAbsIdleDrift 90s ease-in-out infinite alternate;
+}
+
+@keyframes uniAbsIdleDrift{
+  0%   { transform: translate3d(0px, 0px, 0) scale(1.04); }
+  100% { transform: translate3d(-10px, -12px, 0) scale(1.04); }
+}
+
+@media (prefers-reduced-motion: reduce){
+  body::before{ animation: none !important; }
+}
+/* /UNI-SONGES BG LAYER ABS DRIFT v1 */
+
+
+
+
+
+
+/* UNI-SONGES BGFX v1 */
+/* Fond “pro” : container fixed (no scrollbar), scrollLayer déplacé en JS, drift idle en CSS (transform-only). */
+
+body{
+  background-image: none !important;
+  background-color: transparent !important;
+}
+
+#unisonges-bgfx{
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+body > *:not(#unisonges-bgfx){
+  position: relative;
+  z-index: 1;
+}
+
+#unisonges-bgfx-scroll{
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+}
+
+#unisonges-bgfx-layer{
+  position: absolute;
+  inset: -8vh -8vw; /* overscan pour éviter bords */
+  background-image: var(--bg-once), var(--bg-tile);
+  background-repeat: no-repeat, repeat-y;
+
+  /* le motif miroir commence après la 1ère image */
+  background-position: center 0px, center var(--bg-img-h, 120vh);
+  background-size: 100% auto, 100% auto;
+
+  /* drift idle (indépendant du scroll) */
+  transform: translate3d(0,0,0) scale(1.05);
+  will-change: transform;
+  animation: uniBgIdle 85s ease-in-out infinite alternate;
+}
+
+@keyframes uniBgIdle{
+  0%   { transform: translate3d(0px, 0px, 0) scale(1.05); }
+  100% { transform: translate3d(-10px, -12px, 0) scale(1.05); }
+}
+
+@media (prefers-reduced-motion: reduce){
+  #unisonges-bgfx-layer{ animation: none !important; }
+}
+/* /UNI-SONGES BGFX v1 */
+
+
+
+
+
+
+
+
+/* UNI-SONGES BGFX MASTER v2 (ONE system) */
+
+/* No competing pseudo backgrounds */
+html::before, body::before{
+  content: none !important;
+  display: none !important;
+  background: none !important;
+  background-image: none !important;
+}
+
+/* Body must not paint background itself */
+body{
+  background: transparent !important;
+  background-image: none !important;
+  background-color: transparent !important;
+}
+
+/* BGFX container behind everything */
+#unisonges-bgfx{
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden; /* no scrollbars */
+}
+body > *:not(#unisonges-bgfx){
+  position: relative;
+  z-index: 1;
+}
+
+/* This is the element JS will move on scroll (1:1) */
+#unisonges-bgfx-scroll{
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  transform: translate3d(0,0,0);
+  will-change: transform;
+}
+
+/* Painted + idle drift (independent of scroll) */
+#unisonges-bgfx-layer{
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+
+  background-image: var(--bg-once), var(--bg-tile);
+  background-repeat: no-repeat, repeat-y;
+  background-position: center 0px, center var(--bg-img-h, 120vh);
+  background-size: 100% auto, 100% auto;
+
+  will-change: transform;
+  transform: translate3d(0,0,0) scale(1.06);
+  animation: uniBgIdleOnly2 65s ease-in-out infinite alternate;
+}
+
+@keyframes uniBgIdleOnly2{
+  0%   { transform: translate3d(0px, 0px, 0) scale(1.06); }
+  100% { transform: translate3d(-12px, -14px, 0) scale(1.06); }
+}
+
+@media (prefers-reduced-motion: reduce){
+  #unisonges-bgfx-layer{ animation: none !important; }
+}
+/* /UNI-SONGES BGFX MASTER v2 */
+
+
+
+
+/* UNI-SONGES BGFX IDLE TUNE v2 (visible) */
+/* Overscan: prevents edges showing when we move/scale */
+#unisonges-bgfx-layer{
+  top: -10vh !important;
+  left: -10vw !important;
+  width: 120vw !important;
+  height: 120vh !important;
+
+  transform-origin: 50% 35%;
+  will-change: transform;
+
+  /* much more visible motion */
+  animation: uniBgIdleOnly4 18s ease-in-out infinite alternate !important;
+}
+
+@keyframes uniBgIdleOnly4{
+  0%   { transform: translate3d(0px, 0px, 0) scale(1.10) rotate(0deg); }
+  100% { transform: translate3d(-44px, -28px, 0) scale(1.13) rotate(0.22deg); }
+}
+/* /UNI-SONGES BGFX IDLE TUNE v2 */
+
+
+/* UNI-SONGES SCROLLFRAME+BGFX v1 */
+
+/* Only the central frame scrolls */
+html, body { height: 100%; }
+body{
+  overflow: hidden !important;
+}
+
+/* Central content frame */
+#unisonges-scrollframe.scrollframe{
+  position: relative;
+  z-index: 10;
+  width: min(980px, calc(100vw - 2rem));
+  height: calc(100vh - var(--header-h, 72px) - 1.25rem);
+  margin: 0 auto;
+  margin-top: .75rem;
+
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+
+  background: rgba(255,255,255,.62);
+  border: 1px solid rgba(15,23,42,.14);
+  border-radius: 18px;
+  box-shadow: 0 14px 34px rgba(2,6,23,.18);
+  backdrop-filter: blur(8px);
+}
+
+/* hide scrollbar but keep scrolling */
+#unisonges-scrollframe.scrollframe{
+  scrollbar-width: none;        /* Firefox */
+  -ms-overflow-style: none;     /* IE/Edge legacy */
+}
+#unisonges-scrollframe.scrollframe::-webkit-scrollbar{
+  width: 0;
+  height: 0;
+}
+
+/* inner padding */
+.scrollframe__inner{
+  padding: 1.25rem 1.25rem 2rem;
+}
+
+/* ensure BGFX is behind everything */
+#unisonges-bgfx{ z-index: 0; }
+body > *:not(#unisonges-bgfx){ z-index: 1; }
+
+/* BGFX layer uses --bg-scale (and your idle drift stays visible) */
+#unisonges-bgfx-layer{
+  transform-origin: 50% 35%;
+  transform: translate3d(0,0,0) scale(var(--bg-scale, 1.06));
+}
+
+/* /UNI-SONGES SCROLLFRAME+BGFX v1 */
+
+
+
+
+/* UNI-SONGES SCROLLFRAME HARDEN v1 */
+
+/* kill any old debug black html background */
+html{ background: transparent !important; }
+
+/* ONLY the central frame scrolls */
+html, body{
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+/* make the frame fixed so body never gains scroll height */
+#unisonges-scrollframe.scrollframe{
+  position: fixed !important;
+  top: calc(var(--header-h, 72px) + .75rem) !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+
+  width: min(980px, calc(100vw - 2rem)) !important;
+  height: calc(100vh - var(--header-h, 72px) - 1.5rem) !important;
+
+  margin: 0 !important;
+  overflow: auto !important;
+
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+
+  background: rgba(255,255,255,.62) !important;
+  border: 1px solid rgba(15,23,42,.14) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 14px 34px rgba(2,6,23,.18) !important;
+  backdrop-filter: blur(8px);
+}
+
+/* hide scrollbar but keep scrolling */
+#unisonges-scrollframe.scrollframe{
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+#unisonges-scrollframe.scrollframe::-webkit-scrollbar{
+  width: 0;
+  height: 0;
+}
+
+/* keep inner padding */
+.scrollframe__inner{ padding: 1.25rem 1.25rem 2rem !important; }
+
+/* /UNI-SONGES SCROLLFRAME HARDEN v1 */
+
+
+/* UNI-SONGES SCROLLFRAME MODE v2 */
+
+/* Header always full width (so /accueil doesn’t look “inside the frame”) */
+.site-header{
+  position: fixed !important;
+  top: 0; left: 0; right: 0;
+  width: 100vw !important;
+  z-index: 1000 !important;
+}
+.site-header__inner{
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* body never scrolls; only the central frame scrolls */
+html, body{
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+/* BGFX layer: single image only (avoid tile/repeat showing “beyond the end”) */
+#unisonges-bgfx-layer{
+  background-image: var(--bg-once) !important;
+  background-repeat: no-repeat !important;
+  background-position: center top !important;
+  background-size: 100% auto !important;
+
+  transform-origin: 50% 35%;
+  transform: translate3d(0,0,0) scale(var(--bg-scale, 1.06));
+  will-change: transform;
+
+  /* idle drift: X only (doesn’t affect vertical end alignment) */
+  animation: uniIdleX 18s ease-in-out infinite alternate !important;
+}
+
+@keyframes uniIdleX{
+  0%   { transform: translate3d(0px, 0px, 0) scale(var(--bg-scale, 1.06)); }
+  100% { transform: translate3d(-26px, 0px, 0) scale(var(--bg-scale, 1.06)); }
+}
+
+/* /UNI-SONGES SCROLLFRAME MODE v2 */
+
+
+/* UNI-SONGES SCROLLFRAME+BGFX FINAL v1 */
+
+/* hard kill any old html::before backgrounds */
+html::before, body::before{
+  content: none !important;
+  display: none !important;
+  background: none !important;
+  background-image: none !important;
+  animation: none !important;
+  transform: none !important;
+}
+
+/* only the frame scrolls */
+html, body{ height: 100% !important; overflow: hidden !important; }
+
+/* IMPORTANT: no transform on the scrollframe (avoid trapping fixed elements on /accueil) */
+#unisonges-scrollframe.scrollframe{
+  position: fixed !important;
+  top: calc(var(--header-h, 72px) + .75rem) !important;
+
+  left: 1rem !important;
+  right: 1rem !important;
+  margin: 0 auto !important;
+
+  max-width: 980px !important;
+  width: auto !important;
+
+  height: calc(100vh - var(--header-h, 72px) - 1.5rem) !important;
+  overflow: auto !important;
+
+  background: rgba(255,255,255,.62) !important;
+  border: 1px solid rgba(15,23,42,.14) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 14px 34px rgba(2,6,23,.18) !important;
+  backdrop-filter: blur(8px);
+}
+
+/* hide scrollbar but keep scrolling */
+#unisonges-scrollframe.scrollframe{ scrollbar-width:none; -ms-overflow-style:none; }
+#unisonges-scrollframe.scrollframe::-webkit-scrollbar{ width:0; height:0; }
+
+/* BGFX: single image only + explicit height */
+#unisonges-bgfx-layer{
+  background-image: var(--bg-once) !important;
+  background-repeat: no-repeat !important;
+  background-position: center top !important;
+  background-size: 100% auto !important;
+
+  height: var(--bg-scaled-h, 120vh) !important;
+
+  transform-origin: 50% 35%;
+  transform: translate3d(0,0,0) scale(var(--bg-scale, 1.06));
+  will-change: transform;
+
+  /* idle drift X-only */
+  animation: uniIdleX 18s ease-in-out infinite alternate !important;
+}
+
+#unisonges-bgfx-scroll{
+  height: var(--bg-scaled-h, 120vh) !important;
+}
+
+@keyframes uniIdleX{
+  0%   { transform: translate3d(0px, 0px, 0) scale(var(--bg-scale, 1.06)); }
+  100% { transform: translate3d(-26px, 0px, 0) scale(var(--bg-scale, 1.06)); }
+}
+/* /UNI-SONGES SCROLLFRAME+BGFX FINAL v1 */
+
+
+/* UNI-SONGES ALIGN FIX v1 */
+/* Fixe le décalage gauche (header + scrollframe) de façon déterministe, sans toucher au JS */
+
+/* Header: pleine largeur, pas de hacks 100vw + calc(margin) */
+.site-header{
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  z-index: 3000 !important;
+}
+
+/* Inner: pleine largeur avec padding symétrique, sans margin-left calc(...) */
+.site-header__inner{
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 24px !important;
+  padding-right: 24px !important;
+  box-sizing: border-box !important;
+}
+
+/* Scrollframe: centré strictement */
+#unisonges-scrollframe.scrollframe{
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+  width: min(980px, calc(100vw - 2rem)) !important;
+  max-width: 980px !important;
+  box-sizing: border-box !important;
+  z-index: 2000 !important;
+  display: block !important;
+}
+
+/* Empêche un “clip” visuel si une vieille règle force un overflow caché ailleurs */
+#unisonges-scrollframe.scrollframe,
+.scrollframe__inner{
+  overflow: auto !important;
+}
+
+/* /UNI-SONGES ALIGN FIX v1 */
+
+
+/* UNI-SONGES ACCUEIL FIX v1 */
+/* On /accueil only: neutralize scrollframe transform so header/bgfx fixed behave as viewport-fixed */
+.section-accueil #unisonges-scrollframe.scrollframe{
+  left: 1rem !important;
+  right: 1rem !important;
+  transform: none !important;
+  margin: 0 auto !important;
+  max-width: 980px !important;
+}
+/* /UNI-SONGES ACCUEIL FIX v1 */
+
+
+/* UNI-SONGES CLICK FIX v1 */
+/* BGFX must never block clicks */
+#unisonges-bgfx,
+#unisonges-bgfx *{
+  pointer-events: none !important;
+}
+
+/* Header/menu always clickable and above */
+.site-header{
+  z-index: 5000 !important;
+  pointer-events: auto !important;
+}
+.site-header *{
+  pointer-events: auto !important;
+}
+/* /UNI-SONGES CLICK FIX v1 */
+
+
+
+
+/* UNI-SONGES ACCUEIL BG SWITCH v2 */
+/* Base: Accueil = accueil.jpg (le JS bascule vers default uniquement si fin visible) */
+.section-accueil{
+  --bg-once: url("/themes/custom/unisonges_theme/images/bgsrc/accueil.jpg");
+}
+/* /UNI-SONGES ACCUEIL BG SWITCH v2 */
+
+
+
+
+/* UNI-SONGES BGFX MEASURED HEIGHT v1 */
+/* Make bgfx-layer height explicit (unscaled) so JS can measure getBoundingClientRect().height correctly. */
+#unisonges-bgfx-layer{
+  height: var(--bg-img-h, 120vh) !important;
+  background-image: var(--bg-once) !important;
+  background-repeat: no-repeat !important;
+  background-position: center top !important;
+  background-size: 100% auto !important;
+
+  /* scale is applied via transform */
+  transform-origin: 50% 35%;
+  will-change: transform;
+}
+
+/* idle drift X-only, keeps scale */
+#unisonges-bgfx-layer{
+  animation: uniIdleX 18s ease-in-out infinite alternate !important;
+}
+
+@keyframes uniIdleX{
+  0%   { transform: translate3d(0px, 0px, 0) scale(var(--bg-scale, 1.06)); }
+  100% { transform: translate3d(-26px, 0px, 0) scale(var(--bg-scale, 1.06)); }
+}
+/* /UNI-SONGES BGFX MEASURED HEIGHT v1 */
+
+
+/* UNI-SONGES BGFX ZOOM BY BGSIZE v1 */
+/* Zoom is done by background-size: var(--bg-w) auto; (no scale transform). */
+
+#unisonges-bgfx-layer{
+  background-image: var(--bg-once) !important;
+  background-repeat: no-repeat !important;
+  background-position: center top !important;
+  background-size: var(--bg-w, 100%) auto !important;
+
+  height: var(--bg-scaled-h, 120vh) !important;
+
+  /* no vertical transform: avoids end overshoot */
+  transform: translate3d(0,0,0) !important;
+  will-change: transform;
+  animation: uniIdleX 18s ease-in-out infinite alternate !important;
+}
+
+@keyframes uniIdleX{
+  0%   { transform: translate3d(0px, 0px, 0); }
+  100% { transform: translate3d(-26px, 0px, 0); }
+}
+/* /UNI-SONGES BGFX ZOOM BY BGSIZE v1 */
+
+/* UNI-SONGES BGFX MOTION BOOST v1 */
+/* Boost visible: horizontal-only, GPU-friendly */
+#unisonges-bgfx-layer{
+  animation-duration: 12s !important;
+}
+@keyframes uniIdleX{
+  0%   { transform: translate3d(0px, 0px, 0); }
+  100% { transform: translate3d(-90px, 0px, 0); }
+}
+/* /UNI-SONGES BGFX MOTION BOOST v1 */
+
+/* UNI-SONGES BGFX PAN FIX v1 */
+/* Reason: #unisonges-bgfx-layer has transform:... !important in older blocks, so we animate a ::before instead (GPU-friendly). */
+
+#unisonges-bgfx-layer{
+  position: relative !important;
+  overflow: hidden !important;
+
+  /* the real image is moved onto ::before */
+  background-image: none !important;
+}
+
+/* The animated “sheet” */
+#unisonges-bgfx-layer::before{
+  content: "";
+  position: absolute;
+  top: 0; left: -10%;
+  width: 120%;
+  height: 100%;
+
+  background-image: var(--bg-once) !important;
+  background-repeat: no-repeat !important;
+  background-position: center top !important;
+  background-size: var(--bg-w, 100%) auto !important;
+
+  will-change: transform;
+  transform: translate3d(0,0,0);
+  animation: uniBgPanX 12s ease-in-out infinite alternate;
+}
+
+/* Visible drift */
+@keyframes uniBgPanX{
+  0%   { transform: translate3d(0px, 0px, 0); }
+  100% { transform: translate3d(-90px, 0px, 0); }
+}
+
+@media (prefers-reduced-motion: reduce){
+  #unisonges-bgfx-layer::before{ animation: none !important; }
+}
+/* /UNI-SONGES BGFX PAN FIX v1 */
+
+/* UNI-SONGES BGFX PAN TUNE v1 (subtle) */
+#unisonges-bgfx-layer::before{
+  animation-duration: 22s !important;
+}
+@keyframes uniBgPanX{
+  0%   { transform: translate3d(0px, 0px, 0); }
+  100% { transform: translate3d(-35px, 0px, 0); }
+}
+/* /UNI-SONGES BGFX PAN TUNE v1 */

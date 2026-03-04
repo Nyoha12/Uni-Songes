@@ -40,3 +40,28 @@ function unisonges_theme_theme_suggestions_page_alter(array &$suggestions, array
   }
 }
 
+
+/**
+ * Add section-* class based on first segment of current path alias.
+ * Example: /cours/debutant => section-cours
+ */
+function unisonges_theme_preprocess_html(array &$variables) {
+  $current_path = \Drupal::service('path.current')->getPath();
+  $alias = \Drupal::service('path_alias.manager')->getAliasByPath($current_path);
+  $alias = trim($alias, '/');
+
+  // If empty, keep default section.
+  if ($alias === '') {
+    $alias = 'accueil';
+  }
+
+  $segment = explode('/', $alias)[0];
+  // Sanitize to css-class friendly
+  $segment = preg_replace('/[^a-z0-9\-]+/i', '-', strtolower($segment));
+  $segment = trim($segment, '-');
+
+  if ($segment) {
+    $variables['attributes']['class'][] = 'section-' . $segment;
+  }
+}
+
