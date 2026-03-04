@@ -1,0 +1,9 @@
+
+# Uni-Songes: local artifacts/backups (do not commit)
+drupal/web/themes/custom/unisonges_theme/css/unisonges_final*.css*
+drupal/web/themes/custom/unisonges_theme/css/*.bak.*
+drupal/web/themes/custom/unisonges_theme/css/*.archive.*
+drupal/web/themes/custom/unisonges_theme/js/*.bak.*
+drupal/web/themes/custom/unisonges_theme/js/*.pre_restore.*
+drupal/web/themes/custom/unisonges_theme/unisonges_theme.libraries.yml.*
+drupal/web/themes/custom/unisonges_theme/templates/**/*.bak.*
