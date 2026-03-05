@@ -1,0 +1,12 @@
+uuid: f5b74447-0dcd-4610-aac8-14f0e766a8bd
+langcode: fr
+status: true
+dependencies: {  }
+id: ticket_concert
+label: 'Ticket Concert'
+traits: {  }
+locked: false
+description: ''
+variationTypes: {  }
+multipleVariations: true
+injectVariationFields: true

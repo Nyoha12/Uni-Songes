@@ -1,0 +1,24 @@
+uuid: 1a6283bf-6d0e-4fb9-8570-be87844a38af
+langcode: fr
+status: true
+dependencies:
+  config:
+    - commerce_product.commerce_product_type.ticket_stage
+    - field.storage.commerce_product.field_linked_page
+    - node.type.stage
+id: commerce_product.ticket_stage.field_linked_page
+field_name: field_linked_page
+entity_type: commerce_product
+bundle: ticket_stage
+label: 'Page stage liée'
+description: ''
+required: true
+translatable: true
+default_value: {  }
+default_value_callback: ''
+settings:
+  handler: 'default:node'
+  handler_settings:
+    target_bundles:
+      stage: stage
+field_type: entity_reference

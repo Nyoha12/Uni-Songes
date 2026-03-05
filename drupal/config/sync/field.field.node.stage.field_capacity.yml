@@ -1,0 +1,23 @@
+uuid: afb5fa10-a398-4a74-95d5-c0e7e6e0fc7a
+langcode: fr
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_capacity
+    - node.type.stage
+id: node.stage.field_capacity
+field_name: field_capacity
+entity_type: node
+bundle: stage
+label: Capacité
+description: ''
+required: false
+translatable: true
+default_value: {  }
+default_value_callback: ''
+settings:
+  min: 0
+  max: null
+  prefix: ''
+  suffix: ''
+field_type: integer

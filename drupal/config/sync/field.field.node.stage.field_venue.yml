@@ -1,0 +1,19 @@
+uuid: 4e0b3efe-d48b-4b69-b8b3-47278abb65f6
+langcode: fr
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_venue
+    - node.type.stage
+id: node.stage.field_venue
+field_name: field_venue
+entity_type: node
+bundle: stage
+label: Lieu
+description: ''
+required: false
+translatable: true
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

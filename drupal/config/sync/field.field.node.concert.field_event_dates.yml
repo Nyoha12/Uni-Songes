@@ -1,0 +1,21 @@
+uuid: cd595dd9-6258-4a45-a69c-4660d1adb127
+langcode: fr
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_event_dates
+    - node.type.concert
+  module:
+    - datetime_range
+id: node.concert.field_event_dates
+field_name: field_event_dates
+entity_type: node
+bundle: concert
+label: Dates
+description: ''
+required: true
+translatable: true
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: daterange

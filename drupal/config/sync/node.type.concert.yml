@@ -1,0 +1,11 @@
+uuid: 4b2073db-c6d0-4831-b26d-e018f1c01114
+langcode: fr
+status: true
+dependencies: {  }
+name: Concert
+type: concert
+description: ''
+help: null
+new_revision: true
+preview_mode: 1
+display_submitted: true

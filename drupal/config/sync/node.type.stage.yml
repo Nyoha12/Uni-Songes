@@ -1,0 +1,11 @@
+uuid: 99907439-1c7e-41ce-afad-b665ee042bd6
+langcode: fr
+status: true
+dependencies: {  }
+name: Stage
+type: stage
+description: ''
+help: null
+new_revision: true
+preview_mode: 1
+display_submitted: true

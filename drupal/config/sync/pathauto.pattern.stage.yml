@@ -1,0 +1,14 @@
+id: stage
+label: Stage
+type: 'canonical_entities:node'
+pattern: 'stages/[node:title]'
+selection_criteria:
+  bundle:
+    id: 'entity_bundle:node'
+    negate: false
+    context_mapping:
+      node: node
+    bundles:
+      stage: stage
+selection_logic: and
+weight: 0

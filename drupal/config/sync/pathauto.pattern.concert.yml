@@ -1,0 +1,14 @@
+id: concert
+label: Concert
+type: 'canonical_entities:node'
+pattern: 'concerts/[node:title]'
+selection_criteria:
+  bundle:
+    id: 'entity_bundle:node'
+    negate: false
+    context_mapping:
+      node: node
+    bundles:
+      concert: concert
+selection_logic: and
+weight: 0

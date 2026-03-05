@@ -1,0 +1,19 @@
+uuid: 661fd8ed-4783-46bc-a946-eb5242467106
+langcode: fr
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_venue
+    - node.type.concert
+id: node.concert.field_venue
+field_name: field_venue
+entity_type: node
+bundle: concert
+label: Lieu
+description: ''
+required: false
+translatable: true
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

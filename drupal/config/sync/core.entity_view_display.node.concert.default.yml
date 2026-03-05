@@ -1,0 +1,59 @@
+uuid: f16b597b-20a0-4ec1-a47b-7918010d7d7a
+langcode: fr
+status: true
+dependencies:
+  config:
+    - field.field.node.concert.field_capacity
+    - field.field.node.concert.field_event_dates
+    - field.field.node.concert.field_venue
+    - node.type.concert
+  module:
+    - datetime_range
+    - user
+id: node.concert.default
+targetEntityType: node
+bundle: concert
+mode: default
+content:
+  body:
+    type: text_default
+    label: hidden
+    settings: {  }
+    third_party_settings: {  }
+    weight: 10
+    region: content
+  field_capacity:
+    type: number_integer
+    label: above
+    settings:
+      thousand_separator: ''
+      prefix_suffix: true
+    third_party_settings: {  }
+    weight: 2
+    region: content
+  field_event_dates:
+    type: daterange_default
+    label: above
+    settings:
+      timezone_override: ''
+      format_type: medium
+      from_to: both
+      separator: '-'
+    third_party_settings: {  }
+    weight: 0
+    region: content
+  field_venue:
+    type: string
+    label: above
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 1
+    region: content
+  links:
+    settings: {  }
+    third_party_settings: {  }
+    weight: 100
+    region: content
+hidden:
+  langcode: true

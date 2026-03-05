@@ -1,0 +1,23 @@
+uuid: 8a6875f0-919f-4f95-906f-4c43db532108
+langcode: fr
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_capacity
+    - node.type.concert
+id: node.concert.field_capacity
+field_name: field_capacity
+entity_type: node
+bundle: concert
+label: Capacité
+description: ''
+required: false
+translatable: true
+default_value: {  }
+default_value_callback: ''
+settings:
+  min: 0
+  max: null
+  prefix: ''
+  suffix: ''
+field_type: integer

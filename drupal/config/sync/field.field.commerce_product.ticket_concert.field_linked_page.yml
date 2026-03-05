@@ -1,0 +1,24 @@
+uuid: 5032bff4-0fc4-465b-9a15-08351eae8f67
+langcode: fr
+status: true
+dependencies:
+  config:
+    - commerce_product.commerce_product_type.ticket_concert
+    - field.storage.commerce_product.field_linked_page
+    - node.type.concert
+id: commerce_product.ticket_concert.field_linked_page
+field_name: field_linked_page
+entity_type: commerce_product
+bundle: ticket_concert
+label: 'Page concert liée'
+description: ''
+required: true
+translatable: true
+default_value: {  }
+default_value_callback: ''
+settings:
+  handler: 'default:node'
+  handler_settings:
+    target_bundles:
+      concert: concert
+field_type: entity_reference
