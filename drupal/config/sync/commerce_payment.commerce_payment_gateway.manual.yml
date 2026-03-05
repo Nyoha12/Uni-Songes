@@ -3,17 +3,22 @@ langcode: fr
 status: true
 dependencies: {  }
 id: manual
-label: Manual
+label: 'Paiement sur place'
 weight: null
 plugin: manual
 configuration:
-  display_label: 'Paiement manuel'
+  display_label: 'Paiement sur place'
   mode: test
   payment_method_types:
     - credit_card
   collect_billing_information: true
   instructions:
-    value: ''
+    value: 'Paiement sur place (espèces / sur site). Réservation autorisée après validation du formulaire.'
     format: plain_text
-conditions: {  }
+conditions:
+  -
+    plugin: order_customer_role
+    configuration:
+      roles:
+        - authenticated
 conditionOperator: AND

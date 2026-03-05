@@ -19,7 +19,7 @@ configuration:
       step: login
       weight: 0
       allow_guest_checkout: true
-      allow_registration: false
+      allow_registration: true
     contact_information:
       step: order_information
       weight: 1
