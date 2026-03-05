@@ -10,7 +10,7 @@ dependencies:
 _core:
   default_config_hash: exIF08PTvYSK6tJCsAzBqMEKUBKIptPorMn74SVhevc
 id: archive
-label: Archive
+label: Archiver
 module: node
 description: 'All content, by month.'
 tag: default
