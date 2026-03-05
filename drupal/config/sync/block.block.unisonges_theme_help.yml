@@ -1,0 +1,22 @@
+uuid: 12014387-0268-4dc8-be4f-d58c29dadbea
+langcode: en
+status: true
+dependencies:
+  module:
+    - help
+  theme:
+    - unisonges_theme
+_core:
+  default_config_hash: b6CHwczHyuqKRuf-Oi4zY6q-9HCsLyWRGkk8-reVCfk
+id: unisonges_theme_help
+theme: unisonges_theme
+region: header
+weight: -2
+provider: null
+plugin: help_block
+settings:
+  id: help_block
+  label: Help
+  label_display: '0'
+  provider: help
+visibility: {  }

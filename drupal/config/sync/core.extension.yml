@@ -66,6 +66,8 @@ module:
   user: 0
   views_ui: 0
   webform: 0
+  webform_booking: 0
+  webform_booking_calendar: 0
   webform_ui: 0
   pathauto: 1
   views: 10

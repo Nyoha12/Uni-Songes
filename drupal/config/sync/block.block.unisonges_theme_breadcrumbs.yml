@@ -1,0 +1,22 @@
+uuid: a7522fc2-dbc2-4ead-940a-2bf1ac4b963d
+langcode: en
+status: true
+dependencies:
+  module:
+    - system
+  theme:
+    - unisonges_theme
+_core:
+  default_config_hash: xk8HAWIUZCzYFsUX2sNmTNDUxSoCdwrEI1tpTT5LW9s
+id: unisonges_theme_breadcrumbs
+theme: unisonges_theme
+region: header
+weight: 0
+provider: null
+plugin: system_breadcrumb_block
+settings:
+  id: system_breadcrumb_block
+  label: Breadcrumbs
+  label_display: '0'
+  provider: system
+visibility: {  }

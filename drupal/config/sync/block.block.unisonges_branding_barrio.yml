@@ -1,0 +1,23 @@
+uuid: 49c9b74e-dacc-49ad-aa2d-5ff5a3bee56a
+langcode: fr
+status: false
+dependencies:
+  module:
+    - system
+  theme:
+    - null
+id: unisonges_branding_barrio
+theme: null
+region: content
+weight: 0
+provider: null
+plugin: system_branding_block
+settings:
+  id: system_branding_block
+  label: 'Site branding'
+  label_display: '0'
+  provider: system
+  use_site_logo: true
+  use_site_name: true
+  use_site_slogan: true
+visibility: {  }

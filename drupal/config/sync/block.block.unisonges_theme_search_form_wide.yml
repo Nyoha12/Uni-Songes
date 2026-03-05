@@ -1,0 +1,23 @@
+uuid: 5ca50798-bd87-4581-bfa4-ac4ed472d4bd
+langcode: en
+status: true
+dependencies:
+  module:
+    - search
+  theme:
+    - unisonges_theme
+_core:
+  default_config_hash: yLgqPzgEDODuqWtULettk0_f5ef8CbiNGY3xcDTEGwk
+id: unisonges_theme_search_form_wide
+theme: unisonges_theme
+region: header
+weight: -7
+provider: null
+plugin: search_form_block
+settings:
+  id: search_form_block
+  label: 'Search form (wide)'
+  label_display: '0'
+  provider: search
+  page_id: null
+visibility: {  }

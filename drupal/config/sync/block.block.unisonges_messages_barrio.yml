@@ -1,0 +1,20 @@
+uuid: ed444a2f-369b-4b8d-b04c-b268dc0378ef
+langcode: fr
+status: false
+dependencies:
+  module:
+    - system
+  theme:
+    - null
+id: unisonges_messages_barrio
+theme: null
+region: content
+weight: 0
+provider: null
+plugin: system_messages_block
+settings:
+  id: system_messages_block
+  label: Messages
+  label_display: '0'
+  provider: system
+visibility: {  }

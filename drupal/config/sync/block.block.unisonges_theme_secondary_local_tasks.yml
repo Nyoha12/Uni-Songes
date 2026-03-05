@@ -1,0 +1,22 @@
+uuid: 80a06fa9-7566-44ee-898f-2c3d6106391c
+langcode: en
+status: true
+dependencies:
+  theme:
+    - unisonges_theme
+_core:
+  default_config_hash: lpVq_Qyojss-EfQ_LgUPkPSbXcUD9ojyNZgmUZP4d7I
+id: unisonges_theme_secondary_local_tasks
+theme: unisonges_theme
+region: content
+weight: -4
+provider: null
+plugin: local_tasks_block
+settings:
+  id: local_tasks_block
+  label: 'Secondary tabs'
+  label_display: '0'
+  provider: core
+  primary: false
+  secondary: true
+visibility: {  }

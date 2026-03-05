@@ -1,0 +1,22 @@
+uuid: ce3c22a2-2148-4cca-82a0-cb305ab22f18
+langcode: en
+status: true
+dependencies:
+  module:
+    - system
+  theme:
+    - unisonges_theme
+_core:
+  default_config_hash: VZDxR0xdW-n-VWQRlRQjsiN-dgDS3-1Es-s1vXLfgsI
+id: unisonges_theme_messages
+theme: unisonges_theme
+region: header
+weight: -6
+provider: null
+plugin: system_messages_block
+settings:
+  id: system_messages_block
+  label: 'Status messages'
+  label_display: '0'
+  provider: system
+visibility: {  }

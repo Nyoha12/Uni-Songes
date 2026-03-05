@@ -1,0 +1,22 @@
+uuid: 5c12973d-57cd-4063-a55f-8b754042518e
+langcode: en
+status: true
+dependencies:
+  module:
+    - system
+  theme:
+    - unisonges_theme
+_core:
+  default_config_hash: uHGQeXpjudF5HkwGniQ_zzUngqcc3iAzzE7fdjWJiyA
+id: unisonges_theme_powered
+theme: unisonges_theme
+region: header
+weight: -7
+provider: null
+plugin: system_powered_by_block
+settings:
+  id: system_powered_by_block
+  label: 'Powered by Drupal'
+  label_display: '0'
+  provider: system
+visibility: {  }

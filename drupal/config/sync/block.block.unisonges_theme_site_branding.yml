@@ -1,0 +1,25 @@
+uuid: 9e9368f3-fa5a-4372-97d9-e49284fdbc7c
+langcode: en
+status: true
+dependencies:
+  module:
+    - system
+  theme:
+    - unisonges_theme
+_core:
+  default_config_hash: lE5hyDUbMWVcRxvlVMAwguAJFBiZH2Xf-59wmBIq9co
+id: unisonges_theme_site_branding
+theme: unisonges_theme
+region: header
+weight: -7
+provider: null
+plugin: system_branding_block
+settings:
+  id: system_branding_block
+  label: 'Site branding'
+  label_display: '0'
+  provider: system
+  use_site_logo: true
+  use_site_name: true
+  use_site_slogan: false
+visibility: {  }
