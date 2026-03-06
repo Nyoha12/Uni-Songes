@@ -1,0 +1,20 @@
+uuid: 98b493c3-cf98-42f4-b5c0-0efd75af4d98
+langcode: fr
+status: true
+dependencies:
+  module:
+    - commerce_product
+id: commerce_product_variation.field_ticket_capacity
+field_name: field_ticket_capacity
+entity_type: commerce_product_variation
+type: integer
+settings:
+  unsigned: false
+  size: normal
+module: core
+locked: false
+cardinality: 1
+translatable: true
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

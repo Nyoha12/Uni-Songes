@@ -1,0 +1,23 @@
+uuid: e4a0d504-afc8-4159-a8ff-6a31f00ff1cd
+langcode: fr
+status: true
+dependencies:
+  config:
+    - commerce_product.commerce_product_variation_type.ticket_concert
+    - field.storage.commerce_product_variation.field_ticket_capacity
+id: commerce_product_variation.ticket_concert.field_ticket_capacity
+field_name: field_ticket_capacity
+entity_type: commerce_product_variation
+bundle: ticket_concert
+label: 'Capacité (miroir)'
+description: ''
+required: false
+translatable: true
+default_value: {  }
+default_value_callback: ''
+settings:
+  min: 0
+  max: null
+  prefix: ''
+  suffix: ''
+field_type: integer

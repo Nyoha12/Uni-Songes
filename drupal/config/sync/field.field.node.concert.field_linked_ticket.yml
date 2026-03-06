@@ -1,0 +1,21 @@
+uuid: 3ab2efa8-9107-483a-bd12-84bf0a098386
+langcode: fr
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_linked_ticket
+    - node.type.concert
+id: node.concert.field_linked_ticket
+field_name: field_linked_ticket
+entity_type: node
+bundle: concert
+label: 'Ticket boutique lié'
+description: ''
+required: false
+translatable: true
+default_value: {  }
+default_value_callback: ''
+settings:
+  handler: 'default:commerce_product'
+  handler_settings: {  }
+field_type: entity_reference

@@ -1,0 +1,23 @@
+uuid: 2c0576bc-eaf6-4f6b-9043-53187ad1134c
+langcode: fr
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_ticket_price
+    - node.type.concert
+  module:
+    - commerce_price
+id: node.concert.field_ticket_price
+field_name: field_ticket_price
+entity_type: node
+bundle: concert
+label: 'Prix du ticket'
+description: ''
+required: false
+translatable: true
+default_value: {  }
+default_value_callback: ''
+settings:
+  available_currencies: {  }
+  allow_negative: false
+field_type: commerce_price

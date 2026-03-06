@@ -5,9 +5,12 @@ dependencies:
   config:
     - field.field.node.concert.field_capacity
     - field.field.node.concert.field_event_dates
+    - field.field.node.concert.field_linked_ticket
+    - field.field.node.concert.field_ticket_price
     - field.field.node.concert.field_venue
     - node.type.concert
   module:
+    - commerce_price
     - datetime_range
     - path
 id: node.concert.default
@@ -37,6 +40,22 @@ content:
   field_event_dates:
     type: daterange_default
     weight: 0
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  field_linked_ticket:
+    type: entity_reference_autocomplete
+    weight: 99
+    region: content
+    settings:
+      match_operator: CONTAINS
+      match_limit: 10
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  field_ticket_price:
+    type: commerce_price_default
+    weight: 3
     region: content
     settings: {  }
     third_party_settings: {  }

@@ -1,0 +1,23 @@
+uuid: 23e6acbd-3a76-4402-ba98-b41ccc2c7e85
+langcode: fr
+status: true
+dependencies:
+  config:
+    - commerce_product.commerce_product_variation_type.ticket_stage
+    - field.storage.commerce_product_variation.field_ticket_capacity
+id: commerce_product_variation.ticket_stage.field_ticket_capacity
+field_name: field_ticket_capacity
+entity_type: commerce_product_variation
+bundle: ticket_stage
+label: 'Capacité (miroir)'
+description: ''
+required: false
+translatable: true
+default_value: {  }
+default_value_callback: ''
+settings:
+  min: 0
+  max: null
+  prefix: ''
+  suffix: ''
+field_type: integer

@@ -1,0 +1,58 @@
+uuid: 9210148b-7581-4bfc-acb8-77c849d4f949
+langcode: fr
+status: true
+dependencies:
+  config:
+    - commerce_product.commerce_product_variation_type.ticket_stage
+    - field.field.commerce_product_variation.ticket_stage.field_ticket_capacity
+  module:
+    - commerce_price
+id: commerce_product_variation.ticket_stage.default
+targetEntityType: commerce_product_variation
+bundle: ticket_stage
+mode: default
+content:
+  field_ticket_capacity:
+    type: number
+    weight: 5
+    region: content
+    settings:
+      placeholder: ''
+    third_party_settings: {  }
+  langcode:
+    type: language_select
+    weight: 2
+    region: content
+    settings:
+      include_locked: true
+    third_party_settings: {  }
+  list_price:
+    type: commerce_list_price
+    weight: -1
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  price:
+    type: commerce_price_default
+    weight: 0
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  sku:
+    type: string_textfield
+    weight: -4
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  status:
+    type: boolean_checkbox
+    weight: 90
+    region: content
+    settings:
+      display_label: true
+    third_party_settings: {  }
+hidden:
+  created: true
+  uid: true

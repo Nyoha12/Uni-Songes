@@ -1,0 +1,23 @@
+uuid: fd84889b-ad0a-4d5d-aff2-3161f1e7b953
+langcode: fr
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_ticket_price
+    - node.type.stage
+  module:
+    - commerce_price
+id: node.stage.field_ticket_price
+field_name: field_ticket_price
+entity_type: node
+bundle: stage
+label: 'Prix du ticket'
+description: ''
+required: false
+translatable: true
+default_value: {  }
+default_value_callback: ''
+settings:
+  available_currencies: {  }
+  allow_negative: false
+field_type: commerce_price

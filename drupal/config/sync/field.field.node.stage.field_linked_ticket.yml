@@ -1,0 +1,21 @@
+uuid: 380ab757-7505-4ff3-b12f-957124e06f67
+langcode: fr
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_linked_ticket
+    - node.type.stage
+id: node.stage.field_linked_ticket
+field_name: field_linked_ticket
+entity_type: node
+bundle: stage
+label: 'Ticket boutique lié'
+description: ''
+required: false
+translatable: true
+default_value: {  }
+default_value_callback: ''
+settings:
+  handler: 'default:commerce_product'
+  handler_settings: {  }
+field_type: entity_reference

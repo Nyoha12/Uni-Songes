@@ -1,8 +1,9 @@
-uuid: df75e5f8-451f-4cce-84da-9801a9159dcc
+uuid: cc5e9e5d-ef5e-4811-9ae9-91622a83a41c
 langcode: fr
 status: true
 dependencies:
   config:
+    - core.entity_view_mode.node.teaser
     - field.field.node.stage.field_capacity
     - field.field.node.stage.field_event_dates
     - field.field.node.stage.field_linked_ticket
@@ -10,29 +11,20 @@ dependencies:
     - field.field.node.stage.field_venue
     - node.type.stage
   module:
-    - commerce_price
     - datetime_range
     - user
-id: node.stage.default
+id: node.stage.teaser
 targetEntityType: node
 bundle: stage
-mode: default
+mode: teaser
 content:
   body:
-    type: text_default
+    type: text_summary_or_trimmed
     label: hidden
-    settings: {  }
+    settings:
+      trim_length: 280
     third_party_settings: {  }
     weight: 10
-    region: content
-  field_capacity:
-    type: number_integer
-    label: above
-    settings:
-      thousand_separator: ''
-      prefix_suffix: true
-    third_party_settings: {  }
-    weight: 2
     region: content
   field_event_dates:
     type: daterange_default
@@ -44,15 +36,6 @@ content:
       separator: '-'
     third_party_settings: {  }
     weight: 0
-    region: content
-  field_ticket_price:
-    type: commerce_price_default
-    label: above
-    settings:
-      strip_trailing_zeroes: false
-      currency_display: symbol
-    third_party_settings: {  }
-    weight: 3
     region: content
   field_venue:
     type: string
@@ -68,5 +51,7 @@ content:
     weight: 100
     region: content
 hidden:
+  field_capacity: true
   field_linked_ticket: true
+  field_ticket_price: true
   langcode: true

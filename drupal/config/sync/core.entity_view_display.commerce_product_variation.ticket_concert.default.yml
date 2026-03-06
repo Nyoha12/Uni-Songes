@@ -1,0 +1,46 @@
+uuid: 04739d34-92c5-406b-a2e9-4248b71072b5
+langcode: fr
+status: true
+dependencies:
+  config:
+    - commerce_product.commerce_product_variation_type.ticket_concert
+    - field.field.commerce_product_variation.ticket_concert.field_ticket_capacity
+  module:
+    - commerce_price
+id: commerce_product_variation.ticket_concert.default
+targetEntityType: commerce_product_variation
+bundle: ticket_concert
+mode: default
+content:
+  field_ticket_capacity:
+    type: number_integer
+    label: above
+    settings:
+      thousand_separator: ''
+      prefix_suffix: true
+    third_party_settings: {  }
+    weight: 5
+    region: content
+  list_price:
+    type: commerce_price_default
+    label: above
+    settings:
+      strip_trailing_zeroes: false
+      currency_display: symbol
+    third_party_settings: {  }
+    weight: -1
+    region: content
+  price:
+    type: commerce_price_default
+    label: above
+    settings:
+      strip_trailing_zeroes: false
+      currency_display: symbol
+    third_party_settings: {  }
+    weight: 0
+    region: content
+hidden:
+  langcode: true
+  product_id: true
+  sku: true
+  title: true

@@ -4,3 +4,173 @@
  * @file
  * Hooks and custom code for the Unisonges Structure module.
  */
+
+/**
+ * UNISONGES_AUTOGEN_TICKETS
+ * Auto-create and keep in sync a Commerce ticket product for Stage/Concert nodes.
+ *
+ * Files:
+ * - web/modules/custom/unisonges_structure/unisonges_structure.module
+ */
+
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\node\NodeInterface;
+use Drupal\commerce_product\Entity\Product;
+use Drupal\commerce_product\Entity\ProductVariation;
+
+/**
+ * Implements hook_entity_insert().
+ */
+function unisonges_structure_entity_insert(EntityInterface $entity): void {
+  if ($entity instanceof NodeInterface) {
+    _unisonges_structure_sync_ticket_product($entity);
+  }
+}
+
+/**
+ * Implements hook_entity_update().
+ */
+function unisonges_structure_entity_update(EntityInterface $entity): void {
+  if ($entity instanceof NodeInterface) {
+    _unisonges_structure_sync_ticket_product($entity);
+  }
+}
+
+/**
+ * Ensure a Stage/Concert node has a linked ticket product; create/update it as needed.
+ *
+ * - Creates ticket product/variation if missing.
+ * - Copies: title, linked page, (optional) ticket price, (optional) capacity mirror.
+ * - Publishes/unpublishes product with node status ONLY if a ticket price is provided.
+ *
+ * Note: uses a recursion guard because we may save the node to store the product reference.
+ */
+function _unisonges_structure_sync_ticket_product(NodeInterface $node): void {
+  $bundle = $node->bundle();
+  if (!in_array($bundle, ['stage', 'concert'], TRUE)) {
+    return;
+  }
+
+  static $in_progress = [];
+  $nid = (int) $node->id();
+  if ($nid && !empty($in_progress[$nid])) {
+    return;
+  }
+  if ($nid) {
+    $in_progress[$nid] = TRUE;
+  }
+
+  try {
+    $product_type = $bundle === 'stage' ? 'ticket_stage' : 'ticket_concert';
+    $variation_type = $product_type; // same ids in our setup
+
+    // Resolve product: prefer reverse link field if present, else query by linked page.
+    $product = NULL;
+    if ($node->hasField('field_linked_ticket') && !$node->get('field_linked_ticket')->isEmpty()) {
+      $pid = (int) $node->get('field_linked_ticket')->target_id;
+      $product = $pid ? Product::load($pid) : NULL;
+    }
+
+    if (!$product) {
+      $pids = \Drupal::entityQuery('commerce_product')
+        ->accessCheck(FALSE)
+        ->condition('type', $product_type)
+        ->condition('field_linked_page.target_id', $nid)
+        ->range(0, 1)
+        ->execute();
+      if ($pids) {
+        $product = Product::load((int) reset($pids));
+      }
+    }
+
+    // Read optional ticket price from node.
+    $price = NULL;
+    if ($node->hasField('field_ticket_price') && !$node->get('field_ticket_price')->isEmpty()) {
+      $item = $node->get('field_ticket_price')->first();
+      if ($item && method_exists($item, 'toPrice')) {
+        $price = $item->toPrice();
+      }
+    }
+
+    // Read optional capacity from node.
+    $capacity = NULL;
+    if ($node->hasField('field_capacity') && !$node->get('field_capacity')->isEmpty()) {
+      $capacity = (int) $node->get('field_capacity')->value;
+    }
+
+    // Ensure product exists.
+    if (!$product) {
+      // Create variation first (unpublished by default).
+      $variation = ProductVariation::create([
+        'type' => $variation_type,
+        'sku' => sprintf('AUTO-%s-%d', strtoupper($bundle), $nid),
+        'status' => 0,
+      ]);
+      if ($price) {
+        $variation->set('price', $price);
+      }
+      if ($capacity !== NULL && $variation->hasField('field_ticket_capacity')) {
+        $variation->set('field_ticket_capacity', $capacity);
+      }
+      $variation->save();
+
+      // Create product (unpublished until priced).
+      $product = Product::create([
+        'type' => $product_type,
+        'title' => $node->label(),
+        'status' => 0,
+        'stores' => [['target_id' => 1]],
+        'field_linked_page' => [['target_id' => $nid]],
+      ]);
+      $product->save();
+      $product->addVariation($variation);
+      $product->save();
+    }
+
+    // Update product fields to match node.
+    $product->setTitle($node->label());
+    if ($product->hasField('field_linked_page')) {
+      $product->set('field_linked_page', [['target_id' => $nid]]);
+    }
+
+    // Update variation (first variation).
+    $variations = $product->getVariations();
+    $variation = $variations ? reset($variations) : NULL;
+    if ($variation) {
+      if ($price) {
+        $variation->set('price', $price);
+      }
+      if ($capacity !== NULL && $variation->hasField('field_ticket_capacity')) {
+        $variation->set('field_ticket_capacity', $capacity);
+      }
+      // Publish/unpublish ticket only if we have a price filled.
+      if ($price) {
+        $variation->set('status', $node->isPublished() ? 1 : 0);
+      }
+      $variation->save();
+    }
+
+    if ($price) {
+      $product->set('status', $node->isPublished() ? 1 : 0);
+    }
+    $product->save();
+
+    // Store reverse link on node if field exists and empty.
+    if ($node->hasField('field_linked_ticket') && $node->get('field_linked_ticket')->isEmpty()) {
+      $node->set('field_linked_ticket', $product->id());
+      // Save quietly: recursion guard already set.
+      $node->save();
+    }
+  }
+  catch (\Throwable $e) {
+    \Drupal::logger('unisonges_structure')->error('Ticket autogen failed for node @nid: @msg', [
+      '@nid' => $nid ?: '(new)',
+      '@msg' => $e->getMessage(),
+    ]);
+  }
+  finally {
+    if ($nid) {
+      unset($in_progress[$nid]);
+    }
+  }
+}
