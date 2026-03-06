@@ -1,0 +1,29 @@
+uuid: 15959ec1-8bab-4b2a-ad30-bebb9c557635
+langcode: fr
+status: true
+dependencies:
+  config:
+    - views.view.hub_concerts_posts
+  module:
+    - system
+    - views
+  theme:
+    - unisonges_theme
+id: unisonges_hub_concerts_posts
+theme: unisonges_theme
+region: content
+weight: 50
+provider: null
+plugin: 'views_block:hub_concerts_posts-block_1'
+settings:
+  id: 'views_block:hub_concerts_posts-block_1'
+  label: 'Nouveaux évènements :'
+  label_display: visible
+  provider: views
+  views_label: ''
+  items_per_page: null
+visibility:
+  request_path:
+    id: request_path
+    negate: false
+    pages: /concerts
