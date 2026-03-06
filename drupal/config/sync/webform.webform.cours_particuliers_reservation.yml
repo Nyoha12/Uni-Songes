@@ -75,10 +75,18 @@ elements: |-
       required:
         ':input[name="mode_cours"]':
           value: domicile
+    '#description': 'Renseigne la rue, la ville et les informations utiles d’accès.'
   telephone:
     '#type': tel
     '#title': Téléphone
     '#required': true
+    '#placeholder': '06 12 34 56 78'
+    '#description': 'Format attendu : 06 12 34 56 78'
+    '#pattern': '^(?:0|\+33\s?)[1-9](?:[\s.-]?\d{2}){4}$'
+    '#pattern_error': 'Merci de saisir un numéro français valide, par ex. 06 12 34 56 78.'
+    '#attributes':
+      inputmode: tel
+      autocomplete: tel
   instrument:
     '#type': radios
     '#title': Instrument
@@ -113,6 +121,23 @@ elements: |-
     '#type': textarea
     '#title': 'Notes supplémentaires'
     '#required': false
+  code_postal_domicile:
+    '#type': textfield
+    '#title': 'Code postal'
+    '#required': true
+    '#size': 10
+    '#maxlength': 5
+    '#placeholder': '93300'
+    '#description': 'Format attendu : 5 chiffres.'
+    '#pattern': '^\d{5}$'
+    '#pattern_error': 'Merci de saisir un code postal français à 5 chiffres.'
+    '#states':
+      visible:
+        ':input[name="mode_cours"]':
+          value: domicile
+      required:
+        ':input[name="mode_cours"]':
+          value: domicile
 css: ''
 javascript: ''
 settings:
@@ -218,10 +243,10 @@ settings:
   draft_loaded_message: ''
   draft_pending_single_message: ''
   draft_pending_multiple_message: ''
-  confirmation_type: message
+  confirmation_type: inline
   confirmation_url: ''
   confirmation_title: ''
-  confirmation_message: 'Votre demande de réservation a bien été enregistrée.'
+  confirmation_message: '<p><strong>Votre demande de réservation a bien été enregistrée.</strong></p><p>Nous vous recontacterons si un ajustement est nécessaire.</p>'
   confirmation_attributes: {  }
   confirmation_back: true
   confirmation_back_label: ''

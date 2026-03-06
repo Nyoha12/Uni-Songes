@@ -1707,3 +1707,59 @@ html, body{ height: 100% !important; overflow: hidden !important; }
   100% { transform: translate3d(-35px, 0px, 0); }
 }
 /* /UNI-SONGES BGFX PAN TUNE v1 */
+
+
+/* UNISONGES_BOOKING_UX_FIXES */
+form[id*="webform-submission-cours-particuliers-reservation"],
+.webform-submission-cours-particuliers-reservation-form,
+.webform-confirmation,
+.webform-confirmation__message{
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+form[id*="webform-submission-cours-particuliers-reservation"]{
+  display: block;
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+form[id*="webform-submission-cours-particuliers-reservation"] .form-item,
+form[id*="webform-submission-cours-particuliers-reservation"] .webform-element-description,
+form[id*="webform-submission-cours-particuliers-reservation"] .description{
+  max-width: 100%;
+}
+
+#unisonges-scrollframe.scrollframe .webform-confirmation,
+#unisonges-scrollframe.scrollframe .messages--status,
+#unisonges-scrollframe.scrollframe .messages.messages--status{
+  background: rgba(7, 12, 20, 0.82);
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 16px;
+  color: #fff;
+  padding: 1rem 1.25rem;
+  margin: 0 0 1rem;
+  box-shadow: 0 12px 34px rgba(0,0,0,.28);
+}
+
+#unisonges-scrollframe.scrollframe .webform-confirmation a,
+#unisonges-scrollframe.scrollframe .messages--status a{
+  color: #fff;
+  text-decoration: underline;
+}
+
+form[id*="webform-submission-cours-particuliers-reservation"] input,
+form[id*="webform-submission-cours-particuliers-reservation"] select,
+form[id*="webform-submission-cours-particuliers-reservation"] textarea{
+  max-width: 100%;
+}
+
+form[id*="webform-submission-cours-particuliers-reservation"] textarea{
+  min-height: 7rem;
+  resize: vertical;
+}
+
+form[id*="webform-submission-cours-particuliers-reservation"] .webform-actions{
+  margin-top: 1rem;
+  padding-bottom: .5rem;
+}
