@@ -25,6 +25,9 @@ function unisonges_structure_entity_insert(EntityInterface $entity): void {
   if ($entity instanceof NodeInterface) {
     _unisonges_structure_sync_ticket_product($entity);
   }
+  if ($entity instanceof \Drupal\commerce_order\Entity\OrderInterface) {
+    _unisonges_structure_apply_course_rights_from_order($entity);
+  }
 }
 
 /**
@@ -33,6 +36,9 @@ function unisonges_structure_entity_insert(EntityInterface $entity): void {
 function unisonges_structure_entity_update(EntityInterface $entity): void {
   if ($entity instanceof NodeInterface) {
     _unisonges_structure_sync_ticket_product($entity);
+  }
+  if ($entity instanceof \Drupal\commerce_order\Entity\OrderInterface) {
+    _unisonges_structure_apply_course_rights_from_order($entity);
   }
 }
 
@@ -173,4 +179,196 @@ function _unisonges_structure_sync_ticket_product(NodeInterface $node): void {
       unset($in_progress[$nid]);
     }
   }
+}
+
+
+/**
+ * UNISONGES_COURSE_BOOKING_RIGHTS
+ */
+function unisonges_structure_form_alter(array &$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id): void {
+  $webform = $form['#webform'] ?? NULL;
+  if (!$webform || $webform->id() !== 'cours_particuliers_reservation') {
+    return;
+  }
+
+  $message = '';
+  $current_user = \Drupal::currentUser();
+
+  if ($current_user->isAnonymous()) {
+    if (isset($form['actions']['submit'])) {
+      $form['actions']['submit']['#access'] = FALSE;
+    }
+    $form['unisonges_booking_notice'] = [
+      '#type' => 'markup',
+      '#markup' => '<p>Connectez-vous pour réserver un créneau.</p>',
+      '#weight' => 999,
+    ];
+  }
+  else {
+    $account = \Drupal\user\Entity\User::load($current_user->id());
+    if (!$account || !_unisonges_structure_user_can_book($account, $message)) {
+      if (isset($form['actions']['submit'])) {
+        $form['actions']['submit']['#access'] = FALSE;
+      }
+      $safe = htmlspecialchars($message ?: 'Vous ne pouvez pas réserver pour le moment.', ENT_QUOTES, 'UTF-8');
+      $form['unisonges_booking_notice'] = [
+        '#type' => 'markup',
+        '#markup' => '<p>' . $safe . '</p>',
+        '#weight' => 999,
+      ];
+    }
+  }
+
+  $form['#validate'][] = 'unisonges_structure_booking_form_validate';
+}
+
+function unisonges_structure_booking_form_validate(array &$form, \Drupal\Core\Form\FormStateInterface $form_state): void {
+  $webform = $form['#webform'] ?? NULL;
+  if (!$webform || $webform->id() !== 'cours_particuliers_reservation') {
+    return;
+  }
+
+  $current_user = \Drupal::currentUser();
+  if ($current_user->isAnonymous()) {
+    $form_state->setErrorByName('reservation', 'Connectez-vous pour réserver un créneau.');
+    return;
+  }
+
+  $account = \Drupal\user\Entity\User::load($current_user->id());
+  $message = '';
+  if (!$account || !_unisonges_structure_user_can_book($account, $message)) {
+    $form_state->setErrorByName('reservation', $message ?: 'Vous ne pouvez pas réserver pour le moment.');
+  }
+}
+
+function _unisonges_structure_user_can_book(\Drupal\user\UserInterface $account, ?string &$message = ''): bool {
+  $remaining = (int) ($account->get('field_seances_restantes')->value ?? 0);
+  if ($remaining <= 0) {
+    $message = 'Aucune séance disponible. Achetez une séance, un pack, ou choisissez le paiement sur place.';
+    return FALSE;
+  }
+
+  $expiry_value = $account->get('field_pack_expire_le')->value ?? '';
+  if ($expiry_value) {
+    $today = new \DateTimeImmutable('today');
+    $expiry = new \DateTimeImmutable($expiry_value);
+    if ($expiry < $today) {
+      $message = 'Votre pack a expiré. Merci d’acheter une nouvelle formule pour réserver.';
+      return FALSE;
+    }
+  }
+
+  return TRUE;
+}
+
+function _unisonges_structure_apply_course_rights_from_order(\Drupal\commerce_order\Entity\OrderInterface $order): void {
+  if ($order->getState()->value !== 'completed') {
+    return;
+  }
+  if ($order->getData('unisonges_course_rights_applied')) {
+    return;
+  }
+
+  $uid = (int) $order->getCustomerId();
+  if (!$uid) {
+    return;
+  }
+
+  $account = \Drupal\user\Entity\User::load($uid);
+  if (!$account) {
+    return;
+  }
+
+  $remaining = (int) ($account->get('field_seances_restantes')->value ?? 0);
+  $essai_utilise = (bool) ($account->get('field_essai_utilise')->value ?? FALSE);
+  $expiry_value = $account->get('field_pack_expire_le')->value ?? '';
+  $expiry = $expiry_value ? new \DateTimeImmutable($expiry_value) : NULL;
+  $today = new \DateTimeImmutable('today');
+  $changed = FALSE;
+
+  if ($expiry && $expiry < $today) {
+    $remaining = 0;
+    $expiry = NULL;
+    $account->set('field_pack_expire_le', NULL);
+    $changed = TRUE;
+  }
+
+  foreach ($order->getItems() as $order_item) {
+    $quantity = (int) round((float) $order_item->getQuantity());
+    if ($quantity < 1) {
+      $quantity = 1;
+    }
+
+    $variation = $order_item->getPurchasedEntity();
+    if (!$variation || !method_exists($variation, 'getProduct')) {
+      continue;
+    }
+    $product = $variation->getProduct();
+    if (!$product) {
+      continue;
+    }
+
+    switch ($product->bundle()) {
+      case 'cours_essai':
+        if (!$essai_utilise) {
+          $remaining += $quantity;
+          $essai_utilise = TRUE;
+          $changed = TRUE;
+        }
+        break;
+      case 'cours_deb_inter':
+      case 'cours_avance':
+        $remaining += $quantity;
+        $changed = TRUE;
+        break;
+      case 'pack_4_deb_inter':
+        $remaining += (4 * $quantity);
+        $base = ($expiry && $expiry >= $today) ? $expiry : $today;
+        $expiry = $base->modify('+6 months');
+        $changed = TRUE;
+        break;
+    }
+  }
+
+  if ($changed) {
+    $account->set('field_seances_restantes', $remaining);
+    $account->set('field_essai_utilise', $essai_utilise ? 1 : 0);
+    if ($expiry) {
+      $account->set('field_pack_expire_le', $expiry->format('Y-m-d'));
+    }
+    $account->save();
+  }
+
+  $order->setData('unisonges_course_rights_applied', TRUE);
+  $order->save();
+}
+
+function unisonges_structure_webform_submission_insert(\Drupal\webform\WebformSubmissionInterface $webform_submission): void {
+  if ($webform_submission->getWebform()->id() !== 'cours_particuliers_reservation') {
+    return;
+  }
+
+  $uid = (int) $webform_submission->getOwnerId();
+  if (!$uid) {
+    return;
+  }
+
+  $account = \Drupal\user\Entity\User::load($uid);
+  if (!$account) {
+    return;
+  }
+
+  $remaining = (int) ($account->get('field_seances_restantes')->value ?? 0);
+  if ($remaining <= 0) {
+    return;
+  }
+
+  $remaining = max(0, $remaining - 1);
+  $account->set('field_seances_restantes', $remaining);
+
+  if ($remaining === 0 && !$account->get('field_pack_expire_le')->isEmpty()) {
+    $account->set('field_pack_expire_le', NULL);
+  }
+
+  $account->save();
 }
