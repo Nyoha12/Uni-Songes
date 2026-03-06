@@ -1,0 +1,10 @@
+uuid: 13611a74-960c-4182-8283-eb867355895e
+langcode: fr
+status: true
+dependencies: {  }
+id: cours_deb_inter
+label: 'Cours Débutant/Intermédiaire'
+traits: {  }
+locked: false
+orderItemType: default
+generateTitle: true

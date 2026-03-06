@@ -1,0 +1,10 @@
+uuid: d32a60ff-6047-4c50-a203-e49a2115bd6d
+langcode: fr
+status: true
+dependencies: {  }
+id: pack_4_deb_inter
+label: 'Pack 4 Débutant/Intermédiaire'
+traits: {  }
+locked: false
+orderItemType: default
+generateTitle: true

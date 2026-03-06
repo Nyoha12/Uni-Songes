@@ -1,0 +1,12 @@
+uuid: 7d4efef3-e9d8-48c1-b92f-cd9cc47a628f
+langcode: fr
+status: true
+dependencies: {  }
+id: cours_deb_inter
+label: 'Cours Débutant/Intermédiaire'
+traits: {  }
+locked: false
+description: ''
+variationTypes: {  }
+multipleVariations: true
+injectVariationFields: true

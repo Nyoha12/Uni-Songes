@@ -1,0 +1,10 @@
+uuid: 7bf56d6a-c230-43e1-91dc-44454dcffa89
+langcode: fr
+status: true
+dependencies: {  }
+id: cours_avance
+label: 'Cours Avancé'
+traits: {  }
+locked: false
+orderItemType: default
+generateTitle: true

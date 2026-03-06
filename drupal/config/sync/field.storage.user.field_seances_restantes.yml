@@ -1,0 +1,20 @@
+uuid: 64b5c548-b296-42f3-a01f-b65945c57cde
+langcode: fr
+status: true
+dependencies:
+  module:
+    - user
+id: user.field_seances_restantes
+field_name: field_seances_restantes
+entity_type: user
+type: integer
+settings:
+  unsigned: false
+  size: normal
+module: core
+locked: false
+cardinality: 1
+translatable: true
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

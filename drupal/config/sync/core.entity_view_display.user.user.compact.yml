@@ -5,6 +5,9 @@ dependencies:
   config:
     - core.entity_view_mode.user.compact
     - field.field.user.user.commerce_remote_id
+    - field.field.user.user.field_essai_utilise
+    - field.field.user.user.field_pack_expire_le
+    - field.field.user.user.field_seances_restantes
     - field.field.user.user.user_picture
     - image.style.thumbnail
   module:
@@ -31,5 +34,8 @@ content:
 hidden:
   commerce_remote_id: true
   customer_profiles: true
+  field_essai_utilise: true
+  field_pack_expire_le: true
+  field_seances_restantes: true
   langcode: true
   member_for: true

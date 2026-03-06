@@ -4,9 +4,13 @@ status: true
 dependencies:
   config:
     - field.field.user.user.commerce_remote_id
+    - field.field.user.user.field_essai_utilise
+    - field.field.user.user.field_pack_expire_le
+    - field.field.user.user.field_seances_restantes
     - field.field.user.user.user_picture
     - image.style.thumbnail
   module:
+    - datetime
     - image
     - path
     - user
@@ -20,6 +24,26 @@ content:
   account:
     weight: -10
     region: content
+  field_essai_utilise:
+    type: boolean_checkbox
+    weight: 52
+    region: content
+    settings:
+      display_label: true
+    third_party_settings: {  }
+  field_pack_expire_le:
+    type: datetime_default
+    weight: 51
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  field_seances_restantes:
+    type: number
+    weight: 50
+    region: content
+    settings:
+      placeholder: ''
+    third_party_settings: {  }
   language:
     weight: 0
     region: content

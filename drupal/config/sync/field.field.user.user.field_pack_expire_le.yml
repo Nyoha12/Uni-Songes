@@ -1,0 +1,21 @@
+uuid: 40f1be49-d89d-4163-9b3d-798471804784
+langcode: fr
+status: true
+dependencies:
+  config:
+    - field.storage.user.field_pack_expire_le
+  module:
+    - datetime
+    - user
+id: user.user.field_pack_expire_le
+field_name: field_pack_expire_le
+entity_type: user
+bundle: user
+label: 'Pack valable jusqu au'
+description: ''
+required: false
+translatable: true
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: datetime

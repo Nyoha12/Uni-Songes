@@ -1,0 +1,12 @@
+uuid: 0d6e5599-3a10-41f2-ab7f-af8b4468bf56
+langcode: fr
+status: true
+dependencies: {  }
+id: cours_avance
+label: 'Cours Avancé'
+traits: {  }
+locked: false
+description: ''
+variationTypes: {  }
+multipleVariations: true
+injectVariationFields: true

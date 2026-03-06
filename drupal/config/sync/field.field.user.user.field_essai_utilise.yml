@@ -1,0 +1,22 @@
+uuid: 2cf5e989-79a6-4ff9-9fa2-77d0b079a52e
+langcode: fr
+status: true
+dependencies:
+  config:
+    - field.storage.user.field_essai_utilise
+  module:
+    - user
+id: user.user.field_essai_utilise
+field_name: field_essai_utilise
+entity_type: user
+bundle: user
+label: 'Essai déjà utilisé'
+description: ''
+required: false
+translatable: true
+default_value: {  }
+default_value_callback: ''
+settings:
+  on_label: Activé
+  off_label: Désactivé
+field_type: boolean

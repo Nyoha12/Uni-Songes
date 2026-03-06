@@ -1,0 +1,10 @@
+uuid: e6936033-78ae-4b39-829d-226387eb1657
+langcode: fr
+status: true
+dependencies: {  }
+id: cours_essai
+label: 'Cours d essai'
+traits: {  }
+locked: false
+orderItemType: default
+generateTitle: true
