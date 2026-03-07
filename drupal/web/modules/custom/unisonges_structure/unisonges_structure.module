@@ -192,6 +192,12 @@ function unisonges_structure_form_alter(array &$form, \Drupal\Core\Form\FormStat
   }
 
   $message = '';
+  $reservation_value = $form_state->getValue('reservation');
+  if ($reservation_value === NULL || $reservation_value === '' || $reservation_value === []) {
+    $form_state->setErrorByName('reservation', 'Choisissez un créneau.');
+    return;
+  }
+
   $current_user = \Drupal::currentUser();
 
   if ($current_user->isAnonymous()) {
@@ -200,7 +206,7 @@ function unisonges_structure_form_alter(array &$form, \Drupal\Core\Form\FormStat
     }
     $form['unisonges_booking_notice'] = [
       '#type' => 'markup',
-      '#markup' => '<p>Connectez-vous pour réserver un créneau.</p>',
+      '#markup' => '<div class="messages messages--error" role="alert" aria-live="polite"><div class="messages__content">Connectez-vous pour réserver un créneau.</div></div>',
       '#weight' => 999,
     ];
   }
@@ -213,13 +219,64 @@ function unisonges_structure_form_alter(array &$form, \Drupal\Core\Form\FormStat
       $safe = htmlspecialchars($message ?: 'Vous ne pouvez pas réserver pour le moment.', ENT_QUOTES, 'UTF-8');
       $form['unisonges_booking_notice'] = [
         '#type' => 'markup',
-        '#markup' => '<p>' . $safe . '</p>',
+        '#markup' => '<div class="messages messages--error" role="alert" aria-live="polite"><div class="messages__content">' . $safe . '</div></div>',
         '#weight' => 999,
       ];
     }
   }
 
   $form['#validate'][] = 'unisonges_structure_booking_form_validate';
+  _unisonges_structure_booking_form_ux_overrides($form);
+}
+
+
+
+function _unisonges_structure_booking_form_ux_overrides(array &$form): void {
+  foreach (['reservation', 'elements'] as $key) {
+    if ($key === 'reservation' && isset($form['reservation']) && is_array($form['reservation'])) {
+      $form['reservation']['#required_error'] = 'Choisissez un créneau.';
+    }
+    if ($key === 'elements' && isset($form['elements']['reservation']) && is_array($form['elements']['reservation'])) {
+      $form['elements']['reservation']['#required_error'] = 'Choisissez un créneau.';
+    }
+  }
+
+  _unisonges_structure_remove_already_submitted_notice($form);
+}
+
+function _unisonges_structure_remove_already_submitted_notice(array &$element): void {
+  $needles = [
+    'You have already submitted this webform.',
+    'View your previous submission.',
+  ];
+
+  foreach (array_keys($element) as $key) {
+    if (!is_array($element[$key])) {
+      continue;
+    }
+
+    $matched = FALSE;
+    foreach (['#markup', '#plain_text', '#title', '#description'] as $prop) {
+      if (!isset($element[$key][$prop]) || !is_string($element[$key][$prop])) {
+        continue;
+      }
+
+      $value = html_entity_decode(strip_tags($element[$key][$prop]), ENT_QUOTES, 'UTF-8');
+      foreach ($needles as $needle) {
+        if (strpos($value, $needle) !== FALSE) {
+          $matched = TRUE;
+          break 2;
+        }
+      }
+    }
+
+    if ($matched) {
+      unset($element[$key]);
+      continue;
+    }
+
+    _unisonges_structure_remove_already_submitted_notice($element[$key]);
+  }
 }
 
 function unisonges_structure_booking_form_validate(array &$form, \Drupal\Core\Form\FormStateInterface $form_state): void {
@@ -371,4 +428,67 @@ function unisonges_structure_webform_submission_insert(\Drupal\webform\WebformSu
   }
 
   $account->save();
+
+  _unisonges_structure_log_booking_transition($webform_submission, 'insert', NULL);
 }
+
+function unisonges_structure_webform_submission_update(\Drupal\webform\WebformSubmissionInterface $webform_submission): void {
+  if ($webform_submission->getWebform()->id() !== 'cours_particuliers_reservation') {
+    return;
+  }
+
+  $original_reservation = NULL;
+  if (isset($webform_submission->original) && $webform_submission->original instanceof \Drupal\webform\WebformSubmissionInterface) {
+    $original_reservation = (string) ($webform_submission->original->getElementData('reservation') ?? '');
+  }
+
+  _unisonges_structure_log_booking_transition($webform_submission, 'update', $original_reservation);
+}
+
+function _unisonges_structure_log_booking_transition(\Drupal\webform\WebformSubmissionInterface $webform_submission, string $trigger, ?string $original_reservation = NULL): void {
+  if ($webform_submission->getWebform()->id() !== 'cours_particuliers_reservation') {
+    return;
+  }
+
+  $current_reservation = (string) ($webform_submission->getElementData('reservation') ?? '');
+  $transition = 'unchanged';
+
+  if ($trigger === 'insert') {
+    $transition = _unisonges_structure_is_cancelled_booking_value($current_reservation) ? 'insert_cancelled' : 'created';
+  }
+  elseif ($original_reservation === NULL) {
+    $transition = _unisonges_structure_is_cancelled_booking_value($current_reservation) ? 'cancelled_no_original' : 'updated_no_original';
+  }
+  elseif ($original_reservation === $current_reservation) {
+    $transition = 'unchanged';
+  }
+  elseif (!_unisonges_structure_is_cancelled_booking_value($original_reservation) && _unisonges_structure_is_cancelled_booking_value($current_reservation)) {
+    $transition = 'cancelled';
+  }
+  elseif ($original_reservation === '' && $current_reservation !== '') {
+    $transition = 'created';
+  }
+  else {
+    $transition = 'modified';
+  }
+
+  \Drupal::logger('unisonges_booking_sync')->notice(
+    'Booking @transition on @webform_id submission @sid (uid=@uid, uuid=@uuid, trigger=@trigger, old=@old, new=@new).',
+    [
+      '@transition' => $transition,
+      '@webform_id' => $webform_submission->getWebform()->id(),
+      '@sid' => $webform_submission->id(),
+      '@uid' => $webform_submission->getOwnerId(),
+      '@uuid' => $webform_submission->uuid(),
+      '@trigger' => $trigger,
+      '@old' => $original_reservation ?? '',
+      '@new' => $current_reservation,
+    ]
+  );
+}
+
+function _unisonges_structure_is_cancelled_booking_value(?string $value): bool {
+  $value = trim((string) $value);
+  return $value !== '' && preg_match('/\|0$/', $value) === 1;
+}
+

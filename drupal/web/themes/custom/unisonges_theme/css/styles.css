@@ -1763,3 +1763,195 @@ form[id*="webform-submission-cours-particuliers-reservation"] .webform-actions{
   margin-top: 1rem;
   padding-bottom: .5rem;
 }
+
+/* UNISONGES booking form final error/warning layout */
+.webform-submission-form .messages,
+.webform-submission-form .messages.messages--error,
+.webform-submission-form .webform-booking-error {
+  display: block;
+  position: relative;
+  margin: 1rem 0;
+  padding: 0.875rem 1rem;
+  border: 1px solid #e62600;
+  border-left-width: 4px;
+  border-radius: 8px;
+  background: #fdf0ee;
+  color: #7a1f12;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  z-index: 1;
+}
+
+.webform-submission-form .messages *,
+.webform-submission-form .webform-booking-error * {
+  color: inherit;
+}
+
+.webform-submission-form .form-item--error-message,
+.webform-submission-form strong.error.form-item--error-message {
+  display: block;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  background: #fdf0ee;
+  color: #7a1f12;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.webform-submission-form .js-form-item--error input,
+.webform-submission-form .js-form-item--error textarea,
+.webform-submission-form .js-form-item--error select,
+.webform-submission-form .form-item--error input,
+.webform-submission-form .form-item--error textarea,
+.webform-submission-form .form-item--error select {
+  border-color: #e62600;
+  box-shadow: 0 0 0 1px rgba(230, 38, 0, 0.15);
+}
+
+.webform-submission-form .messages a,
+.webform-submission-form .webform-booking-error a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+form[id*="webform-submission-cours-particuliers-reservation"] .webform-booking-error,
+form[id*="webform-submission-cours-particuliers-reservation"] .webform-booking-error.messages,
+form[id*="webform-submission-cours-particuliers-reservation"] .webform-booking-error.messages.messages--error,
+form[id*="webform-submission-cours-particuliers-reservation"] .messages.messages--error,
+form[id*="webform-submission-cours-particuliers-reservation"] .form-item--error-message,
+form[id*="webform-submission-cours-particuliers-reservation"] strong.error.form-item--error-message {
+  position: static !important;
+  float: none !important;
+  clear: both !important;
+  display: block !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0.75rem 0 1rem 0 !important;
+  padding: 0.875rem 1rem !important;
+  border: 1px solid #e62600 !important;
+  border-left: 4px solid #e62600 !important;
+  border-radius: 8px !important;
+  background: #fdf0ee !important;
+  color: #7a1f12 !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+  transform: none !important;
+  z-index: auto !important;
+  text-shadow: none !important;
+}
+
+form[id*="webform-submission-cours-particuliers-reservation"] .messages *,
+form[id*="webform-submission-cours-particuliers-reservation"] .webform-booking-error *,
+form[id*="webform-submission-cours-particuliers-reservation"] .form-item--error-message * {
+  color: inherit !important;
+}
+
+form[id*="webform-submission-cours-particuliers-reservation"] .js-form-item.js-form-type-webform-booking,
+form[id*="webform-submission-cours-particuliers-reservation"] .js-form-item.js-form-type-webform-booking .form-item,
+form[id*="webform-submission-cours-particuliers-reservation"] .js-form-item.js-form-type-webform-booking .form-item__label,
+form[id*="webform-submission-cours-particuliers-reservation"] .js-form-item.js-form-type-webform-booking .form-item__description,
+form[id*="webform-submission-cours-particuliers-reservation"] .js-form-item.js-form-type-webform-booking .fieldset-wrapper {
+  overflow: visible !important;
+}
+
+form[id*="webform-submission-cours-particuliers-reservation"] .js-form-item--error input,
+form[id*="webform-submission-cours-particuliers-reservation"] .js-form-item--error textarea,
+form[id*="webform-submission-cours-particuliers-reservation"] .js-form-item--error select,
+form[id*="webform-submission-cours-particuliers-reservation"] .form-item--error input,
+form[id*="webform-submission-cours-particuliers-reservation"] .form-item--error textarea,
+form[id*="webform-submission-cours-particuliers-reservation"] .form-item--error select {
+  border-color: #e62600 !important;
+  box-shadow: 0 0 0 1px rgba(230, 38, 0, 0.15) !important;
+}
+
+form[id*="webform-submission-cours-particuliers-reservation"] .alert-wrapper,
+.webform-submission-form .alert-wrapper {
+  position: static !important;
+  inset: auto !important;
+  width: auto !important;
+  max-height: none !important;
+  z-index: auto !important;
+  overflow: visible !important;
+}
+
+form[id*="webform-submission-cours-particuliers-reservation"] .alert,
+form[id*="webform-submission-cours-particuliers-reservation"] .alert.alert-danger,
+form[id*="webform-submission-cours-particuliers-reservation"] .form-item--error-message.alert,
+form[id*="webform-submission-cours-particuliers-reservation"] .form-item--error-message.alert.alert-danger,
+.webform-submission-form .alert.alert-danger {
+  position: static !important;
+  float: none !important;
+  clear: both !important;
+  display: grid !important;
+  grid-template-columns: auto 1fr !important;
+  column-gap: 0.6rem !important;
+  row-gap: 0.15rem !important;
+  align-items: start !important;
+  width: 100% !important;
+  margin: 0.75rem 0 1rem 0 !important;
+  padding: 0.875rem 1rem !important;
+  border: 1px solid #e62600 !important;
+  border-left: 4px solid #e62600 !important;
+  border-radius: 8px !important;
+  background: #fdf0ee !important;
+  color: #7a1f12 !important;
+  box-sizing: border-box !important;
+  box-shadow: none !important;
+  transform: none !important;
+  text-shadow: none !important;
+  line-height: 1.35 !important;
+}
+
+form[id*="webform-submission-cours-particuliers-reservation"] .alert.alert-danger svg,
+form[id*="webform-submission-cours-particuliers-reservation"] .alert.alert-danger .glyphicon,
+form[id*="webform-submission-cours-particuliers-reservation"] .alert.alert-danger .icon,
+.webform-submission-form .alert.alert-danger svg,
+.webform-submission-form .alert.alert-danger .glyphicon,
+.webform-submission-form .alert.alert-danger .icon {
+  grid-column: 1 !important;
+  grid-row: 1 / span 3 !important;
+  margin: 0.1rem 0 0 0 !important;
+  align-self: start !important;
+  vertical-align: text-top !important;
+}
+
+form[id*="webform-submission-cours-particuliers-reservation"] .alert-heading,
+.webform-submission-form .alert-heading {
+  display: block !important;
+  grid-column: 2 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+  font-size: 1rem !important;
+  line-height: 1.35 !important;
+  color: inherit !important;
+}
+
+form[id*="webform-submission-cours-particuliers-reservation"] .alert .messages__content,
+form[id*="webform-submission-cours-particuliers-reservation"] .alert .messages__list,
+form[id*="webform-submission-cours-particuliers-reservation"] .alert .messages__item,
+form[id*="webform-submission-cours-particuliers-reservation"] .alert p,
+form[id*="webform-submission-cours-particuliers-reservation"] .alert ul,
+form[id*="webform-submission-cours-particuliers-reservation"] .alert li,
+.webform-submission-form .alert .messages__content,
+.webform-submission-form .alert .messages__list,
+.webform-submission-form .alert .messages__item,
+.webform-submission-form .alert p,
+.webform-submission-form .alert ul,
+.webform-submission-form .alert li {
+  grid-column: 2 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+form[id*="webform-submission-cours-particuliers-reservation"] .alert ul,
+.webform-submission-form .alert ul {
+  list-style-position: inside !important;
+}
+
+form[id*="webform-submission-cours-particuliers-reservation"] .alert a,
+.webform-submission-form .alert a {
+  color: inherit !important;
+  text-decoration: underline !important;
+}
+
