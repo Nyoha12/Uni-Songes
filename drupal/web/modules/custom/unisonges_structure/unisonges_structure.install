@@ -124,3 +124,27 @@ function unisonges_structure_update_11001(): void {
   $schema = unisonges_structure_schema();
   $database_schema->createTable($table, $schema[$table]);
 }
+
+/**
+ * Initialize non-secret Google Calendar sync configuration defaults.
+ */
+function unisonges_structure_update_11002(): void {
+  $config = \Drupal::configFactory()->getEditable('unisonges_structure.google_calendar');
+  $defaults = [
+    'enabled' => FALSE,
+    'dry_run' => TRUE,
+    'calendar_id' => '',
+    'timezone' => 'Europe/Paris',
+    'batch_size' => 10,
+    'token_provider' => 'env_access_token',
+    'access_token_env_var' => 'UNISONGES_GCAL_ACCESS_TOKEN',
+  ];
+
+  foreach ($defaults as $key => $value) {
+    if ($config->get($key) === NULL) {
+      $config->set($key, $value);
+    }
+  }
+
+  $config->save();
+}

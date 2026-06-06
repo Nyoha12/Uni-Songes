@@ -43,6 +43,25 @@ function unisonges_structure_entity_update(EntityInterface $entity): void {
 }
 
 /**
+ * Implements hook_cron().
+ */
+function unisonges_structure_cron(): void {
+  try {
+    $container = \Drupal::getContainer();
+    if (!$container->has('unisonges_structure.booking_calendar_sync')) {
+      return;
+    }
+
+    $container->get('unisonges_structure.booking_calendar_sync')->processPendingFromCron();
+  }
+  catch (\Throwable $e) {
+    \Drupal::logger('unisonges_booking_sync')->error('Google Calendar booking sync cron failed: @message', [
+      '@message' => $e->getMessage(),
+    ]);
+  }
+}
+
+/**
  * Ensure a Stage/Concert node has a linked ticket product; create/update it as needed.
  *
  * - Creates ticket product/variation if missing.
@@ -747,21 +766,21 @@ function _unisonges_structure_get_submission_element_string(\Drupal\webform\Webf
 function _unisonges_structure_get_booking_sync_timezone(): string {
   $timezone = '';
   try {
-    $timezone = (string) \Drupal::config('system.date')->get('timezone.default');
+    $timezone = (string) \Drupal::config('unisonges_structure.google_calendar')->get('timezone');
   }
   catch (\Throwable $e) {
     $timezone = '';
   }
 
   if ($timezone === '') {
-    $timezone = date_default_timezone_get() ?: 'UTC';
+    $timezone = 'Europe/Paris';
   }
 
   try {
     new \DateTimeZone($timezone);
   }
   catch (\Throwable $e) {
-    return 'UTC';
+    return 'Europe/Paris';
   }
 
   return $timezone;

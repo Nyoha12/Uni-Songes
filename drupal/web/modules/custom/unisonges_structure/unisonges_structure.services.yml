@@ -1,0 +1,21 @@
+services:
+  logger.channel.unisonges_booking_sync:
+    parent: logger.channel_base
+    arguments: ['unisonges_booking_sync']
+
+  unisonges_structure.google_calendar_client:
+    class: Drupal\unisonges_structure\GoogleCalendar\GoogleCalendarClient
+    arguments:
+      - '@http_client'
+      - '@config.factory'
+      - '@logger.channel.unisonges_booking_sync'
+
+  unisonges_structure.booking_calendar_sync:
+    class: Drupal\unisonges_structure\GoogleCalendar\BookingCalendarSyncService
+    arguments:
+      - '@database'
+      - '@entity_type.manager'
+      - '@config.factory'
+      - '@datetime.time'
+      - '@logger.channel.unisonges_booking_sync'
+      - '@unisonges_structure.google_calendar_client'
