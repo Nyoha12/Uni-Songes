@@ -1,0 +1,6 @@
+unisonges_structure.google_calendar_settings:
+  title: 'Unisonges Google Calendar sync'
+  description: 'Configure outgoing course booking synchronization to Google Calendar.'
+  parent: system.admin_config_services
+  route_name: unisonges_structure.google_calendar_settings
+  weight: 100

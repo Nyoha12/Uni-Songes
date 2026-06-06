@@ -1,0 +1,7 @@
+unisonges_structure.google_calendar_settings:
+  path: '/admin/config/services/unisonges-google-calendar'
+  defaults:
+    _form: '\Drupal\unisonges_structure\Form\GoogleCalendarSettingsForm'
+    _title: 'Unisonges Google Calendar sync'
+  requirements:
+    _permission: 'administer site configuration'

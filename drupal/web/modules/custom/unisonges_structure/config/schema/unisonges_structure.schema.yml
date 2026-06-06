@@ -1,0 +1,25 @@
+unisonges_structure.google_calendar:
+  type: config_object
+  label: 'Unisonges Google Calendar sync'
+  mapping:
+    enabled:
+      type: boolean
+      label: 'Enable synchronization'
+    dry_run:
+      type: boolean
+      label: 'Dry-run mode'
+    calendar_id:
+      type: string
+      label: 'Google Calendar ID'
+    timezone:
+      type: string
+      label: 'Event timezone'
+    batch_size:
+      type: integer
+      label: 'Cron batch size'
+    token_provider:
+      type: string
+      label: 'Token provider mode'
+    access_token_env_var:
+      type: string
+      label: 'Access token environment variable'
