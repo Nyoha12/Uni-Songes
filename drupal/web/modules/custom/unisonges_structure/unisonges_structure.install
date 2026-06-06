@@ -1,0 +1,126 @@
+<?php
+
+/**
+ * @file
+ * Install, update, and schema hooks for the Unisonges Structure module.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function unisonges_structure_schema(): array {
+  $schema['unisonges_structure_booking_gcal_sync'] = [
+    'description' => 'Internal dry-run Google Calendar sync mapping for course bookings.',
+    'fields' => [
+      'id' => [
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary key.',
+      ],
+      'sid' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Webform submission ID.',
+      ],
+      'submission_uuid' => [
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'description' => 'Webform submission UUID.',
+      ],
+      'google_event_id' => [
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'description' => 'Google Calendar event ID once real sync is implemented.',
+      ],
+      'sync_status' => [
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => 'pending',
+        'description' => 'Internal sync status, for example pending, synced, or error.',
+      ],
+      'sync_action' => [
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => 'pending_create',
+        'description' => 'Pending action requested for this booking.',
+      ],
+      'reservation_value' => [
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Raw webform_booking reservation value.',
+      ],
+      'payload_json' => [
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => FALSE,
+        'description' => 'Dry-run Google Calendar event payload as JSON.',
+      ],
+      'last_error' => [
+        'type' => 'text',
+        'not null' => FALSE,
+        'description' => 'Last sync error once real sync is implemented.',
+      ],
+      'created' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Unix timestamp when the mapping row was created.',
+      ],
+      'changed' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Unix timestamp when the mapping row was last changed.',
+      ],
+      'last_synced' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'description' => 'Unix timestamp of the last successful real sync.',
+      ],
+      'cancelled' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'description' => 'Unix timestamp when the booking was queued as cancelled.',
+      ],
+    ],
+    'primary key' => ['id'],
+    'unique keys' => [
+      'sid' => ['sid'],
+      'submission_uuid' => ['submission_uuid'],
+    ],
+    'indexes' => [
+      'sync_queue' => ['sync_status', 'sync_action', 'changed'],
+      'google_event_id' => ['google_event_id'],
+      'last_synced' => ['last_synced'],
+    ],
+  ];
+
+  return $schema;
+}
+
+/**
+ * Create the internal Google Calendar dry-run sync mapping table.
+ */
+function unisonges_structure_update_11001(): void {
+  $table = 'unisonges_structure_booking_gcal_sync';
+  $database_schema = \Drupal::database()->schema();
+
+  if ($database_schema->tableExists($table)) {
+    return;
+  }
+
+  $schema = unisonges_structure_schema();
+  $database_schema->createTable($table, $schema[$table]);
+}
