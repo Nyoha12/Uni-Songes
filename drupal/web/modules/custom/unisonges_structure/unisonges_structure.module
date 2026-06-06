@@ -343,9 +343,17 @@ function _unisonges_structure_build_course_reservation_form(): array {
       return \Drupal::service('entity.form_builder')->getForm($submission);
     }
   }
+  catch (\Drupal\Core\Form\FormAjaxException $e) {
+    throw $e;
+  }
+  catch (\Drupal\Core\Form\EnforcedResponseException $e) {
+    throw $e;
+  }
   catch (\Throwable $e) {
-    \Drupal::logger('unisonges_structure')->error('Reservation portal webform build failed: @message', [
-      '@message' => $e->getMessage(),
+    $exception_class = get_class($e);
+    \Drupal::logger('unisonges_structure')->error('Reservation portal webform build failed: @exception: @message', [
+      '@exception' => $exception_class,
+      '@message' => $e->getMessage() ?: $exception_class,
     ]);
   }
 
