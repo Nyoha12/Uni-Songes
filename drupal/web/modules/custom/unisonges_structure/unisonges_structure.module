@@ -647,7 +647,7 @@ function _unisonges_structure_queue_google_calendar_booking_sync(\Drupal\webform
   }
 
   $now = \Drupal::time()->getRequestTime();
-  $cancelled = $sync_action === 'pending_cancel' || unisonges_structure_is_cancelled_booking_value($reservation_value) ? $now : NULL;
+  $cancelled = $sync_action === 'pending_cancel' || _unisonges_structure_is_cancelled_booking_value($reservation_value) ? $now : NULL;
   $fields = [
     'submission_uuid' => (string) $webform_submission->uuid(),
     'sync_status' => 'pending',
