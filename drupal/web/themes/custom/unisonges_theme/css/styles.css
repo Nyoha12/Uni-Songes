@@ -1765,9 +1765,9 @@ form[id*="webform-submission-cours-particuliers-reservation"] .webform-actions{
 }
 
 /* UNISONGES booking form final error/warning layout */
-.webform-submission-form .messages,
-.webform-submission-form .messages.messages--error,
-.webform-submission-form .webform-booking-error {
+.reservation-portal .webform-submission-form .messages,
+.reservation-portal .webform-submission-form .messages.messages--error,
+.reservation-portal .webform-submission-form .webform-booking-error {
   display: block;
   position: relative;
   margin: 1rem 0;
@@ -1781,13 +1781,13 @@ form[id*="webform-submission-cours-particuliers-reservation"] .webform-actions{
   z-index: 1;
 }
 
-.webform-submission-form .messages *,
-.webform-submission-form .webform-booking-error * {
+.reservation-portal .webform-submission-form .messages *,
+.reservation-portal .webform-submission-form .webform-booking-error * {
   color: inherit;
 }
 
-.webform-submission-form .form-item--error-message,
-.webform-submission-form strong.error.form-item--error-message {
+.reservation-portal .webform-submission-form .form-item--error-message,
+.reservation-portal .webform-submission-form strong.error.form-item--error-message {
   display: block;
   margin-top: 0.5rem;
   padding: 0.5rem 0.75rem;
@@ -1798,18 +1798,18 @@ form[id*="webform-submission-cours-particuliers-reservation"] .webform-actions{
   line-height: 1.45;
 }
 
-.webform-submission-form .js-form-item--error input,
-.webform-submission-form .js-form-item--error textarea,
-.webform-submission-form .js-form-item--error select,
-.webform-submission-form .form-item--error input,
-.webform-submission-form .form-item--error textarea,
-.webform-submission-form .form-item--error select {
+.reservation-portal .webform-submission-form .js-form-item--error input,
+.reservation-portal .webform-submission-form .js-form-item--error textarea,
+.reservation-portal .webform-submission-form .js-form-item--error select,
+.reservation-portal .webform-submission-form .form-item--error input,
+.reservation-portal .webform-submission-form .form-item--error textarea,
+.reservation-portal .webform-submission-form .form-item--error select {
   border-color: #e62600;
   box-shadow: 0 0 0 1px rgba(230, 38, 0, 0.15);
 }
 
-.webform-submission-form .messages a,
-.webform-submission-form .webform-booking-error a {
+.reservation-portal .webform-submission-form .messages a,
+.reservation-portal .webform-submission-form .webform-booking-error a {
   color: inherit;
   text-decoration: underline;
 }
@@ -1865,7 +1865,7 @@ form[id*="webform-submission-cours-particuliers-reservation"] .form-item--error 
 }
 
 form[id*="webform-submission-cours-particuliers-reservation"] .alert-wrapper,
-.webform-submission-form .alert-wrapper {
+.reservation-portal .webform-submission-form .alert-wrapper {
   position: static !important;
   inset: auto !important;
   width: auto !important;
@@ -1878,7 +1878,7 @@ form[id*="webform-submission-cours-particuliers-reservation"] .alert,
 form[id*="webform-submission-cours-particuliers-reservation"] .alert.alert-danger,
 form[id*="webform-submission-cours-particuliers-reservation"] .form-item--error-message.alert,
 form[id*="webform-submission-cours-particuliers-reservation"] .form-item--error-message.alert.alert-danger,
-.webform-submission-form .alert.alert-danger {
+.reservation-portal .webform-submission-form .alert.alert-danger {
   position: static !important;
   float: none !important;
   clear: both !important;
@@ -1905,9 +1905,9 @@ form[id*="webform-submission-cours-particuliers-reservation"] .form-item--error-
 form[id*="webform-submission-cours-particuliers-reservation"] .alert.alert-danger svg,
 form[id*="webform-submission-cours-particuliers-reservation"] .alert.alert-danger .glyphicon,
 form[id*="webform-submission-cours-particuliers-reservation"] .alert.alert-danger .icon,
-.webform-submission-form .alert.alert-danger svg,
-.webform-submission-form .alert.alert-danger .glyphicon,
-.webform-submission-form .alert.alert-danger .icon {
+.reservation-portal .webform-submission-form .alert.alert-danger svg,
+.reservation-portal .webform-submission-form .alert.alert-danger .glyphicon,
+.reservation-portal .webform-submission-form .alert.alert-danger .icon {
   grid-column: 1 !important;
   grid-row: 1 / span 3 !important;
   margin: 0.1rem 0 0 0 !important;
@@ -1916,7 +1916,7 @@ form[id*="webform-submission-cours-particuliers-reservation"] .alert.alert-dange
 }
 
 form[id*="webform-submission-cours-particuliers-reservation"] .alert-heading,
-.webform-submission-form .alert-heading {
+.reservation-portal .webform-submission-form .alert-heading {
   display: block !important;
   grid-column: 2 !important;
   margin: 0 !important;
@@ -1933,24 +1933,24 @@ form[id*="webform-submission-cours-particuliers-reservation"] .alert .messages__
 form[id*="webform-submission-cours-particuliers-reservation"] .alert p,
 form[id*="webform-submission-cours-particuliers-reservation"] .alert ul,
 form[id*="webform-submission-cours-particuliers-reservation"] .alert li,
-.webform-submission-form .alert .messages__content,
-.webform-submission-form .alert .messages__list,
-.webform-submission-form .alert .messages__item,
-.webform-submission-form .alert p,
-.webform-submission-form .alert ul,
-.webform-submission-form .alert li {
+.reservation-portal .webform-submission-form .alert .messages__content,
+.reservation-portal .webform-submission-form .alert .messages__list,
+.reservation-portal .webform-submission-form .alert .messages__item,
+.reservation-portal .webform-submission-form .alert p,
+.reservation-portal .webform-submission-form .alert ul,
+.reservation-portal .webform-submission-form .alert li {
   grid-column: 2 !important;
   margin: 0 !important;
   padding: 0 !important;
 }
 
 form[id*="webform-submission-cours-particuliers-reservation"] .alert ul,
-.webform-submission-form .alert ul {
+.reservation-portal .webform-submission-form .alert ul {
   list-style-position: inside !important;
 }
 
 form[id*="webform-submission-cours-particuliers-reservation"] .alert a,
-.webform-submission-form .alert a {
+.reservation-portal .webform-submission-form .alert a {
   color: inherit !important;
   text-decoration: underline !important;
 }

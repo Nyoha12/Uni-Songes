@@ -480,16 +480,27 @@ function unisonges_structure_booking_form_validate(array &$form, \Drupal\Core\Fo
 }
 
 function _unisonges_structure_user_can_book(\Drupal\user\UserInterface $account, ?string &$message = ''): bool {
+  if (!$account->hasField('field_seances_restantes')) {
+    $message = 'Impossible de lire vos droits de cours pour le moment.';
+    return FALSE;
+  }
+
   $remaining = (int) ($account->get('field_seances_restantes')->value ?? 0);
   if ($remaining <= 0) {
     $message = 'Aucune séance disponible. Achetez une séance, un pack, ou choisissez le paiement sur place.';
     return FALSE;
   }
 
-  $expiry_value = $account->get('field_pack_expire_le')->value ?? '';
+  $expiry_value = $account->hasField('field_pack_expire_le') ? ($account->get('field_pack_expire_le')->value ?? '') : '';
   if ($expiry_value) {
-    $today = new \DateTimeImmutable('today');
-    $expiry = new \DateTimeImmutable($expiry_value);
+    try {
+      $today = new \DateTimeImmutable('today');
+      $expiry = new \DateTimeImmutable($expiry_value);
+    }
+    catch (\Throwable $e) {
+      $message = 'Impossible de lire la validité de vos droits de cours pour le moment.';
+      return FALSE;
+    }
     if ($expiry < $today) {
       $message = 'Votre pack a expiré. Merci d’acheter une nouvelle formule pour réserver.';
       return FALSE;
@@ -515,6 +526,17 @@ function _unisonges_structure_apply_course_rights_from_order(\Drupal\commerce_or
   $account = \Drupal\user\Entity\User::load($uid);
   if (!$account) {
     return;
+  }
+
+  foreach (['field_seances_restantes', 'field_essai_utilise', 'field_pack_expire_le'] as $field_name) {
+    if (!$account->hasField($field_name)) {
+      \Drupal::logger('unisonges_structure')->error('Course rights could not be applied for order @order and user @uid because user field @field is missing.', [
+        '@order' => $order->id(),
+        '@uid' => $uid,
+        '@field' => $field_name,
+      ]);
+      return;
+    }
   }
 
   $remaining = (int) ($account->get('field_seances_restantes')->value ?? 0);
@@ -598,6 +620,14 @@ function unisonges_structure_webform_submission_insert(\Drupal\webform\WebformSu
     return;
   }
 
+  if (!$account->hasField('field_seances_restantes')) {
+    \Drupal::logger('unisonges_structure')->error('Reservation submission @sid could not decrement credits for user @uid because field_seances_restantes is missing.', [
+      '@sid' => $webform_submission->id(),
+      '@uid' => $uid,
+    ]);
+    return;
+  }
+
   $remaining = (int) ($account->get('field_seances_restantes')->value ?? 0);
   if ($remaining <= 0) {
     return;
@@ -606,7 +636,7 @@ function unisonges_structure_webform_submission_insert(\Drupal\webform\WebformSu
   $remaining = max(0, $remaining - 1);
   $account->set('field_seances_restantes', $remaining);
 
-  if ($remaining === 0 && !$account->get('field_pack_expire_le')->isEmpty()) {
+  if ($remaining === 0 && $account->hasField('field_pack_expire_le') && !$account->get('field_pack_expire_le')->isEmpty()) {
     $account->set('field_pack_expire_le', NULL);
   }
 
