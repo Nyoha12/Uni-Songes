@@ -14,6 +14,7 @@
  */
 
 use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Url;
 use Drupal\node\NodeInterface;
 use Drupal\commerce_product\Entity\Product;
 use Drupal\commerce_product\Entity\ProductVariation;
@@ -59,6 +60,22 @@ function unisonges_structure_cron(): void {
       '@message' => $e->getMessage(),
     ]);
   }
+}
+
+/**
+ * Implements hook_preprocess_node().
+ */
+function unisonges_structure_preprocess_node(array &$variables): void {
+  $node = $variables['node'] ?? NULL;
+  if (!$node instanceof NodeInterface || (int) $node->id() !== 8) {
+    return;
+  }
+
+  $variables['unisonges_reservation_portal'] = _unisonges_structure_build_reservation_portal_context();
+  $variables['unisonges_reservation_form'] = _unisonges_structure_build_course_reservation_form();
+
+  $variables['elements']['#cache']['contexts'][] = 'user';
+  $variables['content']['#cache']['contexts'][] = 'user';
 }
 
 /**
@@ -211,12 +228,6 @@ function unisonges_structure_form_alter(array &$form, \Drupal\Core\Form\FormStat
   }
 
   $message = '';
-  $reservation_value = $form_state->getValue('reservation');
-  if ($reservation_value === NULL || $reservation_value === '' || $reservation_value === []) {
-    $form_state->setErrorByName('reservation', 'Choisissez un créneau.');
-    return;
-  }
-
   $current_user = \Drupal::currentUser();
 
   if ($current_user->isAnonymous()) {
@@ -225,7 +236,7 @@ function unisonges_structure_form_alter(array &$form, \Drupal\Core\Form\FormStat
     }
     $form['unisonges_booking_notice'] = [
       '#type' => 'markup',
-      '#markup' => '<div class="messages messages--error" role="alert" aria-live="polite"><div class="messages__content">Connectez-vous pour réserver un créneau.</div></div>',
+      '#markup' => '<div class="messages messages--status" role="status" aria-live="polite"><div class="messages__content">Connectez-vous pour réserver un créneau.</div></div>',
       '#weight' => 999,
     ];
   }
@@ -238,7 +249,7 @@ function unisonges_structure_form_alter(array &$form, \Drupal\Core\Form\FormStat
       $safe = htmlspecialchars($message ?: 'Vous ne pouvez pas réserver pour le moment.', ENT_QUOTES, 'UTF-8');
       $form['unisonges_booking_notice'] = [
         '#type' => 'markup',
-        '#markup' => '<div class="messages messages--error" role="alert" aria-live="polite"><div class="messages__content">' . $safe . '</div></div>',
+        '#markup' => '<div class="messages messages--status" role="status" aria-live="polite"><div class="messages__content">' . $safe . '</div></div>',
         '#weight' => 999,
       ];
     }
@@ -246,6 +257,149 @@ function unisonges_structure_form_alter(array &$form, \Drupal\Core\Form\FormStat
 
   $form['#validate'][] = 'unisonges_structure_booking_form_validate';
   _unisonges_structure_booking_form_ux_overrides($form);
+}
+
+/**
+ * Builds the front reservation portal state for /reserver.
+ */
+function _unisonges_structure_build_reservation_portal_context(): array {
+  $context = [
+    'is_anonymous' => TRUE,
+    'display_name' => '',
+    'remaining' => NULL,
+    'remaining_label' => 'Connectez-vous pour voir vos séances disponibles.',
+    'expiry_label' => '',
+    'status' => 'anonymous',
+    'status_label' => 'Connexion requise pour confirmer une réservation.',
+    'message' => 'Vous pouvez consulter les disponibilités. La validation du créneau demande un compte connecté.',
+    'can_book' => FALSE,
+    'login_url' => _unisonges_structure_safe_route_url('user.login', '/user/login', ['destination' => '/reserver']),
+    'register_url' => _unisonges_structure_safe_route_url('user.register', '/user/register', ['destination' => '/reserver']),
+    'purchase_url' => '/cours',
+    'purchase_label' => 'Acheter une séance ou un pack',
+  ];
+
+  $current_user = \Drupal::currentUser();
+  if ($current_user->isAnonymous()) {
+    return $context;
+  }
+
+  $context['is_anonymous'] = FALSE;
+  $account = \Drupal\user\Entity\User::load($current_user->id());
+  if (!$account) {
+    $context['status'] = 'error';
+    $context['status_label'] = 'Compte introuvable.';
+    $context['message'] = 'Impossible de lire vos droits de cours pour le moment.';
+    return $context;
+  }
+
+  $remaining = $account->hasField('field_seances_restantes') ? max(0, (int) ($account->get('field_seances_restantes')->value ?? 0)) : 0;
+  $message = '';
+  $can_book = _unisonges_structure_user_can_book($account, $message);
+  $expiry_value = $account->hasField('field_pack_expire_le') ? (string) ($account->get('field_pack_expire_le')->value ?? '') : '';
+
+  $context['display_name'] = trim($account->getDisplayName());
+  $context['remaining'] = $remaining;
+  $context['remaining_label'] = $remaining <= 1 ? $remaining . ' séance disponible' : $remaining . ' séances disponibles';
+  $context['can_book'] = $can_book;
+  $context['expiry_label'] = _unisonges_structure_format_course_pack_expiry($expiry_value);
+
+  if ($can_book) {
+    $context['status'] = 'ready';
+    $context['status_label'] = 'Vous pouvez réserver un créneau.';
+    $context['message'] = 'Choisissez une disponibilité, puis complétez les informations du cours.';
+  }
+  else {
+    $context['status'] = 'blocked';
+    $context['status_label'] = 'Aucune réservation possible pour le moment.';
+    $context['message'] = $message ?: 'Achetez une séance ou un pack avant de confirmer un créneau.';
+  }
+
+  return $context;
+}
+
+/**
+ * Builds the course reservation webform render array.
+ */
+function _unisonges_structure_build_course_reservation_form(): array {
+  try {
+    if (!\Drupal::moduleHandler()->moduleExists('webform')) {
+      return _unisonges_structure_reservation_portal_notice('Le formulaire de réservation est indisponible pour le moment.');
+    }
+
+    $webform = \Drupal::entityTypeManager()->getStorage('webform')->load('cours_particuliers_reservation');
+    if (!$webform) {
+      return _unisonges_structure_reservation_portal_notice('Le formulaire de réservation est introuvable.');
+    }
+
+    if (method_exists($webform, 'getSubmissionForm')) {
+      return $webform->getSubmissionForm();
+    }
+
+    if (class_exists('Drupal\webform\Entity\WebformSubmission')) {
+      $submission = \Drupal\webform\Entity\WebformSubmission::create([
+        'webform_id' => $webform->id(),
+      ]);
+      return \Drupal::service('entity.form_builder')->getForm($submission);
+    }
+  }
+  catch (\Throwable $e) {
+    \Drupal::logger('unisonges_structure')->error('Reservation portal webform build failed: @message', [
+      '@message' => $e->getMessage(),
+    ]);
+  }
+
+  return _unisonges_structure_reservation_portal_notice('Le formulaire de réservation ne peut pas être affiché pour le moment.');
+}
+
+/**
+ * Builds a small portal notice render array.
+ */
+function _unisonges_structure_reservation_portal_notice(string $message): array {
+  return [
+    '#type' => 'markup',
+    '#markup' => '<p class="reservation-portal__notice">' . htmlspecialchars($message, ENT_QUOTES, 'UTF-8') . '</p>',
+  ];
+}
+
+/**
+ * Formats the course pack expiry date for the front portal.
+ */
+function _unisonges_structure_format_course_pack_expiry(string $value): string {
+  if ($value === '') {
+    return '';
+  }
+
+  try {
+    $date = new \DateTimeImmutable($value);
+  }
+  catch (\Throwable $e) {
+    return '';
+  }
+
+  $today = new \DateTimeImmutable('today');
+  $label = $date->format('d/m/Y');
+  if ($date < $today) {
+    return 'Pack expiré le ' . $label;
+  }
+
+  return 'Pack valable jusqu’au ' . $label;
+}
+
+/**
+ * Builds a route URL with a static fallback.
+ */
+function _unisonges_structure_safe_route_url(string $route_name, string $fallback, array $query = []): string {
+  try {
+    return Url::fromRoute($route_name, [], ['query' => $query])->toString();
+  }
+  catch (\Throwable $e) {
+    if (!$query) {
+      return $fallback;
+    }
+
+    return $fallback . '?' . http_build_query($query);
+  }
 }
 
 
