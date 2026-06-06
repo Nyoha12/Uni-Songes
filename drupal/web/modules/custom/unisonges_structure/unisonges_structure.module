@@ -571,7 +571,7 @@ function _unisonges_structure_apply_course_rights_from_order(\Drupal\commerce_or
     switch ($product->bundle()) {
       case 'cours_essai':
         if (!$essai_utilise) {
-          $remaining += $quantity;
+          $remaining += 1;
           $essai_utilise = TRUE;
           $changed = TRUE;
         }
