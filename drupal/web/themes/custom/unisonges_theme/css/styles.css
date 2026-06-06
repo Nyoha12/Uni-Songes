@@ -1955,3 +1955,154 @@ form[id*="webform-submission-cours-particuliers-reservation"] .alert a,
   text-decoration: underline !important;
 }
 
+/* UNISONGES_RESERVATION_PORTAL */
+.reservation-portal{
+  display: grid;
+  gap: 1rem;
+}
+
+.reservation-portal .hero-panel{
+  margin-bottom: 0;
+}
+
+.reservation-portal__intro,
+.reservation-portal__summary,
+.reservation-portal__form{
+  border: 1px solid rgba(15,23,42,.14);
+  border-radius: 12px;
+  background: rgba(255,255,255,.74);
+  box-shadow: 0 10px 24px rgba(2,6,23,.10);
+}
+
+.reservation-portal__intro{
+  padding: 1rem 1.15rem;
+}
+
+.reservation-portal__intro p,
+.reservation-portal__account p,
+.reservation-portal__steps p{
+  margin-bottom: 0;
+}
+
+.reservation-portal__summary{
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(260px, .9fr);
+  gap: 1rem;
+  padding: 1.15rem;
+}
+
+.reservation-portal__account,
+.reservation-portal__steps{
+  min-width: 0;
+}
+
+.reservation-portal__account h2,
+.reservation-portal__steps h2,
+.reservation-portal__form h2{
+  font-size: 1.25rem;
+  margin-bottom: .6rem;
+}
+
+.reservation-portal__status{
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  margin: 0 0 .75rem !important;
+  padding: .35rem .65rem;
+  border-radius: 999px;
+  background: rgba(15,118,110,.12);
+  color: #0b4f49;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.reservation-portal__summary--blocked .reservation-portal__status,
+.reservation-portal__summary--error .reservation-portal__status{
+  background: rgba(245,158,11,.18);
+  color: #7a4a00;
+}
+
+.reservation-portal__summary--anonymous .reservation-portal__status{
+  background: rgba(37,99,235,.12);
+  color: #173b7a;
+}
+
+.reservation-portal__rights{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .75rem;
+  margin: 1rem 0 0;
+}
+
+.reservation-portal__rights div{
+  padding: .85rem;
+  border: 1px solid rgba(15,23,42,.12);
+  border-radius: 10px;
+  background: rgba(255,255,255,.62);
+}
+
+.reservation-portal__rights dt{
+  margin: 0 0 .25rem;
+  color: #475569;
+  font-size: .92rem;
+  font-weight: 700;
+}
+
+.reservation-portal__rights dd{
+  margin: 0;
+  color: #0b1220;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.reservation-portal__actions{
+  display: flex;
+  flex-wrap: wrap;
+  gap: .65rem;
+  margin-top: 1rem;
+}
+
+.reservation-portal__steps ol{
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.reservation-portal__steps li{
+  margin: 0 0 .55rem;
+}
+
+.reservation-portal__steps li:last-child{
+  margin-bottom: 0;
+}
+
+.reservation-portal__form{
+  padding: 1.15rem;
+}
+
+.reservation-portal__notice{
+  margin: 0;
+  padding: .85rem 1rem;
+  border: 1px solid rgba(245,158,11,.45);
+  border-radius: 10px;
+  background: rgba(245,158,11,.12);
+  color: #513200;
+}
+
+@media (max-width: 760px){
+  .reservation-portal__summary,
+  .reservation-portal__rights{
+    grid-template-columns: 1fr;
+  }
+
+  .reservation-portal__intro,
+  .reservation-portal__summary,
+  .reservation-portal__form{
+    border-radius: 10px;
+  }
+}
+
+@media (max-width: 460px){
+  .reservation-portal__actions .btn{
+    width: 100%;
+  }
+}

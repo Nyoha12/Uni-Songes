@@ -1,12 +1,65 @@
-<article class="unisonges-node-page">
-  {% include '@unisonges_theme/includes/_hero.html.twig' with { title: label, intro: 'Réservation de cours de didgeridoo en présentiel ou en visio.' } only %}
-  {% if content.body %}
-    <section class="panel node-body">{{ content.body }}</section>
-  {% endif %}
-  {% include '@unisonges_theme/includes/_actions-row.html.twig' with {
-    actions: [
-      { url: '/cours', label: 'Voir les formules de cours' },
-      { url: '/contact', label: 'Nous contacter' }
-    ]
+{% set portal = unisonges_reservation_portal|default({}) %}
+{% set body_markup = content.body|render %}
+
+<article class="unisonges-node-page reservation-portal">
+  {% include '@unisonges_theme/includes/_hero.html.twig' with {
+    title: 'Réserver un cours',
+    intro: 'Choisissez un créneau de cours particulier, puis complétez les informations utiles pour préparer la séance.'
   } only %}
+
+  <section class="reservation-portal__intro">
+    <p>Les disponibilités sont consultables sans compte. Pour confirmer une réservation, connectez-vous avec un compte disposant d’une séance active.</p>
+  </section>
+
+  <section class="reservation-portal__summary reservation-portal__summary--{{ portal.status|default('anonymous') }}">
+    <div class="reservation-portal__account">
+      <h2>Votre accès réservation</h2>
+      <p class="reservation-portal__status">{{ portal.status_label }}</p>
+      <p>{{ portal.message }}</p>
+
+      {% if portal.is_anonymous %}
+        <div class="reservation-portal__actions">
+          <a class="btn btn--cta" href="{{ portal.login_url }}">Se connecter</a>
+          <a class="btn" href="{{ portal.register_url }}">Créer un compte</a>
+        </div>
+      {% else %}
+        <dl class="reservation-portal__rights">
+          <div>
+            <dt>Séances restantes</dt>
+            <dd>{{ portal.remaining_label }}</dd>
+          </div>
+          {% if portal.expiry_label %}
+            <div>
+              <dt>Validité</dt>
+              <dd>{{ portal.expiry_label }}</dd>
+            </div>
+          {% endif %}
+        </dl>
+
+        {% if not portal.can_book %}
+          <div class="reservation-portal__actions">
+            <a class="btn btn--cta" href="{{ portal.purchase_url }}">{{ portal.purchase_label }}</a>
+          </div>
+        {% endif %}
+      {% endif %}
+    </div>
+
+    <div class="reservation-portal__steps" aria-label="Fonctionnement">
+      <h2>Comment ça se passe</h2>
+      <ol>
+        <li>Consultez les créneaux disponibles.</li>
+        <li>Connectez-vous ou vérifiez vos séances restantes.</li>
+        <li>Choisissez le mode du cours et validez la demande.</li>
+      </ol>
+    </div>
+  </section>
+
+  {% if body_markup|striptags|trim %}
+    <section class="panel node-body">{{ body_markup }}</section>
+  {% endif %}
+
+  <section class="reservation-portal__form" aria-labelledby="reservation-form-title">
+    <h2 id="reservation-form-title">Choisir un créneau</h2>
+    {{ unisonges_reservation_form }}
+  </section>
 </article>
