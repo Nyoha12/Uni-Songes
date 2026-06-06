@@ -24,7 +24,7 @@ Les détails historiques restent dans Git, les PR GitHub et les logs de déploie
 - VPS SSH : `ubuntu@91.134.255.237`.
 - Chemin Drupal VPS : `/var/www/unisonges/repo/drupal`.
 - Chemin Git VPS : `/var/www/unisonges/repo`.
-- HEAD prod vérifié après PR #27 : `74e393a`.
+- HEAD prod vérifié après PR #29 : `1435cf6`.
 
 ## Workflow validé
 Le workflow de travail principal est :
@@ -49,14 +49,16 @@ Le workflow de travail principal est :
 ## Réservation /reserver
 - PR #26 appliquée : ajout du portail `/reserver`.
 - PR #27 appliquée : correction du “Oops” AJAX après soumission.
+- PR #29 appliquée : durcissement du flux réservation et du CSS du portail.
 - `/reserver` affiche le portail et le webform `cours_particuliers_reservation`.
-- Le test connecté après PR #27 a confirmé :
-  - soumission créée;
-  - crédit décrémenté;
-  - ligne de queue Google Calendar créée;
-  - plus de “Oops” post-submit.
-- Les soumissions test `sid=3` et `sid=4` ont été nettoyées.
-- Le crédit `uid=1` a été remis à 0.
+- PR #29 a été mergée, appliquée sur le VPS, puis testée en production avec `uid=2`.
+- Le test connecté a confirmé :
+  - soumission `sid=5` créée;
+  - crédit décrémenté de 1 à 0;
+  - ligne Google Calendar créée en `pending_create` avec `last_error` à `NULL`;
+  - aucun “Oops” ni erreur Drupal observé.
+- La soumission test `sid=5` et sa ligne Google Calendar ont été nettoyées.
+- Le crédit `uid=2` a été remis à 1 après nettoyage.
 
 ## Compte test
 Compte dédié aux tests `/reserver` :
@@ -73,7 +75,5 @@ Ne pas utiliser `uid=1` pour les tests réservation.
 - Ne pas passer en synchronisation réelle avant validation complète du flux interne de réservation.
 
 ## Prochaine étape
-- Tester le flux `/reserver` avec `uid=2`.
-- Nettoyer les données test après usage.
-- Continuer la stabilisation réservation interne.
-- Ensuite seulement préparer l’activation contrôlée de Google Calendar.
+- Utiliser `uid=2` pour les futurs tests `/reserver`, puis nettoyer les données test.
+- Garder la vraie synchronisation Google Calendar désactivée jusqu’à validation dédiée.
