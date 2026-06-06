@@ -405,6 +405,8 @@ function unisonges_structure_webform_submission_insert(\Drupal\webform\WebformSu
     return;
   }
 
+  _unisonges_structure_queue_google_calendar_booking_sync($webform_submission, 'pending_create');
+
   $uid = (int) $webform_submission->getOwnerId();
   if (!$uid) {
     return;
@@ -439,7 +441,13 @@ function unisonges_structure_webform_submission_update(\Drupal\webform\WebformSu
 
   $original_reservation = NULL;
   if (isset($webform_submission->original) && $webform_submission->original instanceof \Drupal\webform\WebformSubmissionInterface) {
-    $original_reservation = (string) ($webform_submission->original->getElementData('reservation') ?? '');
+    $original_reservation = _unisonges_structure_get_submission_element_string($webform_submission->original, 'reservation');
+  }
+
+  $current_reservation = _unisonges_structure_get_submission_element_string($webform_submission, 'reservation');
+  if ($current_reservation !== '' && $original_reservation !== $current_reservation) {
+    $sync_action = _unisonges_structure_is_cancelled_booking_value($current_reservation) ? 'pending_cancel' : 'pending_update';
+    _unisonges_structure_queue_google_calendar_booking_sync($webform_submission, $sync_action);
   }
 
   _unisonges_structure_log_booking_transition($webform_submission, 'update', $original_reservation);
@@ -450,7 +458,7 @@ function _unisonges_structure_log_booking_transition(\Drupal\webform\WebformSubm
     return;
   }
 
-  $current_reservation = (string) ($webform_submission->getElementData('reservation') ?? '');
+  $current_reservation = _unisonges_structure_get_submission_element_string($webform_submission, 'reservation');
   $transition = 'unchanged';
 
   if ($trigger === 'insert') {
@@ -488,7 +496,394 @@ function _unisonges_structure_log_booking_transition(\Drupal\webform\WebformSubm
 }
 
 function _unisonges_structure_is_cancelled_booking_value(?string $value): bool {
+  return unisonges_structure_is_cancelled_booking_value($value);
+}
+
+/**
+ * UNISONGES_GOOGLE_CALENDAR_BOOKING_SYNC_SKELETON
+ *
+ * This skeleton only stores internal dry-run Google Calendar event payloads
+ * for course bookings. It does not perform OAuth, call Google APIs, send
+ * events externally, or create a real system cron task.
+ *
+ * Next step: add Google OAuth/API integration, then process this table from
+ * a Drupal cron or queue runner scheduled every 5 minutes.
+ */
+
+/**
+ * Parses a webform_booking reservation value.
+ */
+function unisonges_structure_parse_booking_reservation_value(?string $value): ?array {
+  $value = trim((string) $value);
+  if ($value === '') {
+    return NULL;
+  }
+
+  if (preg_match('/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\|(\d+)$/', $value, $matches) !== 1) {
+    return NULL;
+  }
+
+  $timezone = _unisonges_structure_get_booking_sync_timezone();
+  try {
+    $start = new \DateTimeImmutable($matches[1] . ' ' . $matches[2], new \DateTimeZone($timezone));
+  }
+  catch (\Throwable $e) {
+    return NULL;
+  }
+
+  if ($start->format('Y-m-d H:i') !== $matches[1] . ' ' . $matches[2]) {
+    return NULL;
+  }
+
+  $seats = (int) $matches[3];
+  return [
+    'raw' => $value,
+    'date' => $matches[1],
+    'time' => $matches[2],
+    'seats' => $seats,
+    'cancelled' => $seats === 0,
+    'start' => $start,
+    'timezone' => $timezone,
+  ];
+}
+
+/**
+ * Determines whether a reservation value is a webform_booking cancellation.
+ */
+function unisonges_structure_is_cancelled_booking_value(?string $value): bool {
+  $parsed = unisonges_structure_parse_booking_reservation_value($value);
+  if ($parsed !== NULL) {
+    return !empty($parsed['cancelled']);
+  }
+
   $value = trim((string) $value);
   return $value !== '' && preg_match('/\|0$/', $value) === 1;
 }
 
+/**
+ * Builds a Google Calendar event payload without sending it.
+ */
+function unisonges_structure_build_google_calendar_dry_run_payload(\Drupal\webform\WebformSubmissionInterface $webform_submission): ?array {
+  $reservation = unisonges_structure_parse_booking_reservation_value(
+    _unisonges_structure_get_submission_element_string($webform_submission, 'reservation')
+  );
+  if ($reservation === NULL || !$reservation['start'] instanceof \DateTimeImmutable) {
+    return NULL;
+  }
+
+  $slot_duration = _unisonges_structure_get_booking_slot_duration_minutes($webform_submission);
+  $end = $reservation['start']->modify('+' . $slot_duration . ' minutes');
+  $timezone = (string) $reservation['timezone'];
+
+  return [
+    'summary' => _unisonges_structure_build_booking_google_summary($webform_submission),
+    'location' => _unisonges_structure_build_booking_google_location($webform_submission),
+    'description' => _unisonges_structure_build_booking_google_description($webform_submission),
+    'start' => [
+      'dateTime' => $reservation['start']->format(\DateTimeInterface::RFC3339),
+      'timeZone' => $timezone,
+    ],
+    'end' => [
+      'dateTime' => $end->format(\DateTimeInterface::RFC3339),
+      'timeZone' => $timezone,
+    ],
+    'extendedProperties' => [
+      'private' => [
+        'drupal_webform_id' => $webform_submission->getWebform()->id(),
+        'drupal_submission_id' => (string) $webform_submission->id(),
+        'drupal_submission_uuid' => (string) $webform_submission->uuid(),
+        'unisonges_sync_version' => '1',
+      ],
+    ],
+  ];
+}
+
+/**
+ * Queues an internal dry-run Google Calendar sync action.
+ */
+function _unisonges_structure_queue_google_calendar_booking_sync(\Drupal\webform\WebformSubmissionInterface $webform_submission, string $sync_action): void {
+  if ($webform_submission->getWebform()->id() !== 'cours_particuliers_reservation') {
+    return;
+  }
+
+  if (!in_array($sync_action, ['pending_create', 'pending_update', 'pending_cancel'], TRUE)) {
+    return;
+  }
+
+  $reservation_value = _unisonges_structure_get_submission_element_string($webform_submission, 'reservation');
+  if ($reservation_value === '') {
+    return;
+  }
+
+  $sid = (int) $webform_submission->id();
+  if ($sid <= 0) {
+    return;
+  }
+
+  $table = _unisonges_structure_booking_sync_table_name();
+  if (!_unisonges_structure_booking_sync_table_exists()) {
+    static $missing_table_logged = FALSE;
+    if (!$missing_table_logged) {
+      \Drupal::logger('unisonges_booking_sync')->warning('Booking sync table @table is missing; dry-run queue skipped until database updates run.', [
+        '@table' => $table,
+      ]);
+      $missing_table_logged = TRUE;
+    }
+    return;
+  }
+
+  $payload = unisonges_structure_build_google_calendar_dry_run_payload($webform_submission);
+  $payload_json = NULL;
+  $last_error = NULL;
+  if ($payload === NULL) {
+    $last_error = 'Unable to build dry-run Google Calendar payload from reservation value.';
+  }
+  else {
+    $payload_json = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    if ($payload_json === FALSE) {
+      $payload_json = NULL;
+      $last_error = 'Unable to JSON encode dry-run Google Calendar payload.';
+    }
+  }
+
+  $now = \Drupal::time()->getRequestTime();
+  $cancelled = $sync_action === 'pending_cancel' || _unisonges_structure_is_cancelled_booking_value($reservation_value) ? $now : NULL;
+  $fields = [
+    'submission_uuid' => (string) $webform_submission->uuid(),
+    'sync_status' => 'pending',
+    'sync_action' => $sync_action,
+    'reservation_value' => $reservation_value,
+    'payload_json' => $payload_json,
+    'last_error' => $last_error,
+    'changed' => $now,
+    'cancelled' => $cancelled,
+  ];
+
+  try {
+    \Drupal::database()->merge($table)
+      ->keys(['sid' => $sid])
+      ->insertFields($fields + [
+        'sid' => $sid,
+        'google_event_id' => NULL,
+        'created' => $now,
+        'last_synced' => NULL,
+      ])
+      ->updateFields($fields)
+      ->execute();
+
+    \Drupal::logger('unisonges_booking_sync')->notice(
+      'Booking Google Calendar dry-run sync queued as @action for submission @sid (uuid=@uuid, reservation=@reservation).',
+      [
+        '@action' => $sync_action,
+        '@sid' => $sid,
+        '@uuid' => $webform_submission->uuid(),
+        '@reservation' => $reservation_value,
+      ]
+    );
+  }
+  catch (\Throwable $e) {
+    \Drupal::logger('unisonges_booking_sync')->error(
+      'Booking Google Calendar dry-run sync queue failed for submission @sid: @message',
+      [
+        '@sid' => $sid,
+        '@message' => $e->getMessage(),
+      ]
+    );
+  }
+}
+
+/**
+ * Returns the internal sync table name.
+ */
+function _unisonges_structure_booking_sync_table_name(): string {
+  return 'unisonges_structure_booking_gcal_sync';
+}
+
+/**
+ * Checks whether the internal sync table is available.
+ */
+function _unisonges_structure_booking_sync_table_exists(): bool {
+  try {
+    return \Drupal::database()->schema()->tableExists(_unisonges_structure_booking_sync_table_name());
+  }
+  catch (\Throwable $e) {
+    return FALSE;
+  }
+}
+
+/**
+ * Returns a submission element value as a compact string.
+ */
+function _unisonges_structure_get_submission_element_string(\Drupal\webform\WebformSubmissionInterface $webform_submission, string $element_key): string {
+  $value = $webform_submission->getElementData($element_key);
+  if ($value === NULL) {
+    return '';
+  }
+
+  if (is_array($value)) {
+    $parts = [];
+    foreach ($value as $item) {
+      if (is_scalar($item)) {
+        $parts[] = trim((string) $item);
+      }
+    }
+    return trim(implode(', ', array_filter($parts, 'strlen')));
+  }
+
+  if (is_bool($value)) {
+    return $value ? '1' : '0';
+  }
+
+  if (!is_scalar($value)) {
+    return '';
+  }
+
+  return trim((string) $value);
+}
+
+/**
+ * Resolves the site timezone used for booking dry-run payloads.
+ */
+function _unisonges_structure_get_booking_sync_timezone(): string {
+  $timezone = '';
+  try {
+    $timezone = (string) \Drupal::config('system.date')->get('timezone.default');
+  }
+  catch (\Throwable $e) {
+    $timezone = '';
+  }
+
+  if ($timezone === '') {
+    $timezone = date_default_timezone_get() ?: 'UTC';
+  }
+
+  try {
+    new \DateTimeZone($timezone);
+  }
+  catch (\Throwable $e) {
+    return 'UTC';
+  }
+
+  return $timezone;
+}
+
+/**
+ * Reads the webform_booking slot duration from the reservation element.
+ */
+function _unisonges_structure_get_booking_slot_duration_minutes(\Drupal\webform\WebformSubmissionInterface $webform_submission): int {
+  $element = _unisonges_structure_get_webform_element_definition($webform_submission, 'reservation');
+  $duration = isset($element['#slot_duration']) ? (int) $element['#slot_duration'] : 0;
+
+  return $duration > 0 ? $duration : 60;
+}
+
+/**
+ * Returns a webform element definition when available.
+ */
+function _unisonges_structure_get_webform_element_definition(\Drupal\webform\WebformSubmissionInterface $webform_submission, string $element_key): array {
+  $webform = $webform_submission->getWebform();
+
+  try {
+    if (method_exists($webform, 'getElementDecoded')) {
+      $element = $webform->getElementDecoded($element_key);
+      if (is_array($element)) {
+        return $element;
+      }
+    }
+
+    if (method_exists($webform, 'getElementsDecoded')) {
+      $elements = $webform->getElementsDecoded();
+      if (isset($elements[$element_key]) && is_array($elements[$element_key])) {
+        return $elements[$element_key];
+      }
+    }
+  }
+  catch (\Throwable $e) {
+    return [];
+  }
+
+  return [];
+}
+
+/**
+ * Builds the Google Calendar summary for a course booking.
+ */
+function _unisonges_structure_build_booking_google_summary(\Drupal\webform\WebformSubmissionInterface $webform_submission): string {
+  $parts = ['Cours particulier'];
+  foreach (['instrument', 'mode_cours'] as $element_key) {
+    $label = _unisonges_structure_get_submission_option_label($webform_submission, $element_key);
+    if ($label !== '') {
+      $parts[] = $label;
+    }
+  }
+
+  $owner = $webform_submission->getOwner();
+  if ($owner && trim($owner->getDisplayName()) !== '') {
+    $parts[] = trim($owner->getDisplayName());
+  }
+
+  return implode(' - ', $parts);
+}
+
+/**
+ * Builds the Google Calendar location for a course booking.
+ */
+function _unisonges_structure_build_booking_google_location(\Drupal\webform\WebformSubmissionInterface $webform_submission): string {
+  $mode = _unisonges_structure_get_submission_element_string($webform_submission, 'mode_cours');
+  if ($mode === 'domicile') {
+    $address = _unisonges_structure_get_submission_element_string($webform_submission, 'adresse_domicile');
+    return $address !== '' ? $address : 'Domicile';
+  }
+
+  if ($mode === 'visio') {
+    $platform = _unisonges_structure_get_submission_option_label($webform_submission, 'plateforme_visio');
+    return $platform !== '' ? $platform : 'Visio';
+  }
+
+  if ($mode === 'studio') {
+    // Confirmed from the current webform description; make configurable before real sync.
+    return '1 rue du chemin vert, 93300 Aubervilliers';
+  }
+
+  return '';
+}
+
+/**
+ * Builds the Google Calendar description for a course booking.
+ */
+function _unisonges_structure_build_booking_google_description(\Drupal\webform\WebformSubmissionInterface $webform_submission): string {
+  $lines = [
+    'sid: ' . (string) $webform_submission->id(),
+    'uuid: ' . (string) $webform_submission->uuid(),
+    'uid: ' . (string) $webform_submission->getOwnerId(),
+    'telephone: ' . _unisonges_structure_get_submission_element_string($webform_submission, 'telephone'),
+    'instrument: ' . _unisonges_structure_get_submission_option_label($webform_submission, 'instrument'),
+    'niveau_cours: ' . _unisonges_structure_get_submission_option_label($webform_submission, 'niveau_cours'),
+    'notes_supplementaires: ' . _unisonges_structure_get_submission_element_string($webform_submission, 'notes_supplementaires'),
+    'didgeridoo_pret: ' . _unisonges_structure_get_submission_option_label($webform_submission, 'didgeridoo_pret'),
+  ];
+
+  return implode("\n", $lines);
+}
+
+/**
+ * Returns an option label for a submitted value when the webform exposes it.
+ */
+function _unisonges_structure_get_submission_option_label(\Drupal\webform\WebformSubmissionInterface $webform_submission, string $element_key): string {
+  $value = _unisonges_structure_get_submission_element_string($webform_submission, $element_key);
+  if ($value === '') {
+    return '';
+  }
+
+  $element = _unisonges_structure_get_webform_element_definition($webform_submission, $element_key);
+  $options = $element['#options'] ?? [];
+  if (!is_array($options)) {
+    return $value;
+  }
+
+  if (isset($options[$value]) && is_scalar($options[$value])) {
+    return trim((string) $options[$value]);
+  }
+
+  return $value;
+}
