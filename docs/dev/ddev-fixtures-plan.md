@@ -61,9 +61,35 @@ the five `local.fixture.*` users through Drupal user entity APIs.
   6 months.
 - The command refuses `uid=1`, mail collisions, duplicate lookups, and any
   non-`local.fixture.*` username.
-- It does not create or update Commerce stores, gateways, products, orders,
-  webform submissions, Google Calendar data, `config/sync`, Composer files, or
-  `.ddev` files.
+- The user fixture phase itself does not create or update Commerce stores,
+  gateways, products, orders, webform submissions, Google Calendar data,
+  `config/sync`, Composer files, or `.ddev` files.
+
+## Implemented Phase 3
+
+`drupal/scripts/create-local-fixtures.sh` now includes a guarded Commerce
+fixture phase after the user fixture phase.
+
+- `--dry-run` remains the default and prints the exact Commerce fixture changes
+  that would be made after active Commerce config prerequisites are present.
+- `--apply` can create or update only local fixture Commerce entities:
+  `[Local Fixture] Store`, payment gateway `local_fixture_manual`, and products
+  or variations with `LOCAL-FIXTURE-*` SKUs.
+- The Commerce phase uses Drupal entity APIs only. It does not use raw SQL,
+  does not run `drush config:import`, and does not modify `config/sync`,
+  Composer files, `.ddev`, orders, webform submissions, or Google Calendar data.
+- If a non-fixture Commerce store already exists, the fixture products use it
+  without changing that store. A fixture store is created only when no store is
+  available.
+- If the required active Commerce currency, product types, variation types,
+  store type, order item type, or manual payment plugin are missing, the
+  Commerce phase stops before creating stores, gateways, products, or
+  variations.
+- The current local blocker for a standard-profile fixture site is the missing
+  active Commerce config for `commerce_currency.EUR` plus the four course
+  product and variation types. The next requirement is a separate reviewed local
+  bootstrap step that creates or imports only those allowlisted active config
+  entities without a broad config import.
 
 ## Fixture Source Strategy
 
@@ -138,16 +164,17 @@ default documented by the future script.
 The generator should not create an administrator account and should not use
 `uid=1` for functional tests.
 
-## Future Commerce Store, Gateway, Products
+## Commerce Store, Gateway, Products
 
-Fixtures should use a local Commerce store and a local manual/test payment
-gateway only. If a store already exists, use it without overwriting non-fixture
-business data. If no store exists, create a local store with an `example.invalid`
-mail address and EUR as the default currency.
+Fixtures use a local Commerce store and a local manual/test payment gateway
+only. If a store already exists, the command uses it without overwriting
+non-fixture business data. If no store exists, it creates a local fixture store
+with an `example.invalid` mail address and EUR as the default currency.
 
 Payment assumptions:
 
-- use a manual/test gateway such as `manual`;
+- use the local gateway `local_fixture_manual` with the Commerce `manual`
+  plugin;
 - do not require PayPal, Stripe, secrets, callbacks, or external network access;
 - keep order completion local and deterministic;
 - assert that credits are granted only after the order reaches `completed` and
@@ -162,9 +189,11 @@ Minimum fixture products and variations:
 | `cours_avance` | `cours_avance` | `LOCAL-FIXTURE-COURS-AVANCE` | Grants `quantity` credits. |
 | `pack_4_deb_inter` | `pack_4_deb_inter` | `LOCAL-FIXTURE-PACK-4-DEB-INTER` | Grants `4 * quantity` credits and sets or extends `field_pack_expire_le` by 6 months. |
 
-Use small deterministic EUR prices. The exact values are not business facts; the
-important part is that local checkout can create paid/completed orders without a
-real payment provider.
+The fixture prices are deterministic local test values: 20 EUR for trial,
+40 EUR for beginner/intermediate, 40 EUR for advanced, and 100 EUR for the
+pack of four. The exact values are not business facts; the important part is
+that local checkout can create paid/completed orders without a real payment
+provider.
 
 ## Reservation Webform Assumptions
 
@@ -224,9 +253,12 @@ Once the fixtures exist, Codex can run active local DDEV checks for:
 3. Done: add a local-only bootstrap command for standard-profile DDEV databases
    that need the module, user field, and reservation webform prerequisites.
 4. Done: implement idempotent local fixture user creation/update only.
-5. Next: implement local store, gateway, product, and variation creation after
-   the user fixture phase is proven safe.
-6. Add focused local test commands for checkout/order completion and reservation
+5. Done: add guarded local store, gateway, product, and variation fixture
+   creation after the user fixture phase.
+6. Next: add a reviewed local bootstrap step for only the missing active
+   Commerce config prerequisites: EUR currency and the four course product and
+   variation types.
+7. Add focused local test commands for checkout/order completion and reservation
    submission.
-7. Add an explicit reset mode only after fixture creation is working and covered
+8. Add an explicit reset mode only after fixture creation is working and covered
    by dry-run output.
