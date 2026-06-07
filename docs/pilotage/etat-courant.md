@@ -46,6 +46,7 @@ Le workflow de travail principal est :
 - Ne pas utiliser `uid=1` pour les tests fonctionnels.
 - Ne pas activer la vraie synchronisation Google Calendar tant que la couche réservation interne n’est pas stabilisée.
 - Ne pas modifier Google Calendar, Commerce, stages/concerts ou Composer dans une PR qui cible uniquement `/reserver`.
+- Ne pas lancer de `drush config:import` complet en production tant que la dérive de configuration n’est pas classifiée et corrigée ; plan : `docs/dev/config-import-drift.md`.
 
 ## Réservation /reserver
 - PR #26, #27, #29 et #31 appliquées au flux `/reserver`.
