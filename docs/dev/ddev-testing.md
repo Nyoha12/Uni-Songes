@@ -1,0 +1,88 @@
+# Local DDEV Testing
+
+This note describes the current safe local testing baseline for Uni-Songes.
+It is intentionally about local WSL/DDEV only. Do not use `/mnt/c`, the Windows
+clone, the VPS, or production data for this workflow.
+
+## Current limitation
+
+The local DDEV project can run PHP and Drush, but the database may be empty. In
+that state, `drush status` can report the codebase and connection settings while
+active Drupal entity checks fail because core tables such as `key_value` are
+missing. Audits then have to fall back to static code and `config/sync`
+inspection.
+
+Run the non-destructive readiness check before active tests:
+
+```bash
+cd drupal
+./scripts/check-local-test-readiness.sh
+```
+
+The script does not import data, drop tables, reset the database, or touch
+production. If the database is empty, it reports that active entity tests are not
+available and exits without changing data.
+
+## Safe local workflow
+
+1. Work from WSL `~/Uni-Songes/repo`.
+2. Start or inspect DDEV from `~/Uni-Songes/repo/drupal`.
+3. Run `./scripts/check-local-test-readiness.sh`.
+4. If the database is empty, limit validation to syntax checks and static
+   inspection until a local fixture set exists.
+5. If a local fixture set exists later, run the purchase, credit, reservation,
+   and Google queue checks against local-only accounts and generated data.
+
+Do not use `uid=1` for functional tests. Use a dedicated local test account. Do
+not import production data unless a separate, reviewed, sanitized-data procedure
+exists.
+
+## Fixture Requirements
+
+A useful local fixture set should be generated or imported by a future explicit
+developer command. It should be idempotent and should not run destructive
+database commands without a clear confirmation prompt.
+
+Minimum fixture shape:
+
+- Drupal is installed and can bootstrap active config.
+- Required modules are enabled: Commerce, Webform, `webform_booking`, and
+  `unisonges_structure`.
+- User credit fields exist on users:
+  - `field_seances_restantes`
+  - `field_essai_utilise`
+  - `field_pack_expire_le`
+- A dedicated local test user exists, not `uid=1`.
+- Commerce store and checkout/payment gateways exist for local checkout.
+- Course product types and purchasable product/variation entities exist:
+  - `cours_essai`: grants at most 1 trial credit per user.
+  - `cours_deb_inter`: grants quantity credits.
+  - `cours_avance`: grants quantity credits.
+  - `pack_4_deb_inter`: grants `4 * quantity` credits and sets/extends pack
+    expiry by 6 months.
+- Reservation webform `cours_particuliers_reservation` exists with the
+  `reservation` booking element.
+- Google Calendar sync config stays disabled or dry-run; local tests should only
+  verify queued rows.
+
+## Test Matrix To Enable Later
+
+Once local fixtures exist, the useful active checks are:
+
+- Anonymous user can view reservation slots but cannot submit.
+- Connected user with 0 credits cannot submit.
+- Connected user with credits can submit.
+- Course purchase changes credits only after the order is completed.
+- `cours_essai` grants 1 credit maximum, even if quantity is greater than 1.
+- `cours_deb_inter` and `cours_avance` grant one credit per purchased quantity.
+- `pack_4_deb_inter` grants four credits per purchased quantity and updates
+  expiry.
+- A successful reservation decrements exactly one credit.
+- Reservation submission queues one Google Calendar row as `pending_create`
+  with real sync still disabled/dry-run.
+
+## Out Of Scope
+
+This document does not define a data import format and does not create fixtures.
+Adding fixture generation should be a separate, reviewed change with explicit
+commands, idempotency, and clear rollback/reset behavior.
