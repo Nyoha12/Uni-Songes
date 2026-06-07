@@ -33,9 +33,10 @@ ete rendue et aucun envoi email n'a ete teste.
   comportement Commerce par defaut.
 - Professeur/admin apres achat : aucune copie admin n'est configuree dans le
   type de commande (`receiptBcc: ''`).
-- Credit ou pack apres achat : aucun email dedie n'est configure. Les droits de
-  cours sont appliques par `unisonges_structure` uniquement quand la commande
-  atteint l'etat `completed`.
+- Credit ou pack apres achat : `unisonges_structure` envoie un email dedie a
+  l'eleve quand les droits de cours sont effectivement appliques. Cet envoi
+  reste derriere les memes garde-fous que l'attribution des credits : commande
+  `completed`, commande payee, puis ajout reel de credit.
 
 ### Relances et annulations
 
@@ -50,9 +51,9 @@ ete rendue et aucun envoi email n'a ete teste.
 
 - Les emails reservation restent volontairement prudents : ils parlent d'une
   demande enregistree et ne promettent pas de synchronisation Google Calendar.
-- Le recu Commerce confirme l'achat, mais ne dit pas explicitement combien de
-  credits ont ete ajoutes, si un pack a une date d'expiration, ni quand
-  l'utilisateur peut reserver.
+- Le recu Commerce confirme l'achat, tandis que l'email droits de cours indique
+  les credits ajoutes, les credits disponibles et la validite du pack si
+  pertinent.
 - Pour les paiements non finalises automatiquement, les credits ne sont pas
   appliques tant que la commande n'est pas `completed`. Toute copie client doit
   distinguer paiement recu, paiement a finaliser et credits disponibles.
@@ -63,8 +64,8 @@ ete rendue et aucun envoi email n'a ete teste.
 ## Emails manquants pour un parcours propre
 
 Priorite 1 :
-- Email post-achat ou extension du recu Commerce indiquant les credits ajoutes,
-  la date d'expiration du pack le cas echeant, et un CTA vers `/reserver`.
+- Clarifier le message de fin de checkout standard, qui reste configure en
+  anglais.
 
 Priorite 2 :
 - Email de modification ou d'annulation de reservation pour l'eleve et le
@@ -78,7 +79,7 @@ Priorite 3 :
 
 ## Recommandation
 
-Traiter ensuite les emails lies aux credits au moment exact ou les droits sont
-appliques, pour eviter de promettre des credits avant qu'une commande soit
-reellement `completed`. Garder les rappels, modifications et annulations de
-reservation pour une PR dediee.
+Garder les rappels, modifications et annulations de reservation pour une PR
+dediee. Les prochains emails lies aux credits doivent conserver la meme regle :
+ne jamais promettre de credits avant qu'une commande soit reellement
+`completed` et payee.
