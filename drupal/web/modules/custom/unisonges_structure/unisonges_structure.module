@@ -63,6 +63,18 @@ function unisonges_structure_cron(): void {
 }
 
 /**
+ * Implements hook_mail().
+ */
+function unisonges_structure_mail(string $key, array &$message, array $params): void {
+  if ($key !== 'course_rights_applied') {
+    return;
+  }
+
+  $message['subject'] = (string) ($params['subject'] ?? 'Vos crédits de cours sont disponibles');
+  $message['body'][] = (string) ($params['body'] ?? '');
+}
+
+/**
  * Implements hook_preprocess_node().
  */
 function unisonges_structure_preprocess_node(array &$variables): void {
@@ -549,6 +561,8 @@ function _unisonges_structure_apply_course_rights_from_order(\Drupal\commerce_or
   $expiry = $expiry_value ? new \DateTimeImmutable($expiry_value) : NULL;
   $today = new \DateTimeImmutable('today');
   $changed = FALSE;
+  $credits_added = 0;
+  $pack_expiry_for_email = NULL;
 
   if ($expiry && $expiry < $today) {
     $remaining = 0;
@@ -576,6 +590,7 @@ function _unisonges_structure_apply_course_rights_from_order(\Drupal\commerce_or
       case 'cours_essai':
         if (!$essai_utilise) {
           $remaining += 1;
+          $credits_added += 1;
           $essai_utilise = TRUE;
           $changed = TRUE;
         }
@@ -583,12 +598,16 @@ function _unisonges_structure_apply_course_rights_from_order(\Drupal\commerce_or
       case 'cours_deb_inter':
       case 'cours_avance':
         $remaining += $quantity;
+        $credits_added += $quantity;
         $changed = TRUE;
         break;
       case 'pack_4_deb_inter':
-        $remaining += (4 * $quantity);
+        $added = 4 * $quantity;
+        $remaining += $added;
+        $credits_added += $added;
         $base = ($expiry && $expiry >= $today) ? $expiry : $today;
         $expiry = $base->modify('+6 months');
+        $pack_expiry_for_email = $expiry;
         $changed = TRUE;
         break;
     }
@@ -605,6 +624,82 @@ function _unisonges_structure_apply_course_rights_from_order(\Drupal\commerce_or
 
   $order->setData('unisonges_course_rights_applied', TRUE);
   $order->save();
+
+  if ($credits_added > 0) {
+    _unisonges_structure_send_course_rights_applied_mail($order, $account, $credits_added, $remaining, $pack_expiry_for_email);
+  }
+}
+
+function _unisonges_structure_send_course_rights_applied_mail(\Drupal\commerce_order\Entity\OrderInterface $order, \Drupal\user\UserInterface $account, int $credits_added, int $remaining, ?\DateTimeImmutable $pack_expiry): void {
+  $to = trim((string) $order->getEmail());
+  if ($to === '') {
+    $to = trim((string) $account->getEmail());
+  }
+
+  if ($to === '' || !\Drupal::service('email.validator')->isValid($to)) {
+    \Drupal::logger('unisonges_structure')->warning('Course rights email skipped for order @order and user @uid because no valid recipient email was available.', [
+      '@order' => $order->id(),
+      '@uid' => $account->id(),
+    ]);
+    return;
+  }
+
+  $site_name = trim((string) \Drupal::config('system.site')->get('name'));
+  if ($site_name === '') {
+    $site_name = 'Uni-Songes';
+  }
+
+  $lines = [
+    'Bonjour,',
+    '',
+    'Votre paiement est validé et vos crédits de cours ont été ajoutés.',
+    '',
+    'Crédits ajoutés : ' . _unisonges_structure_format_course_credit_count($credits_added) . '.',
+    'Crédits disponibles : ' . _unisonges_structure_format_course_credit_count($remaining) . '.',
+  ];
+
+  if ($pack_expiry instanceof \DateTimeImmutable) {
+    $lines[] = 'Validité du pack : jusqu’au ' . $pack_expiry->format('d/m/Y') . '.';
+  }
+
+  $lines[] = '';
+  $lines[] = 'Réserver un créneau : /reserver';
+  $lines[] = '';
+  $lines[] = 'À bientôt,';
+  $lines[] = $site_name;
+
+  $result = \Drupal::service('plugin.manager.mail')->mail(
+    'unisonges_structure',
+    'course_rights_applied',
+    $to,
+    $account->getPreferredLangcode(),
+    [
+      'subject' => 'Vos crédits de cours sont disponibles',
+      'body' => implode("\n", $lines),
+    ]
+  );
+
+  if (empty($result['result'])) {
+    \Drupal::logger('unisonges_structure')->error('Course rights email failed for order @order and user @uid.', [
+      '@order' => $order->id(),
+      '@uid' => $account->id(),
+    ]);
+    return;
+  }
+
+  \Drupal::logger('unisonges_structure')->notice('Course rights email sent for order @order and user @uid.', [
+    '@order' => $order->id(),
+    '@uid' => $account->id(),
+  ]);
+}
+
+function _unisonges_structure_format_course_credit_count(int $count): string {
+  $count = max(0, $count);
+  if ($count === 1) {
+    return '1 crédit de cours';
+  }
+
+  return $count . ' crédits de cours';
 }
 
 function unisonges_structure_webform_submission_insert(\Drupal\webform\WebformSubmissionInterface $webform_submission): void {
