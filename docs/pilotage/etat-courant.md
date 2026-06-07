@@ -17,7 +17,7 @@ Les détails historiques restent dans Git, les PR GitHub et les logs de déploie
 - Codex CLI installé dans WSL.
 - GitHub CLI authentifié dans WSL.
 - Tests DDEV locaux : guide `docs/dev/ddev-testing.md` et diagnostic non destructif `drupal/scripts/check-local-test-readiness.sh`.
-- Fixtures DDEV locales : `drupal/scripts/create-local-fixtures.sh --dry-run` liste les fixtures prévues et vérifie les garde-fous; `--apply` ne crée pas encore de données.
+- Fixtures DDEV locales : `drupal/scripts/create-local-fixtures.sh --dry-run` liste les utilisateurs fixtures locaux et vérifie les garde-fous; `--apply` crée/met à jour uniquement les utilisateurs `local.fixture.*`.
 - Bootstrap DDEV local fixtures : `drupal/scripts/bootstrap-local-fixture-site.sh --dry-run` prépare le plan modules/config minimal; `--apply` active seulement les prérequis locaux sans `drush config:import` complet.
 - Le clone Windows `D:\Uni Songes\repo` est secondaire et ne doit plus être le repo principal de développement.
 
@@ -74,5 +74,5 @@ Ne pas utiliser `uid=1` pour les tests réservation.
 - Ne pas passer en synchronisation réelle avant validation complète du flux interne de réservation.
 
 ## Prochaine étape
-- Préparer ensuite des fixtures locales DDEV sûres pour tester achat → crédits → réservation sans production.
+- Préparer ensuite des fixtures locales DDEV sûres pour Commerce/checkout afin de tester achat → crédits → réservation sans production.
 - Garder la vraie synchronisation Google Calendar désactivée jusqu’à validation dédiée.
