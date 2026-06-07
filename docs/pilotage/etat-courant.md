@@ -17,6 +17,7 @@ Les détails historiques restent dans Git, les PR GitHub et les logs de déploie
 - Codex CLI installé dans WSL.
 - GitHub CLI authentifié dans WSL.
 - Tests DDEV locaux : guide `docs/dev/ddev-testing.md` et diagnostic non destructif `drupal/scripts/check-local-test-readiness.sh`.
+- Fixtures DDEV locales : `drupal/scripts/create-local-fixtures.sh --dry-run` liste les fixtures prévues et vérifie les garde-fous; `--apply` ne crée pas encore de données.
 - Le clone Windows `D:\Uni Songes\repo` est secondaire et ne doit plus être le repo principal de développement.
 
 ## Production

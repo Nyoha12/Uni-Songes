@@ -23,14 +23,29 @@ The script does not import data, drop tables, reset the database, or touch
 production. If the database is empty, it reports that active entity tests are not
 available and exits without changing data.
 
+The first local fixture command is also read-only by default:
+
+```bash
+cd drupal
+./scripts/create-local-fixtures.sh --dry-run
+```
+
+It lists the local fixture records planned for a later phase and runs guards for
+DDEV, Drush, Drupal bootstrap, required modules, user credit fields, the
+reservation webform, and Google Calendar disabled/dry-run config. `--apply`
+currently stops after those guards because fixture writes are not implemented
+yet.
+
 ## Safe local workflow
 
 1. Work from WSL `~/Uni-Songes/repo`.
 2. Start or inspect DDEV from `~/Uni-Songes/repo/drupal`.
 3. Run `./scripts/check-local-test-readiness.sh`.
-4. If the database is empty, limit validation to syntax checks and static
+4. Run `./scripts/create-local-fixtures.sh --dry-run` before attempting local
+   fixture work.
+5. If the database is empty, limit validation to syntax checks and static
    inspection until a local fixture set exists.
-5. If a local fixture set exists later, run the purchase, credit, reservation,
+6. If a local fixture set exists later, run the purchase, credit, reservation,
    and Google queue checks against local-only accounts and generated data.
 
 Do not use `uid=1` for functional tests. Use a dedicated local test account. Do

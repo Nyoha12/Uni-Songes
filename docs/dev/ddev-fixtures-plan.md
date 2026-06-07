@@ -17,6 +17,20 @@ The fixture generator should be a later explicit command under
 `drupal/scripts/`. It should refuse to continue if Drupal cannot bootstrap active
 config.
 
+## Implemented Phase 1
+
+`drupal/scripts/create-local-fixtures.sh` now provides the first safe local
+fixture command.
+
+- `--dry-run` is the default and prints the planned local fixture users and
+  product SKUs.
+- The command runs read-only guards for DDEV, Drush, the Drupal `key_value`
+  table, Drupal bootstrap, required modules, user credit fields, the reservation
+  webform, and Google Calendar disabled/dry-run config.
+- `--apply` is accepted but stops after the same guards with a clear message
+  that writes are not implemented yet. No data is created or updated in this
+  phase.
+
 ## Fixture Source Strategy
 
 Fixtures should be generated locally, not imported. The future command should:
@@ -169,11 +183,12 @@ Once the fixtures exist, Codex can run active local DDEV checks for:
 
 ## Proposed Implementation Sequence
 
-1. Add a future `drupal/scripts/create-local-fixtures.sh` with `--dry-run` as the
-   default and `--apply` for local writes.
-2. Implement read-only environment guards: DDEV presence, Drupal bootstrap,
-   required modules, credit fields, product types, webform, and Calendar config.
-3. Implement idempotent user, store, gateway, product, and variation creation.
+1. Done: add `drupal/scripts/create-local-fixtures.sh` with `--dry-run` as the
+   default and `--apply` guarded from writes.
+2. Done: implement read-only environment guards for DDEV presence, Drupal
+   bootstrap, required modules, credit fields, webform, and Calendar config.
+3. Next: implement idempotent user, store, gateway, product, and variation
+   creation after the local active database is proven safe.
 4. Add focused local test commands for checkout/order completion and reservation
    submission.
 5. Add an explicit reset mode only after fixture creation is working and covered
