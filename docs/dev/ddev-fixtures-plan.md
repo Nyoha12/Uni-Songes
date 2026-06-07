@@ -118,6 +118,32 @@ Commerce fixture phase.
   modules, or create stores, gateways, products, variations, orders, webform
   submissions, or Google Calendar data.
 
+## Implemented Phase 4
+
+`drupal/scripts/test-local-commerce-credit-flow.sh` provides a local-only active
+test for Commerce order credit attribution.
+
+- `--dry-run` is the default and verifies DDEV, Drush, the database, Drupal
+  bootstrap, fixture users, fixture SKUs, the local manual payment gateway, and
+  mail capture availability without changing data.
+- `--run` is required before any writes. It resets only the
+  `local.fixture.checkout` credit fields before each scenario, creates temporary
+  local Commerce orders and completed manual payments through Commerce APIs,
+  completes the orders to trigger the existing `unisonges_structure` course
+  rights logic, asserts the resulting user fields, and deletes the temporary
+  orders, payments, and order items.
+- The covered scenarios are trial quantity 1, trial quantity greater than 1
+  capped at one credit, beginner/intermediate quantity 2, advanced quantity 1,
+  pack of four with future expiry around six months, and an unpaid completed
+  manual-style order that grants no credits.
+- During `--run`, Drupal mail is temporarily routed to the core
+  `test_mail_collector` backend and restored before exit. The script reports
+  captured credit mail attempts but does not require external delivery.
+- The script refuses non-local paths such as `/mnt/c`, `/var/www`, and `/srv`.
+  It does not create webform submissions, call Google Calendar, run full
+  `drush config:import`, edit `config/sync`, modify business logic, or use
+  `uid=1`.
+
 ## Fixture Source Strategy
 
 Fixtures should be generated locally, not imported. The future command should:
@@ -260,16 +286,15 @@ row, not call Google APIs.
 Once the fixtures exist, Codex can run active local DDEV checks for:
 
 - readiness of required modules, fields, product types, and webform elements;
-- checkout with the local manual/test gateway;
-- order completion granting user credits once;
-- `cours_essai` granting at most one trial credit per user;
-- `cours_deb_inter` and `cours_avance` granting quantity credits;
-- `pack_4_deb_inter` granting four credits per quantity and updating expiry;
 - reservation denial for a connected user with zero credits;
 - successful reservation for a connected user with credits;
 - exact one-credit decrement after reservation submission;
 - Google Calendar queue row creation as `pending_create` while real sync remains
   disabled or dry-run.
+
+The local Commerce order attribution checks are covered by
+`./scripts/test-local-commerce-credit-flow.sh --run` once fixture users and
+Commerce fixture products exist.
 
 ## Proposed Implementation Sequence
 
@@ -285,7 +310,8 @@ Once the fixtures exist, Codex can run active local DDEV checks for:
 6. Done: add a reviewed local bootstrap step for only the missing active
    Commerce config prerequisites: EUR currency and the four course product and
    variation types.
-7. Add focused local test commands for checkout/order completion and reservation
-   submission.
-8. Add an explicit reset mode only after fixture creation is working and covered
+7. Done: add a focused local test command for Commerce order completion and
+   credit attribution.
+8. Add focused local test commands for reservation submission.
+9. Add an explicit reset mode only after fixture creation is working and covered
    by dry-run output.

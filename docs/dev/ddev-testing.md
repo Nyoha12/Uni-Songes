@@ -88,6 +88,36 @@ Store`, `local_fixture_manual`, and products or variations with
 `LOCAL-FIXTURE-*` SKUs. It does not create orders, webform submissions, Google
 Calendar data, Composer changes, `.ddev` changes, or `config/sync` changes.
 
+After local fixture users and Commerce products exist, inspect the Commerce
+credit attribution test plan with:
+
+```bash
+cd drupal
+./scripts/test-local-commerce-credit-flow.sh --dry-run
+```
+
+The credit-flow script is read-only by default. It verifies DDEV, Drush, the
+database, Drupal bootstrap, fixture users, fixture SKUs, the local manual
+gateway, and mail capture availability. It prints the Commerce order scenarios
+without creating orders, payments, submissions, Google Calendar queue rows, or
+other data.
+
+Run the active local attribution test only after the dry-run is clean:
+
+```bash
+cd drupal
+./scripts/test-local-commerce-credit-flow.sh --run
+```
+
+`--run` resets only the `local.fixture.checkout` user credit fields before each
+scenario, creates temporary local fixture orders and completed manual payments
+through Commerce APIs, places/completes the orders to trigger the existing
+course rights logic, asserts the user credit fields, and deletes the temporary
+orders, payments, and order items afterward. During the run, Drupal mail is
+temporarily routed to the core `test_mail_collector` backend and restored before
+exit, so no external email delivery is required. The script does not create
+webform submissions and does not call Google Calendar.
+
 On a standard-profile local database prepared only by
 `bootstrap-local-fixture-site.sh`, prepare the remaining narrow Commerce active
 config prerequisites with:
@@ -135,8 +165,11 @@ data.
 10. If the Commerce phase blocks on other missing active Commerce config, keep the
    user fixtures and add only the missing allowlisted Commerce prerequisites in
    a separate reviewed bootstrap step.
-11. Checkout, reservation submission, and Google queue checks remain future
-   fixture phases until Commerce fixture products exist.
+11. Run `./scripts/test-local-commerce-credit-flow.sh --dry-run` before active
+   Commerce credit-flow tests.
+12. If the dry-run passes on local fixtures, run
+   `./scripts/test-local-commerce-credit-flow.sh --run`.
+13. Reservation submission and Google queue checks remain future fixture phases.
 
 Do not use `uid=1` for functional tests. Use a dedicated local test account. Do
 not import production data unless a separate, reviewed, sanitized-data procedure
