@@ -55,6 +55,7 @@ Le workflow de travail principal est :
 - `/reserver` affiche le portail et le webform `cours_particuliers_reservation`.
 - Le test production connecté avec `uid=2` a confirmé : soumission, décrément crédit, queue Google Calendar `pending_create`, aucun “Oops”.
 - PR #31 appliquée en production : `cours_essai` est plafonné à 1 crédit maximum par utilisateur.
+- `/reserver` garde côté serveur les doublons même utilisateur/créneau, la capacité du créneau et les effets crédit/queue associés.
 - Les crédits de cours Commerce sont attribués uniquement quand la commande est `completed` et payée; un paiement sur place en attente ne donne pas de crédit avant réception/validation manuelle.
 - Un email client de crédits disponibles est envoyé uniquement après attribution effective de crédits de cours.
 - Le webform `cours_particuliers_reservation` configure des emails Webform de confirmation élève et notification site/admin, sans activer la synchronisation Google Calendar réelle.

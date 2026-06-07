@@ -488,6 +488,56 @@ function unisonges_structure_booking_form_validate(array &$form, \Drupal\Core\Fo
   $message = '';
   if (!$account || !_unisonges_structure_user_can_book($account, $message)) {
     $form_state->setErrorByName('reservation', $message ?: 'Vous ne pouvez pas réserver pour le moment.');
+    return;
+  }
+
+  if ($form_state->getErrors()) {
+    return;
+  }
+
+  $booking_value = $form_state->getValue('reservation');
+  if ($booking_value === NULL) {
+    $booking_value = $form_state->getValue(['elements', 'reservation']);
+  }
+
+  $booking = _unisonges_structure_parse_booking_form_value($booking_value);
+  if ($booking['error'] !== '') {
+    $form_state->setErrorByName('reservation', $booking['error']);
+    return;
+  }
+
+  if ($booking['slot'] === '') {
+    return;
+  }
+
+  $capacity = _unisonges_structure_get_booking_form_capacity($form);
+  if ($booking['seats'] > $capacity['max_seats_per_booking']) {
+    $form_state->setErrorByName('reservation', 'Le nombre de places demandé dépasse le maximum autorisé pour une réservation.');
+    return;
+  }
+
+  if (!_unisonges_structure_acquire_booking_slot_lock($booking['slot'])) {
+    $form_state->setErrorByName('reservation', 'Ce créneau est en cours de réservation. Réessayez dans quelques secondes.');
+    return;
+  }
+
+  try {
+    $exclude_sid = _unisonges_structure_get_form_submission_id($form_state);
+    $conflict_message = _unisonges_structure_get_booking_conflict_message($booking['slot'], $booking['seats'], (int) $current_user->id(), $capacity['seats_slot'], $exclude_sid);
+  }
+  catch (\Throwable $e) {
+    _unisonges_structure_release_booking_slot_lock($booking['slot']);
+    \Drupal::logger('unisonges_structure')->error('Reservation slot conflict validation failed: @message', [
+      '@message' => $e->getMessage(),
+    ]);
+    $form_state->setErrorByName('reservation', 'Impossible de vérifier ce créneau pour le moment. Réessayez dans quelques instants.');
+    return;
+  }
+
+  if ($conflict_message !== '') {
+    _unisonges_structure_release_booking_slot_lock($booking['slot']);
+    $form_state->setErrorByName('reservation', $conflict_message);
+    return;
   }
 }
 
@@ -520,6 +570,213 @@ function _unisonges_structure_user_can_book(\Drupal\user\UserInterface $account,
   }
 
   return TRUE;
+}
+
+function _unisonges_structure_parse_booking_form_value($value): array {
+  $booking = [
+    'slot' => '',
+    'seats' => 0,
+    'error' => '',
+  ];
+
+  if (is_array($value)) {
+    $slot = trim((string) ($value['slot'] ?? ''));
+    if ($slot === '') {
+      return $booking;
+    }
+
+    $date = \DateTimeImmutable::createFromFormat('!Y-m-d H:i', $slot);
+    if (!$date || $date->format('Y-m-d H:i') !== $slot) {
+      $booking['error'] = 'Le créneau sélectionné est invalide.';
+      return $booking;
+    }
+
+    $seats_value = $value['seats'] ?? 1;
+    if (!is_numeric($seats_value) || (int) $seats_value <= 0) {
+      $booking['error'] = 'Le nombre de places demandé est invalide.';
+      return $booking;
+    }
+
+    $booking['slot'] = $slot;
+    $booking['seats'] = (int) $seats_value;
+    return $booking;
+  }
+
+  if (is_string($value) && trim($value) !== '') {
+    $parsed = unisonges_structure_parse_booking_reservation_value($value);
+    if ($parsed === NULL || !empty($parsed['cancelled'])) {
+      $booking['error'] = 'Le créneau sélectionné est invalide.';
+      return $booking;
+    }
+
+    $booking['slot'] = $parsed['date'] . ' ' . $parsed['time'];
+    $booking['seats'] = max(1, (int) $parsed['seats']);
+  }
+
+  return $booking;
+}
+
+function _unisonges_structure_get_booking_form_capacity(array $form): array {
+  $element = [];
+  if (isset($form['reservation']) && is_array($form['reservation'])) {
+    $element = $form['reservation'];
+  }
+  elseif (isset($form['elements']['reservation']) && is_array($form['elements']['reservation'])) {
+    $element = $form['elements']['reservation'];
+  }
+
+  $seats_slot = max(1, (int) ($element['#seats_slot'] ?? 1));
+  $max_seats_per_booking = max(1, (int) ($element['#max_seats_per_booking'] ?? 1));
+
+  return [
+    'seats_slot' => $seats_slot,
+    'max_seats_per_booking' => min($max_seats_per_booking, $seats_slot),
+  ];
+}
+
+function _unisonges_structure_get_form_submission_id(\Drupal\Core\Form\FormStateInterface $form_state): int {
+  $form_object = $form_state->getFormObject();
+  if (!$form_object || !method_exists($form_object, 'getEntity')) {
+    return 0;
+  }
+
+  $entity = $form_object->getEntity();
+  if ($entity instanceof \Drupal\webform\WebformSubmissionInterface) {
+    return (int) $entity->id();
+  }
+
+  return 0;
+}
+
+function _unisonges_structure_acquire_booking_slot_lock(string $slot): bool {
+  if (!\Drupal::lock()->acquire(_unisonges_structure_booking_slot_lock_id($slot), 30.0)) {
+    return FALSE;
+  }
+
+  register_shutdown_function('_unisonges_structure_release_booking_slot_lock', $slot);
+  return TRUE;
+}
+
+function _unisonges_structure_release_booking_slot_lock(string $slot): void {
+  $slot = trim($slot);
+  if ($slot === '') {
+    return;
+  }
+
+  \Drupal::lock()->release(_unisonges_structure_booking_slot_lock_id($slot));
+}
+
+function _unisonges_structure_release_booking_slot_lock_from_submission(\Drupal\webform\WebformSubmissionInterface $webform_submission): void {
+  $reservation = unisonges_structure_parse_booking_reservation_value(
+    _unisonges_structure_get_submission_element_string($webform_submission, 'reservation')
+  );
+  if ($reservation === NULL || !empty($reservation['cancelled'])) {
+    return;
+  }
+
+  _unisonges_structure_release_booking_slot_lock($reservation['date'] . ' ' . $reservation['time']);
+}
+
+function _unisonges_structure_booking_slot_lock_id(string $slot): string {
+  return 'unisonges_structure:booking_slot:' . hash('sha256', $slot);
+}
+
+function _unisonges_structure_get_booking_conflict_message(string $slot, int $requested_seats, int $uid, int $seats_slot, int $exclude_sid = 0): string {
+  $usage = _unisonges_structure_load_booking_slot_usage($slot, $exclude_sid);
+  if (isset($usage['user_ids'][$uid])) {
+    return 'Vous avez déjà une réservation active sur ce créneau.';
+  }
+
+  if ($usage['booked_seats'] + $requested_seats > $seats_slot) {
+    return 'Ce créneau vient d’être réservé. Choisissez un autre créneau.';
+  }
+
+  return '';
+}
+
+function _unisonges_structure_get_submission_booking_request(\Drupal\webform\WebformSubmissionInterface $webform_submission): ?array {
+  $reservation = unisonges_structure_parse_booking_reservation_value(
+    _unisonges_structure_get_submission_element_string($webform_submission, 'reservation')
+  );
+  if ($reservation === NULL || !empty($reservation['cancelled'])) {
+    return NULL;
+  }
+
+  return [
+    'slot' => $reservation['date'] . ' ' . $reservation['time'],
+    'seats' => max(1, (int) $reservation['seats']),
+  ];
+}
+
+function _unisonges_structure_get_submission_booking_conflict_message(\Drupal\webform\WebformSubmissionInterface $webform_submission): string {
+  $booking = _unisonges_structure_get_submission_booking_request($webform_submission);
+  $uid = (int) $webform_submission->getOwnerId();
+  if ($booking === NULL || $uid <= 0) {
+    return '';
+  }
+
+  $element = _unisonges_structure_get_webform_element_definition($webform_submission, 'reservation');
+  $seats_slot = max(1, (int) ($element['#seats_slot'] ?? 1));
+
+  return _unisonges_structure_get_booking_conflict_message(
+    $booking['slot'],
+    $booking['seats'],
+    $uid,
+    $seats_slot,
+    (int) $webform_submission->id()
+  );
+}
+
+function _unisonges_structure_load_booking_slot_usage(string $slot, int $exclude_sid = 0): array {
+  $usage = [
+    'booked_seats' => 0,
+    'user_ids' => [],
+  ];
+
+  $database = \Drupal::database();
+  $query = $database->select('webform_submission_data', 'wsd');
+  $query->fields('wsd', ['sid', 'value']);
+  $query->join('webform_submission', 'ws', 'ws.sid = wsd.sid');
+  $query->addField('ws', 'uid');
+  $query
+    ->condition('wsd.webform_id', 'cours_particuliers_reservation')
+    ->condition('wsd.name', 'reservation')
+    ->condition('wsd.value', $database->escapeLike($slot) . '|%', 'LIKE');
+
+  if ($exclude_sid > 0) {
+    $query->condition('wsd.sid', $exclude_sid, '<>');
+  }
+
+  foreach ($query->execute()->fetchAll() as $row) {
+    $seats = _unisonges_structure_get_booking_value_seats((string) $row->value, $slot);
+    if ($seats <= 0) {
+      continue;
+    }
+
+    $usage['booked_seats'] += $seats;
+    $usage['user_ids'][(int) $row->uid] = TRUE;
+  }
+
+  return $usage;
+}
+
+function _unisonges_structure_get_booking_value_seats(string $value, string $expected_slot): int {
+  $parsed = unisonges_structure_parse_booking_reservation_value($value);
+  if ($parsed !== NULL) {
+    $slot = $parsed['date'] . ' ' . $parsed['time'];
+    if ($slot !== $expected_slot || !empty($parsed['cancelled'])) {
+      return 0;
+    }
+
+    return max(0, (int) $parsed['seats']);
+  }
+
+  if (strpos($value, $expected_slot . '|') !== 0) {
+    return 0;
+  }
+
+  $parts = explode('|', $value, 2);
+  return max(0, (int) ($parts[1] ?? 1));
 }
 
 function _unisonges_structure_apply_course_rights_from_order(\Drupal\commerce_order\Entity\OrderInterface $order): void {
@@ -707,41 +964,63 @@ function unisonges_structure_webform_submission_insert(\Drupal\webform\WebformSu
     return;
   }
 
-  _unisonges_structure_queue_google_calendar_booking_sync($webform_submission, 'pending_create');
+  try {
+    $booking = _unisonges_structure_get_submission_booking_request($webform_submission);
+    if ($booking === NULL) {
+      \Drupal::logger('unisonges_structure')->warning('Reservation submission @sid skipped credit decrement because the reservation value is empty, invalid, or cancelled.', [
+        '@sid' => $webform_submission->id(),
+      ]);
+      return;
+    }
 
-  $uid = (int) $webform_submission->getOwnerId();
-  if (!$uid) {
-    return;
+    $conflict_message = _unisonges_structure_get_submission_booking_conflict_message($webform_submission);
+    if ($conflict_message !== '') {
+      \Drupal::logger('unisonges_structure')->warning('Reservation submission @sid skipped credit decrement and Google queue because it conflicts with existing bookings: @message', [
+        '@sid' => $webform_submission->id(),
+        '@message' => $conflict_message,
+      ]);
+      return;
+    }
+
+    $uid = (int) $webform_submission->getOwnerId();
+    if (!$uid) {
+      return;
+    }
+
+    $account = \Drupal\user\Entity\User::load($uid);
+    if (!$account) {
+      return;
+    }
+
+    if (!$account->hasField('field_seances_restantes')) {
+      \Drupal::logger('unisonges_structure')->error('Reservation submission @sid could not decrement credits for user @uid because field_seances_restantes is missing.', [
+        '@sid' => $webform_submission->id(),
+        '@uid' => $uid,
+      ]);
+      return;
+    }
+
+    $remaining = (int) ($account->get('field_seances_restantes')->value ?? 0);
+    if ($remaining <= 0) {
+      return;
+    }
+
+    $remaining = max(0, $remaining - 1);
+    $account->set('field_seances_restantes', $remaining);
+
+    if ($remaining === 0 && $account->hasField('field_pack_expire_le') && !$account->get('field_pack_expire_le')->isEmpty()) {
+      $account->set('field_pack_expire_le', NULL);
+    }
+
+    $account->save();
+
+    _unisonges_structure_queue_google_calendar_booking_sync($webform_submission, 'pending_create');
+
+    _unisonges_structure_log_booking_transition($webform_submission, 'insert', NULL);
   }
-
-  $account = \Drupal\user\Entity\User::load($uid);
-  if (!$account) {
-    return;
+  finally {
+    _unisonges_structure_release_booking_slot_lock_from_submission($webform_submission);
   }
-
-  if (!$account->hasField('field_seances_restantes')) {
-    \Drupal::logger('unisonges_structure')->error('Reservation submission @sid could not decrement credits for user @uid because field_seances_restantes is missing.', [
-      '@sid' => $webform_submission->id(),
-      '@uid' => $uid,
-    ]);
-    return;
-  }
-
-  $remaining = (int) ($account->get('field_seances_restantes')->value ?? 0);
-  if ($remaining <= 0) {
-    return;
-  }
-
-  $remaining = max(0, $remaining - 1);
-  $account->set('field_seances_restantes', $remaining);
-
-  if ($remaining === 0 && $account->hasField('field_pack_expire_le') && !$account->get('field_pack_expire_le')->isEmpty()) {
-    $account->set('field_pack_expire_le', NULL);
-  }
-
-  $account->save();
-
-  _unisonges_structure_log_booking_transition($webform_submission, 'insert', NULL);
 }
 
 function unisonges_structure_webform_submission_update(\Drupal\webform\WebformSubmissionInterface $webform_submission): void {
@@ -749,18 +1028,32 @@ function unisonges_structure_webform_submission_update(\Drupal\webform\WebformSu
     return;
   }
 
-  $original_reservation = NULL;
-  if (isset($webform_submission->original) && $webform_submission->original instanceof \Drupal\webform\WebformSubmissionInterface) {
-    $original_reservation = _unisonges_structure_get_submission_element_string($webform_submission->original, 'reservation');
-  }
+  try {
+    $original_reservation = NULL;
+    if (isset($webform_submission->original) && $webform_submission->original instanceof \Drupal\webform\WebformSubmissionInterface) {
+      $original_reservation = _unisonges_structure_get_submission_element_string($webform_submission->original, 'reservation');
+    }
 
-  $current_reservation = _unisonges_structure_get_submission_element_string($webform_submission, 'reservation');
-  if ($current_reservation !== '' && $original_reservation !== $current_reservation) {
-    $sync_action = _unisonges_structure_is_cancelled_booking_value($current_reservation) ? 'pending_cancel' : 'pending_update';
-    _unisonges_structure_queue_google_calendar_booking_sync($webform_submission, $sync_action);
-  }
+    $current_reservation = _unisonges_structure_get_submission_element_string($webform_submission, 'reservation');
+    if ($current_reservation !== '' && $original_reservation !== $current_reservation) {
+      $sync_action = _unisonges_structure_is_cancelled_booking_value($current_reservation) ? 'pending_cancel' : 'pending_update';
+      $conflict_message = $sync_action === 'pending_cancel' ? '' : _unisonges_structure_get_submission_booking_conflict_message($webform_submission);
+      if ($conflict_message === '') {
+        _unisonges_structure_queue_google_calendar_booking_sync($webform_submission, $sync_action);
+      }
+      else {
+        \Drupal::logger('unisonges_structure')->warning('Reservation submission @sid skipped Google queue update because it conflicts with existing bookings: @message', [
+          '@sid' => $webform_submission->id(),
+          '@message' => $conflict_message,
+        ]);
+      }
+    }
 
-  _unisonges_structure_log_booking_transition($webform_submission, 'update', $original_reservation);
+    _unisonges_structure_log_booking_transition($webform_submission, 'update', $original_reservation);
+  }
+  finally {
+    _unisonges_structure_release_booking_slot_lock_from_submission($webform_submission);
+  }
 }
 
 function _unisonges_structure_log_booking_transition(\Drupal\webform\WebformSubmissionInterface $webform_submission, string $trigger, ?string $original_reservation = NULL): void {
