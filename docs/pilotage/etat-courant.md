@@ -16,6 +16,7 @@ Les détails historiques restent dans Git, les PR GitHub et les logs de déploie
 - Composer installé via DDEV.
 - Codex CLI installé dans WSL.
 - GitHub CLI authentifié dans WSL.
+- Tests DDEV locaux : guide `docs/dev/ddev-testing.md` et diagnostic non destructif `drupal/scripts/check-local-test-readiness.sh`.
 - Le clone Windows `D:\Uni Songes\repo` est secondaire et ne doit plus être le repo principal de développement.
 
 ## Production
@@ -24,7 +25,7 @@ Les détails historiques restent dans Git, les PR GitHub et les logs de déploie
 - VPS SSH : `ubuntu@91.134.255.237`.
 - Chemin Drupal VPS : `/var/www/unisonges/repo/drupal`.
 - Chemin Git VPS : `/var/www/unisonges/repo`.
-- HEAD prod vérifié après PR #27 : `74e393a`.
+- HEAD prod vérifié après PR #31 : `e2db6e2`.
 
 ## Workflow validé
 Le workflow de travail principal est :
@@ -47,16 +48,10 @@ Le workflow de travail principal est :
 - Ne pas modifier Google Calendar, Commerce, stages/concerts ou Composer dans une PR qui cible uniquement `/reserver`.
 
 ## Réservation /reserver
-- PR #26 appliquée : ajout du portail `/reserver`.
-- PR #27 appliquée : correction du “Oops” AJAX après soumission.
+- PR #26, #27, #29 et #31 appliquées au flux `/reserver`.
 - `/reserver` affiche le portail et le webform `cours_particuliers_reservation`.
-- Le test connecté après PR #27 a confirmé :
-  - soumission créée;
-  - crédit décrémenté;
-  - ligne de queue Google Calendar créée;
-  - plus de “Oops” post-submit.
-- Les soumissions test `sid=3` et `sid=4` ont été nettoyées.
-- Le crédit `uid=1` a été remis à 0.
+- Le test production connecté avec `uid=2` a confirmé : soumission, décrément crédit, queue Google Calendar `pending_create`, aucun “Oops”.
+- PR #31 appliquée en production : `cours_essai` est plafonné à 1 crédit maximum par utilisateur.
 
 ## Compte test
 Compte dédié aux tests `/reserver` :
@@ -73,7 +68,5 @@ Ne pas utiliser `uid=1` pour les tests réservation.
 - Ne pas passer en synchronisation réelle avant validation complète du flux interne de réservation.
 
 ## Prochaine étape
-- Tester le flux `/reserver` avec `uid=2`.
-- Nettoyer les données test après usage.
-- Continuer la stabilisation réservation interne.
-- Ensuite seulement préparer l’activation contrôlée de Google Calendar.
+- Préparer ensuite des fixtures locales DDEV sûres pour tester achat → crédits → réservation sans production.
+- Garder la vraie synchronisation Google Calendar désactivée jusqu’à validation dédiée.
