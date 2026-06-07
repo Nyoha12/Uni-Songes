@@ -24,8 +24,7 @@ fixture command.
 
 - `--dry-run` is the default and prints the planned local fixture users.
 - The command runs read-only guards for DDEV, Drush, the Drupal `key_value`
-  table, Drupal bootstrap, required modules, user credit fields, the reservation
-  webform, and Google Calendar disabled/dry-run config.
+  table, Drupal bootstrap, the user module, and user credit fields.
 
 ## Implemented Phase 1b
 
@@ -67,12 +66,17 @@ the five `local.fixture.*` users through Drupal user entity APIs.
 
 ## Implemented Phase 3
 
-`drupal/scripts/create-local-fixtures.sh` now includes a guarded Commerce
-fixture phase after the user fixture phase.
+`drupal/scripts/create-local-fixtures.sh --with-commerce` now includes a
+guarded Commerce fixture phase after the user fixture phase.
 
-- `--dry-run` remains the default and prints the exact Commerce fixture changes
-  that would be made after active Commerce config prerequisites are present.
-- `--apply` can create or update only local fixture Commerce entities:
+- Commerce fixtures are opt-in. Default `--dry-run` and `--apply` remain
+  user-fixture focused and skip Commerce after a short note.
+- `--dry-run --with-commerce` prints the exact Commerce fixture changes that
+  would be made after active Commerce config prerequisites are present. Missing
+  Commerce prerequisites are informational blockers in dry-run mode and do not
+  make the script fail.
+- `--apply --with-commerce` can create or update only local fixture Commerce
+  entities:
   `[Local Fixture] Store`, payment gateway `local_fixture_manual`, and products
   or variations with `LOCAL-FIXTURE-*` SKUs.
 - The Commerce phase uses Drupal entity APIs only. It does not use raw SQL,
@@ -84,7 +88,7 @@ fixture phase after the user fixture phase.
 - If the required active Commerce currency, product types, variation types,
   store type, order item type, or manual payment plugin are missing, the
   Commerce phase stops before creating stores, gateways, products, or
-  variations.
+  variations. In apply mode this exits nonzero before Commerce writes.
 - The current local blocker for a standard-profile fixture site is the missing
   active Commerce config for `commerce_currency.EUR` plus the four course
   product and variation types. The next requirement is a separate reviewed local
@@ -249,7 +253,7 @@ Once the fixtures exist, Codex can run active local DDEV checks for:
 1. Done: add `drupal/scripts/create-local-fixtures.sh` with `--dry-run` as the
    default and `--apply` guarded from writes.
 2. Done: implement read-only environment guards for DDEV presence, Drupal
-   bootstrap, required modules, credit fields, webform, and Calendar config.
+   bootstrap, the user module, and user credit fields.
 3. Done: add a local-only bootstrap command for standard-profile DDEV databases
    that need the module, user field, and reservation webform prerequisites.
 4. Done: implement idempotent local fixture user creation/update only.

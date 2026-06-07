@@ -26,19 +26,22 @@ run_drush_php_eval() {
 
 usage() {
   cat <<'EOF'
-Usage: ./scripts/create-local-fixtures.sh [--dry-run|--apply]
+Usage: ./scripts/create-local-fixtures.sh [--dry-run|--apply] [--with-commerce]
 
-Creates or updates local-only DDEV fixture users and Commerce test data.
+Creates or updates local-only DDEV fixture users.
+Commerce fixture store/gateway/products are opt-in with --with-commerce.
 
 Options:
-  --dry-run  Run read-only guards and print planned fixture changes. Default.
-  --apply    Create or update only local fixture entities through Drupal APIs.
-  -h, --help Show this help.
+  --dry-run        Run read-only guards and print planned fixture user changes. Default.
+  --apply          Create or update only local.fixture.* users through Drupal APIs.
+  --with-commerce  Also plan/apply guarded local Commerce fixture data.
+  -h, --help       Show this help.
 EOF
 }
 
 mode="dry-run"
 requested_mode=""
+with_commerce="0"
 
 for arg in "$@"; do
   case "${arg}" in
@@ -59,6 +62,9 @@ for arg in "$@"; do
       fi
       requested_mode="apply"
       mode="apply"
+      ;;
+    --with-commerce)
+      with_commerce="1"
       ;;
     -h|--help)
       usage
@@ -84,7 +90,11 @@ Only these local users may be created or updated:
 
 Newly created users use the local-only password: local-fixture-only
 Existing fixture user passwords are not changed.
+EOF
 
+  if [[ "${with_commerce}" == "1" ]]; then
+    section "Planned local Commerce fixtures"
+    cat <<'EOF'
 Only these local Commerce fixtures may be created or updated if active Commerce
 config prerequisites exist:
 - store: [Local Fixture] Store, mail=local.fixture.store@example.invalid, EUR
@@ -97,6 +107,13 @@ config prerequisites exist:
 No orders, webform submissions, Google Calendar data, config/sync, Composer
 files, or .ddev files are created or changed.
 EOF
+  else
+    section "Commerce fixtures"
+    cat <<'EOF'
+Skipped by default. Re-run with --with-commerce to include guarded local
+Commerce store, gateway, product, and variation fixtures.
+EOF
+  fi
 }
 
 require_safe_path() {
@@ -169,7 +186,7 @@ require_bootstrap() {
 }
 
 require_active_readiness() {
-  section "Active fixture guards"
+  section "User fixture guards"
 
   local php
   php="$(cat <<'PHP'
@@ -180,18 +197,7 @@ $check = function (bool $ok, string $message) use (&$failed): void {
   $failed = $failed || !$ok;
 };
 
-foreach ([
-  'user',
-  'commerce',
-  'commerce_order',
-  'commerce_payment',
-  'commerce_product',
-  'webform',
-  'webform_booking',
-  'unisonges_structure',
-] as $module) {
-  $check(\Drupal::moduleHandler()->moduleExists($module), 'module ' . $module . ' is enabled');
-}
+$check(\Drupal::moduleHandler()->moduleExists('user'), 'module user is enabled');
 
 try {
   $field_storage = \Drupal::entityTypeManager()->getStorage('field_config');
@@ -207,48 +213,14 @@ catch (\Throwable $throwable) {
   $check(FALSE, 'user credit field storage is readable');
 }
 
-try {
-  $webform = \Drupal::entityTypeManager()->getStorage('webform')->load('cours_particuliers_reservation');
-  $check((bool) $webform, 'webform cours_particuliers_reservation exists');
-
-  if ($webform && method_exists($webform, 'getElementsDecoded')) {
-    $elements = $webform->getElementsDecoded();
-    $reservation_exists = isset($elements['reservation']);
-    $reservation_type = $elements['reservation']['#type'] ?? NULL;
-
-    $check($reservation_exists, 'webform element reservation exists');
-    $check($reservation_type === 'webform_booking', 'webform element reservation type is webform_booking');
-  }
-  else {
-    $check(FALSE, 'webform element reservation exists');
-    $check(FALSE, 'webform element reservation type is webform_booking');
-  }
-}
-catch (\Throwable $throwable) {
-  $check(FALSE, 'webform cours_particuliers_reservation exists');
-  $check(FALSE, 'webform element reservation exists');
-  $check(FALSE, 'webform element reservation type is webform_booking');
-}
-
-$calendar_config = \Drupal::configFactory()->get('unisonges_structure.google_calendar');
-if ($calendar_config->isNew()) {
-  echo 'OK Google Calendar active config is absent; no real sync can be enabled by this script.' . PHP_EOL;
-}
-else {
-  $enabled = (bool) $calendar_config->get('enabled');
-  $dry_run = (bool) $calendar_config->get('dry_run');
-  $check(!$enabled, 'Google Calendar enabled is false');
-  $check($dry_run, 'Google Calendar dry_run is true');
-}
-
 if ($failed) {
-  throw new \RuntimeException('Active fixture guards failed.');
+  throw new \RuntimeException('User fixture guards failed.');
 }
 PHP
 )"
 
   if ! run_drush_php_eval "${php}"; then
-    warn "Active fixture guards failed."
+    warn "User fixture guards failed."
     cat <<'EOF'
 For a local standard-profile DDEV database, prepare the missing local-only
 module and config prerequisites with:
@@ -1175,6 +1147,11 @@ PHP
 
   if [[ "${commerce_blocked}" -eq 1 ]]; then
     section "${result_label}"
+    if [[ "${mode}" == "dry-run" ]]; then
+      log "Commerce fixture prerequisites are missing. No data was changed."
+      return 0
+    fi
+
     warn "Commerce fixture phase blocked by missing active Commerce prerequisites."
     exit 1
   fi
@@ -1190,6 +1167,11 @@ PHP
 cd "${DRUPAL_DIR}"
 
 log "Mode: ${mode}"
+if [[ "${with_commerce}" == "1" ]]; then
+  log "Commerce fixtures: enabled"
+else
+  log "Commerce fixtures: skipped; use --with-commerce to include them."
+fi
 require_safe_path
 
 if [[ "${mode}" == "dry-run" ]]; then
@@ -1202,4 +1184,9 @@ require_database
 require_bootstrap
 require_active_readiness
 apply_or_plan_fixture_users
-apply_or_plan_commerce_fixtures
+if [[ "${with_commerce}" == "1" ]]; then
+  apply_or_plan_commerce_fixtures
+else
+  section "Commerce fixtures"
+  log "Skipped. Re-run with --with-commerce to include guarded Commerce fixtures."
+fi
