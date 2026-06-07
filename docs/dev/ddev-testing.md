@@ -52,23 +52,51 @@ cd drupal
 ./scripts/create-local-fixtures.sh --dry-run
 ```
 
-It lists the local fixture user records and runs guards for
-DDEV, Drush, Drupal bootstrap, required modules, user credit fields, the
-reservation webform, and Google Calendar disabled/dry-run config.
+It lists the local fixture user records, notes that Commerce fixtures are
+opt-in, then runs guards for DDEV, Drush, Drupal bootstrap, the user module, and
+user credit fields.
 
-After reviewing the dry-run output, this user-only fixture phase can be applied
-locally with:
+To include the guarded Commerce fixture checks in dry-run output, use:
+
+```bash
+cd drupal
+./scripts/create-local-fixtures.sh --dry-run --with-commerce
+```
+
+After reviewing the dry-run output, the fixture command can be applied locally
+with:
 
 ```bash
 cd drupal
 ./scripts/create-local-fixtures.sh --apply
 ```
 
-`--apply` creates or updates only the five `local.fixture.*` users through
-Drupal APIs. It does not create stores, gateways, products, orders, webform
-submissions, Google Calendar data, config, Composer changes, or `.ddev` files.
-Newly created fixture users use the local-only password `local-fixture-only`;
-existing fixture user passwords are not changed.
+Default `--apply` creates or updates only the five `local.fixture.*` users
+through Drupal APIs. Newly created fixture users use the local-only password
+`local-fixture-only`; existing fixture user passwords are not changed.
+
+The Commerce phase is opt-in:
+
+```bash
+cd drupal
+./scripts/create-local-fixtures.sh --apply --with-commerce
+```
+
+With `--with-commerce`, the script creates or updates only local fixture
+Commerce entities if active Commerce prerequisites exist: `[Local Fixture]
+Store`, `local_fixture_manual`, and products or variations with
+`LOCAL-FIXTURE-*` SKUs. It does not create orders, webform submissions, Google
+Calendar data, Composer changes, `.ddev` changes, or `config/sync` changes.
+
+On a standard-profile local database prepared only by
+`bootstrap-local-fixture-site.sh`, the Commerce phase can still block because
+that bootstrap command does not create active `commerce_currency.EUR` or the
+four course product and variation types. `--dry-run --with-commerce` reports
+those blockers without changing data and should exit 0 unless there is a script
+or runtime error. `--apply --with-commerce` exits 1 before Commerce writes when
+those prerequisites are missing. Do not run full `drush config:import` to fix
+that. The next required step is a separate reviewed local bootstrap command that
+creates or imports only those allowlisted active Commerce config entities.
 
 ## Safe local workflow
 
@@ -83,10 +111,15 @@ existing fixture user passwords are not changed.
    fixture work.
 6. If the database is empty, limit validation to syntax checks and static
    inspection until a local fixture set exists.
-7. If the dry-run only lists the expected `local.fixture.*` user changes, run
-   `./scripts/create-local-fixtures.sh --apply`.
-8. Product, checkout, reservation submission, and Google queue checks remain
-   future fixture phases until their local data exists.
+7. If the default dry-run lists only expected fixture user changes, run
+   `./scripts/create-local-fixtures.sh --apply` locally.
+8. Use `./scripts/create-local-fixtures.sh --dry-run --with-commerce` only when
+   you want to inspect guarded Commerce fixture readiness.
+9. If the Commerce phase blocks on missing active Commerce config, keep the
+   user fixtures and add only the missing allowlisted Commerce prerequisites in
+   a separate reviewed bootstrap step.
+10. Checkout, reservation submission, and Google queue checks remain future
+   fixture phases until Commerce fixture products exist.
 
 Do not use `uid=1` for functional tests. Use a dedicated local test account. Do
 not import production data unless a separate, reviewed, sanitized-data procedure
@@ -126,7 +159,13 @@ Minimum fixture shape:
 `./scripts/bootstrap-local-fixture-site.sh --apply` covers the module, user
 field, reservation webform, and Google Calendar safety prerequisites above for a
 standard-profile local database. It intentionally does not create users, stores,
-gateways, products, orders, submissions, or any other fixture data.
+gateways, products, orders, submissions, or Commerce course config.
+
+`./scripts/create-local-fixtures.sh --apply` covers fixture users only by
+default. Add `--with-commerce` to include local fixture store, gateway, product,
+and variation data once the active Commerce config prerequisites exist. It
+intentionally does not create orders, submissions, Google Calendar data, or broad
+active config.
 
 ## Test Matrix To Enable Later
 
@@ -147,6 +186,6 @@ Once local fixtures exist, the useful active checks are:
 ## Out Of Scope
 
 This document does not define a data import format. The current fixture command
-creates only local fixture users. Adding Commerce, order, webform submission, or
-reset fixture generation should be separate, reviewed changes with explicit
-commands, idempotency, and clear rollback/reset behavior.
+does not create orders, webform submissions, Google queue rows, or reset/delete
+fixture data. Adding those phases should be separate, reviewed changes with
+explicit commands, idempotency, and clear rollback/reset behavior.
