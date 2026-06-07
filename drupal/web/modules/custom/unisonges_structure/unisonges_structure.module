@@ -727,6 +727,35 @@ function _unisonges_structure_get_submission_booking_conflict_message(\Drupal\we
   );
 }
 
+function _unisonges_structure_build_inactive_booking_value(string $slot): string {
+  return trim($slot) . '|0';
+}
+
+function _unisonges_structure_update_stored_submission_reservation(\Drupal\webform\WebformSubmissionInterface $webform_submission, string $reservation_value): bool {
+  $sid = (int) $webform_submission->id();
+  if ($sid <= 0) {
+    return FALSE;
+  }
+
+  try {
+    $updated = \Drupal::database()->update('webform_submission_data')
+      ->fields(['value' => $reservation_value])
+      ->condition('webform_id', $webform_submission->getWebform()->id())
+      ->condition('sid', $sid)
+      ->condition('name', 'reservation')
+      ->execute();
+  }
+  catch (\Throwable $e) {
+    \Drupal::logger('unisonges_structure')->error('Reservation submission @sid could not update stored reservation fallback value: @message', [
+      '@sid' => $sid,
+      '@message' => $e->getMessage(),
+    ]);
+    return FALSE;
+  }
+
+  return $updated > 0;
+}
+
 function _unisonges_structure_load_booking_slot_usage(string $slot, int $exclude_sid = 0): array {
   $usage = [
     'booked_seats' => 0,
@@ -975,9 +1004,16 @@ function unisonges_structure_webform_submission_insert(\Drupal\webform\WebformSu
 
     $conflict_message = _unisonges_structure_get_submission_booking_conflict_message($webform_submission);
     if ($conflict_message !== '') {
+      $inactive_value = _unisonges_structure_build_inactive_booking_value($booking['slot']);
+      $fallback_updated = _unisonges_structure_update_stored_submission_reservation($webform_submission, $inactive_value);
       \Drupal::logger('unisonges_structure')->warning('Reservation submission @sid skipped credit decrement and Google queue because it conflicts with existing bookings: @message', [
         '@sid' => $webform_submission->id(),
         '@message' => $conflict_message,
+      ]);
+      \Drupal::logger('unisonges_structure')->warning('Reservation submission @sid stored reservation marked inactive after insert conflict (updated=@updated, value=@value).', [
+        '@sid' => $webform_submission->id(),
+        '@updated' => $fallback_updated ? 'yes' : 'no',
+        '@value' => $inactive_value,
       ]);
       return;
     }
@@ -1042,9 +1078,27 @@ function unisonges_structure_webform_submission_update(\Drupal\webform\WebformSu
         _unisonges_structure_queue_google_calendar_booking_sync($webform_submission, $sync_action);
       }
       else {
+        $fallback_value = '';
+        $fallback_action = 'marked inactive';
+        $current_booking = _unisonges_structure_get_submission_booking_request($webform_submission);
+        if ($original_reservation !== NULL && $original_reservation !== '') {
+          $fallback_value = $original_reservation;
+          $fallback_action = 'restored previous reservation';
+        }
+        elseif ($current_booking !== NULL) {
+          $fallback_value = _unisonges_structure_build_inactive_booking_value($current_booking['slot']);
+        }
+
+        $fallback_updated = $fallback_value !== '' ? _unisonges_structure_update_stored_submission_reservation($webform_submission, $fallback_value) : FALSE;
         \Drupal::logger('unisonges_structure')->warning('Reservation submission @sid skipped Google queue update because it conflicts with existing bookings: @message', [
           '@sid' => $webform_submission->id(),
           '@message' => $conflict_message,
+        ]);
+        \Drupal::logger('unisonges_structure')->warning('Reservation submission @sid stored reservation fallback applied after update conflict: @action (updated=@updated, value=@value).', [
+          '@sid' => $webform_submission->id(),
+          '@action' => $fallback_action,
+          '@updated' => $fallback_updated ? 'yes' : 'no',
+          '@value' => $fallback_value,
         ]);
       }
     }
