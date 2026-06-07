@@ -89,11 +89,34 @@ guarded Commerce fixture phase after the user fixture phase.
   store type, order item type, or manual payment plugin are missing, the
   Commerce phase stops before creating stores, gateways, products, or
   variations. In apply mode this exits nonzero before Commerce writes.
-- The current local blocker for a standard-profile fixture site is the missing
-  active Commerce config for `commerce_currency.EUR` plus the four course
-  product and variation types. The next requirement is a separate reviewed local
-  bootstrap step that creates or imports only those allowlisted active config
-  entities without a broad config import.
+- The guarded Commerce fixture phase expects active Commerce config for
+  `commerce_currency.EUR` plus the four course product and variation types. That
+  narrow prerequisite surface is prepared separately by
+  `bootstrap-local-commerce-fixture-site.sh`.
+
+## Implemented Phase 3b
+
+`drupal/scripts/bootstrap-local-commerce-fixture-site.sh` prepares only the
+missing local active Commerce config prerequisites needed by the guarded
+Commerce fixture phase.
+
+- `--dry-run` is the default and prints the exact active config entries it would
+  create if they are missing.
+- `--apply` is required before any write. It creates only `EUR` plus the four
+  course product and variation types listed in this plan.
+- Product and variation types are created through Commerce config entity APIs
+  from the allowlisted project config files. `EUR` is created through the
+  Commerce currency config entity storage using local library metadata.
+- The script refuses non-local paths such as `/mnt/c`, `/var/www`, and `/srv`,
+  verifies DDEV, Drush, the `key_value` table, Drupal bootstrap, Commerce
+  modules, and the supporting active Commerce store/order/payment prerequisites
+  needed by the later fixture phase.
+- Existing active config is not overwritten. If an allowlisted product or
+  variation type already exists locally with different config, the script stops
+  and reports the blocker instead of changing it.
+- It does not run full `drush config:import`, edit `config/sync`, enable
+  modules, or create stores, gateways, products, variations, orders, webform
+  submissions, or Google Calendar data.
 
 ## Fixture Source Strategy
 
@@ -259,7 +282,7 @@ Once the fixtures exist, Codex can run active local DDEV checks for:
 4. Done: implement idempotent local fixture user creation/update only.
 5. Done: add guarded local store, gateway, product, and variation fixture
    creation after the user fixture phase.
-6. Next: add a reviewed local bootstrap step for only the missing active
+6. Done: add a reviewed local bootstrap step for only the missing active
    Commerce config prerequisites: EUR currency and the four course product and
    variation types.
 7. Add focused local test commands for checkout/order completion and reservation

@@ -89,14 +89,27 @@ Store`, `local_fixture_manual`, and products or variations with
 Calendar data, Composer changes, `.ddev` changes, or `config/sync` changes.
 
 On a standard-profile local database prepared only by
-`bootstrap-local-fixture-site.sh`, the Commerce phase can still block because
-that bootstrap command does not create active `commerce_currency.EUR` or the
-four course product and variation types. `--dry-run --with-commerce` reports
-those blockers without changing data and should exit 0 unless there is a script
-or runtime error. `--apply --with-commerce` exits 1 before Commerce writes when
-those prerequisites are missing. Do not run full `drush config:import` to fix
-that. The next required step is a separate reviewed local bootstrap command that
-creates or imports only those allowlisted active Commerce config entities.
+`bootstrap-local-fixture-site.sh`, prepare the remaining narrow Commerce active
+config prerequisites with:
+
+```bash
+cd drupal
+./scripts/bootstrap-local-commerce-fixture-site.sh --dry-run
+```
+
+Review the dry-run output first. It should list only missing `EUR` currency
+config and the four course product and variation types. If the output is local
+and expected, apply it with:
+
+```bash
+cd drupal
+./scripts/bootstrap-local-commerce-fixture-site.sh --apply
+```
+
+This Commerce bootstrap command does not run full `drush config:import`, does
+not edit `config/sync`, does not enable modules, and does not create stores,
+gateways, products, variations, orders, webform submissions, or Google Calendar
+data.
 
 ## Safe local workflow
 
@@ -113,12 +126,16 @@ creates or imports only those allowlisted active Commerce config entities.
    inspection until a local fixture set exists.
 7. If the default dry-run lists only expected fixture user changes, run
    `./scripts/create-local-fixtures.sh --apply` locally.
-8. Use `./scripts/create-local-fixtures.sh --dry-run --with-commerce` only when
+8. If Commerce active config prerequisites are missing, run
+   `./scripts/bootstrap-local-commerce-fixture-site.sh --dry-run` and only then
+   `./scripts/bootstrap-local-commerce-fixture-site.sh --apply` after reviewing
+   the output.
+9. Use `./scripts/create-local-fixtures.sh --dry-run --with-commerce` only when
    you want to inspect guarded Commerce fixture readiness.
-9. If the Commerce phase blocks on missing active Commerce config, keep the
+10. If the Commerce phase blocks on other missing active Commerce config, keep the
    user fixtures and add only the missing allowlisted Commerce prerequisites in
    a separate reviewed bootstrap step.
-10. Checkout, reservation submission, and Google queue checks remain future
+11. Checkout, reservation submission, and Google queue checks remain future
    fixture phases until Commerce fixture products exist.
 
 Do not use `uid=1` for functional tests. Use a dedicated local test account. Do
@@ -166,6 +183,11 @@ default. Add `--with-commerce` to include local fixture store, gateway, product,
 and variation data once the active Commerce config prerequisites exist. It
 intentionally does not create orders, submissions, Google Calendar data, or broad
 active config.
+
+`./scripts/bootstrap-local-commerce-fixture-site.sh --apply` covers only the
+missing active Commerce config prerequisites for that opt-in phase: `EUR`, the
+four course product types, and the four matching variation types. It does not
+create fixture Commerce data.
 
 ## Test Matrix To Enable Later
 
