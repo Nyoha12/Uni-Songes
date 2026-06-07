@@ -52,11 +52,23 @@ cd drupal
 ./scripts/create-local-fixtures.sh --dry-run
 ```
 
-It lists the local fixture records planned for a later phase and runs guards for
+It lists the local fixture user records and runs guards for
 DDEV, Drush, Drupal bootstrap, required modules, user credit fields, the
-reservation webform, and Google Calendar disabled/dry-run config. `--apply`
-currently stops after those guards because fixture writes are not implemented
-yet.
+reservation webform, and Google Calendar disabled/dry-run config.
+
+After reviewing the dry-run output, this user-only fixture phase can be applied
+locally with:
+
+```bash
+cd drupal
+./scripts/create-local-fixtures.sh --apply
+```
+
+`--apply` creates or updates only the five `local.fixture.*` users through
+Drupal APIs. It does not create stores, gateways, products, orders, webform
+submissions, Google Calendar data, config, Composer changes, or `.ddev` files.
+Newly created fixture users use the local-only password `local-fixture-only`;
+existing fixture user passwords are not changed.
 
 ## Safe local workflow
 
@@ -71,8 +83,10 @@ yet.
    fixture work.
 6. If the database is empty, limit validation to syntax checks and static
    inspection until a local fixture set exists.
-7. If a local fixture set exists later, run the purchase, credit, reservation,
-   and Google queue checks against local-only accounts and generated data.
+7. If the dry-run only lists the expected `local.fixture.*` user changes, run
+   `./scripts/create-local-fixtures.sh --apply`.
+8. Product, checkout, reservation submission, and Google queue checks remain
+   future fixture phases until their local data exists.
 
 Do not use `uid=1` for functional tests. Use a dedicated local test account. Do
 not import production data unless a separate, reviewed, sanitized-data procedure
@@ -96,7 +110,7 @@ Minimum fixture shape:
   - `field_seances_restantes`
   - `field_essai_utilise`
   - `field_pack_expire_le`
-- A dedicated local test user exists, not `uid=1`.
+- Dedicated local fixture users exist, not `uid=1`.
 - Commerce store and checkout/payment gateways exist for local checkout.
 - Course product types and purchasable product/variation entities exist:
   - `cours_essai`: grants at most 1 trial credit per user.
@@ -132,6 +146,7 @@ Once local fixtures exist, the useful active checks are:
 
 ## Out Of Scope
 
-This document does not define a data import format and does not create fixtures.
-Adding fixture generation should be a separate, reviewed change with explicit
+This document does not define a data import format. The current fixture command
+creates only local fixture users. Adding Commerce, order, webform submission, or
+reset fixture generation should be separate, reviewed changes with explicit
 commands, idempotency, and clear rollback/reset behavior.

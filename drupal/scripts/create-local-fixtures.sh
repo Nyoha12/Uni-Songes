@@ -17,15 +17,22 @@ section() {
   printf '\n== %s ==\n' "$*"
 }
 
+run_drush_php_eval() {
+  local php="$1"
+  local escaped_php="${php//\$/\\$}"
+
+  ddev exec "${DRUSH}" php:eval "${escaped_php}"
+}
+
 usage() {
   cat <<'EOF'
 Usage: ./scripts/create-local-fixtures.sh [--dry-run|--apply]
 
-Creates local-only DDEV fixture data in a later phase.
+Creates or updates local-only DDEV fixture users.
 
 Options:
-  --dry-run  Run read-only guards and print planned fixture records. Default.
-  --apply    Run the same guards, then stop. Writes are not implemented yet.
+  --dry-run  Run read-only guards and print planned fixture user changes. Default.
+  --apply    Create or update only local.fixture.* users through Drupal APIs.
   -h, --help Show this help.
 EOF
 }
@@ -66,20 +73,17 @@ for arg in "$@"; do
 done
 
 print_fixture_plan() {
-  section "Planned local fixture records"
+  section "Planned local fixture users"
   cat <<'EOF'
-Users:
-- local.fixture.no_credit
-- local.fixture.with_credit
-- local.fixture.checkout
-- local.fixture.trial_used
-- local.fixture.pack_active
+Only these local users may be created or updated:
+- local.fixture.no_credit: mail=local.fixture.no_credit@example.invalid, field_seances_restantes=0, field_essai_utilise=0, field_pack_expire_le=NULL
+- local.fixture.with_credit: mail=local.fixture.with_credit@example.invalid, field_seances_restantes=3, field_essai_utilise=0, field_pack_expire_le=NULL
+- local.fixture.checkout: mail=local.fixture.checkout@example.invalid, field_seances_restantes=0, field_essai_utilise=0, field_pack_expire_le=NULL
+- local.fixture.trial_used: mail=local.fixture.trial_used@example.invalid, field_seances_restantes=0, field_essai_utilise=1, field_pack_expire_le=NULL
+- local.fixture.pack_active: mail=local.fixture.pack_active@example.invalid, field_seances_restantes=4, field_essai_utilise=0, field_pack_expire_le=today + 6 months
 
-Course product SKUs:
-- LOCAL-FIXTURE-COURS-ESSAI
-- LOCAL-FIXTURE-COURS-DEB-INTER
-- LOCAL-FIXTURE-COURS-AVANCE
-- LOCAL-FIXTURE-PACK-4-DEB-INTER
+Newly created users use the local-only password: local-fixture-only
+Existing fixture user passwords are not changed.
 EOF
 }
 
@@ -155,12 +159,8 @@ require_bootstrap() {
 require_active_readiness() {
   section "Active fixture guards"
 
-  local guard_script=".ddev/.tmp/create-local-fixtures-guards.php"
-  mkdir -p "$(dirname "${guard_script}")"
-  trap 'rm -f .ddev/.tmp/create-local-fixtures-guards.php' EXIT
-
-  cat >"${guard_script}" <<'PHP'
-<?php
+  local php
+  php="$(cat <<'PHP'
 $failed = FALSE;
 
 $check = function (bool $ok, string $message) use (&$failed): void {
@@ -230,11 +230,12 @@ else {
 }
 
 if ($failed) {
-  exit(1);
+  throw new \RuntimeException('Active fixture guards failed.');
 }
 PHP
+)"
 
-  if ! ddev exec "${DRUSH}" php:script "${guard_script}"; then
+  if ! run_drush_php_eval "${php}"; then
     warn "Active fixture guards failed."
     cat <<'EOF'
 For a local standard-profile DDEV database, prepare the missing local-only
@@ -245,6 +246,252 @@ module and config prerequisites with:
 Review the dry-run output before running --apply. No fixture data was changed.
 EOF
     exit 1
+  fi
+}
+
+apply_or_plan_fixture_users() {
+  local apply_flag="0"
+  local result_label="Dry-run result"
+  if [[ "${mode}" == "apply" ]]; then
+    apply_flag="1"
+    result_label="Apply result"
+  fi
+
+  section "Fixture users"
+
+  local php
+  php="$(cat <<'PHP'
+$apply = getenv('LOCAL_FIXTURE_APPLY') === '1';
+$default_password = 'local-fixture-only';
+$pack_expiry = (new \DateTimeImmutable('today', new \DateTimeZone(date_default_timezone_get())))
+  ->modify('+6 months')
+  ->format('Y-m-d');
+
+$fixtures = [
+  [
+    'name' => 'local.fixture.no_credit',
+    'mail' => 'local.fixture.no_credit@example.invalid',
+    'field_seances_restantes' => 0,
+    'field_essai_utilise' => 0,
+    'field_pack_expire_le' => NULL,
+  ],
+  [
+    'name' => 'local.fixture.with_credit',
+    'mail' => 'local.fixture.with_credit@example.invalid',
+    'field_seances_restantes' => 3,
+    'field_essai_utilise' => 0,
+    'field_pack_expire_le' => NULL,
+  ],
+  [
+    'name' => 'local.fixture.checkout',
+    'mail' => 'local.fixture.checkout@example.invalid',
+    'field_seances_restantes' => 0,
+    'field_essai_utilise' => 0,
+    'field_pack_expire_le' => NULL,
+  ],
+  [
+    'name' => 'local.fixture.trial_used',
+    'mail' => 'local.fixture.trial_used@example.invalid',
+    'field_seances_restantes' => 0,
+    'field_essai_utilise' => 1,
+    'field_pack_expire_le' => NULL,
+  ],
+  [
+    'name' => 'local.fixture.pack_active',
+    'mail' => 'local.fixture.pack_active@example.invalid',
+    'field_seances_restantes' => 4,
+    'field_essai_utilise' => 0,
+    'field_pack_expire_le' => $pack_expiry,
+  ],
+];
+
+$user_storage = \Drupal::entityTypeManager()->getStorage('user');
+
+$format_value = static function ($value): string {
+  return $value === NULL || $value === '' ? 'NULL' : (string) $value;
+};
+
+$load_user_ids = static function (string $field, string $value) use ($user_storage): array {
+  $ids = $user_storage->getQuery()
+    ->accessCheck(FALSE)
+    ->condition($field, $value)
+    ->execute();
+  $ids = array_map('intval', array_values($ids));
+  sort($ids);
+  return $ids;
+};
+
+$field_value = static function (\Drupal\user\UserInterface $user, string $field_name) {
+  if (!$user->hasField($field_name) || $user->get($field_name)->isEmpty()) {
+    return NULL;
+  }
+
+  return $user->get($field_name)->value;
+};
+
+$set_fixture_values = static function (\Drupal\user\UserInterface $user, array $fixture): void {
+  foreach (['field_seances_restantes', 'field_essai_utilise', 'field_pack_expire_le'] as $field_name) {
+    if (!$user->hasField($field_name)) {
+      throw new \RuntimeException(sprintf('User %s does not have field %s.', $user->getAccountName(), $field_name));
+    }
+  }
+
+  $user->setEmail($fixture['mail']);
+  $user->activate();
+  $user->set('roles', []);
+  $user->set('field_seances_restantes', $fixture['field_seances_restantes']);
+  $user->set('field_essai_utilise', $fixture['field_essai_utilise']);
+  $user->set('field_pack_expire_le', $fixture['field_pack_expire_le']);
+};
+
+$created = 0;
+$updated = 0;
+$unchanged = 0;
+
+foreach ($fixtures as $fixture) {
+  $name = $fixture['name'];
+  $mail = $fixture['mail'];
+
+  if (!str_starts_with($name, 'local.fixture.')) {
+    throw new \RuntimeException(sprintf('Refusing non-local fixture username %s.', $name));
+  }
+
+  $uids_by_name = $load_user_ids('name', $name);
+  $uids_by_mail = $load_user_ids('mail', $mail);
+
+  if (in_array(1, $uids_by_name, TRUE) || in_array(1, $uids_by_mail, TRUE)) {
+    throw new \RuntimeException(sprintf('Refusing to touch uid=1 while processing %s.', $name));
+  }
+
+  if (count($uids_by_name) > 1 || count($uids_by_mail) > 1) {
+    throw new \RuntimeException(sprintf('Unexpected duplicate user lookup while processing %s.', $name));
+  }
+
+  $user = NULL;
+  if ($uids_by_name) {
+    $uid = reset($uids_by_name);
+    $user = $user_storage->load($uid);
+    if (!$user) {
+      throw new \RuntimeException(sprintf('Could not load existing fixture user %s.', $name));
+    }
+    if (!str_starts_with($user->getAccountName(), 'local.fixture.')) {
+      throw new \RuntimeException(sprintf('Refusing to update non-local user uid=%d.', (int) $user->id()));
+    }
+    if ($uids_by_mail && !in_array((int) $user->id(), $uids_by_mail, TRUE)) {
+      throw new \RuntimeException(sprintf('Desired mail %s already belongs to another user.', $mail));
+    }
+  }
+  elseif ($uids_by_mail) {
+    $mail_uid = reset($uids_by_mail);
+    $mail_user = $user_storage->load($mail_uid);
+    $mail_name = $mail_user ? $mail_user->getAccountName() : 'unknown';
+    throw new \RuntimeException(sprintf('Desired mail %s already belongs to uid=%d (%s); refusing to rename users.', $mail, $mail_uid, $mail_name));
+  }
+
+  if (!$user) {
+    $created++;
+    printf(
+      "%s create %s mail=%s field_seances_restantes=%d field_essai_utilise=%d field_pack_expire_le=%s password=%s roles=authenticated-only\n",
+      $apply ? 'Will' : 'Would',
+      $name,
+      $mail,
+      $fixture['field_seances_restantes'],
+      $fixture['field_essai_utilise'],
+      $format_value($fixture['field_pack_expire_le']),
+      $default_password
+    );
+
+    if ($apply) {
+      $user = \Drupal\user\Entity\User::create([
+        'name' => $name,
+        'mail' => $mail,
+        'pass' => $default_password,
+        'status' => 1,
+      ]);
+      $set_fixture_values($user, $fixture);
+      $user->save();
+      printf("Created %s uid=%d\n", $name, (int) $user->id());
+    }
+    continue;
+  }
+
+  $changes = [];
+  if ($user->getEmail() !== $mail) {
+    $changes[] = sprintf('mail %s -> %s', $format_value($user->getEmail()), $mail);
+  }
+  if (!$user->isActive()) {
+    $changes[] = 'status blocked -> active';
+  }
+
+  $assigned_roles = array_values($user->getRoles(TRUE));
+  sort($assigned_roles);
+  if ($assigned_roles !== []) {
+    $changes[] = sprintf('roles %s -> authenticated-only', implode(',', $assigned_roles));
+  }
+
+  $current_remaining = (int) ($field_value($user, 'field_seances_restantes') ?? 0);
+  if ($current_remaining !== $fixture['field_seances_restantes']) {
+    $changes[] = sprintf('field_seances_restantes %d -> %d', $current_remaining, $fixture['field_seances_restantes']);
+  }
+
+  $current_trial = (int) ($field_value($user, 'field_essai_utilise') ?? 0);
+  if ($current_trial !== $fixture['field_essai_utilise']) {
+    $changes[] = sprintf('field_essai_utilise %d -> %d', $current_trial, $fixture['field_essai_utilise']);
+  }
+
+  $current_expiry = $field_value($user, 'field_pack_expire_le');
+  $desired_expiry = $fixture['field_pack_expire_le'];
+  if ($current_expiry !== $desired_expiry) {
+    $changes[] = sprintf('field_pack_expire_le %s -> %s', $format_value($current_expiry), $format_value($desired_expiry));
+  }
+
+  if ($changes === []) {
+    $unchanged++;
+    printf("Up-to-date %s uid=%d\n", $name, (int) $user->id());
+    continue;
+  }
+
+  $updated++;
+  printf(
+    "%s update %s uid=%d: %s; password unchanged\n",
+    $apply ? 'Will' : 'Would',
+    $name,
+    (int) $user->id(),
+    implode('; ', $changes)
+  );
+
+  if ($apply) {
+    $set_fixture_values($user, $fixture);
+    $user->save();
+    printf("Updated %s uid=%d\n", $name, (int) $user->id());
+  }
+}
+
+printf(
+  "%s complete. created=%d updated=%d unchanged=%d\n",
+  $apply ? 'Apply' : 'Dry-run',
+  $created,
+  $updated,
+  $unchanged
+);
+
+if (!$apply) {
+  echo "No data was changed.\n";
+}
+else {
+  echo "No products, orders, webform submissions, Google Calendar data, config/sync, Composer files, or .ddev files were changed by this script.\n";
+}
+PHP
+)"
+
+  local escaped_php="${php//\$/\\$}"
+  ddev exec env LOCAL_FIXTURE_APPLY="${apply_flag}" "${DRUSH}" php:eval "${escaped_php}"
+
+  section "${result_label}"
+  if [[ "${mode}" == "dry-run" ]]; then
+    log "Guards passed. No data was changed."
+  else
+    log "Guards passed. Fixture users were created or updated as needed."
   fi
 }
 
@@ -262,13 +509,4 @@ require_drush
 require_database
 require_bootstrap
 require_active_readiness
-
-if [[ "${mode}" == "apply" ]]; then
-  section "Apply"
-  warn "Writes are not implemented yet for this first safe fixture command."
-  log "Guards passed. No data was changed."
-  exit 1
-fi
-
-section "Dry-run result"
-log "Guards passed. No data was changed."
+apply_or_plan_fixture_users

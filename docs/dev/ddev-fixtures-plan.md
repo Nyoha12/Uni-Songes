@@ -22,14 +22,10 @@ config.
 `drupal/scripts/create-local-fixtures.sh` now provides the first safe local
 fixture command.
 
-- `--dry-run` is the default and prints the planned local fixture users and
-  product SKUs.
+- `--dry-run` is the default and prints the planned local fixture users.
 - The command runs read-only guards for DDEV, Drush, the Drupal `key_value`
   table, Drupal bootstrap, required modules, user credit fields, the reservation
   webform, and Google Calendar disabled/dry-run config.
-- `--apply` is accepted but stops after the same guards with a clear message
-  that writes are not implemented yet. No data is created or updated in this
-  phase.
 
 ## Implemented Phase 1b
 
@@ -50,6 +46,24 @@ local DDEV database for the fixture guards without running a full config import.
   sync disabled or absent.
 - No fixture users, stores, gateways, products, orders, submissions, or Google
   credentials are created.
+
+## Implemented Phase 2
+
+`drupal/scripts/create-local-fixtures.sh --apply` now creates or updates only
+the five `local.fixture.*` users through Drupal user entity APIs.
+
+- Existing fixture user passwords are left unchanged; newly created fixture
+  users use the local-only password `local-fixture-only`.
+- The command resets only fixture user mail, active status, non-locked roles,
+  `field_seances_restantes`, `field_essai_utilise`, and
+  `field_pack_expire_le` to the documented baseline.
+- `local.fixture.pack_active` receives `field_pack_expire_le` set to today plus
+  6 months.
+- The command refuses `uid=1`, mail collisions, duplicate lookups, and any
+  non-`local.fixture.*` username.
+- It does not create or update Commerce stores, gateways, products, orders,
+  webform submissions, Google Calendar data, `config/sync`, Composer files, or
+  `.ddev` files.
 
 ## Fixture Source Strategy
 
@@ -124,7 +138,7 @@ default documented by the future script.
 The generator should not create an administrator account and should not use
 `uid=1` for functional tests.
 
-## Commerce Store, Gateway, Products
+## Future Commerce Store, Gateway, Products
 
 Fixtures should use a local Commerce store and a local manual/test payment
 gateway only. If a store already exists, use it without overwriting non-fixture
@@ -209,9 +223,10 @@ Once the fixtures exist, Codex can run active local DDEV checks for:
    bootstrap, required modules, credit fields, webform, and Calendar config.
 3. Done: add a local-only bootstrap command for standard-profile DDEV databases
    that need the module, user field, and reservation webform prerequisites.
-4. Next: implement idempotent user, store, gateway, product, and variation
-   creation after the local active database is proven safe.
-5. Add focused local test commands for checkout/order completion and reservation
+4. Done: implement idempotent local fixture user creation/update only.
+5. Next: implement local store, gateway, product, and variation creation after
+   the user fixture phase is proven safe.
+6. Add focused local test commands for checkout/order completion and reservation
    submission.
-6. Add an explicit reset mode only after fixture creation is working and covered
+7. Add an explicit reset mode only after fixture creation is working and covered
    by dry-run output.
