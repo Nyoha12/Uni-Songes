@@ -155,77 +155,84 @@ require_bootstrap() {
 require_active_readiness() {
   section "Active fixture guards"
 
-  ddev exec "${DRUSH}" php:eval '
+  local guard_script=".ddev/.tmp/create-local-fixtures-guards.php"
+  mkdir -p "$(dirname "${guard_script}")"
+  trap 'rm -f .ddev/.tmp/create-local-fixtures-guards.php' EXIT
+
+  cat >"${guard_script}" <<'PHP'
+<?php
 $failed = FALSE;
 
 $check = function (bool $ok, string $message) use (&$failed): void {
-  echo ($ok ? "OK" : "FAIL") . " " . $message . PHP_EOL;
+  echo ($ok ? 'OK' : 'FAIL') . ' ' . $message . PHP_EOL;
   $failed = $failed || !$ok;
 };
 
 foreach ([
-  "user",
-  "commerce",
-  "commerce_order",
-  "commerce_payment",
-  "commerce_product",
-  "webform",
-  "webform_booking",
-  "unisonges_structure",
+  'user',
+  'commerce',
+  'commerce_order',
+  'commerce_payment',
+  'commerce_product',
+  'webform',
+  'webform_booking',
+  'unisonges_structure',
 ] as $module) {
-  $check(\Drupal::moduleHandler()->moduleExists($module), "module " . $module . " is enabled");
+  $check(\Drupal::moduleHandler()->moduleExists($module), 'module ' . $module . ' is enabled');
 }
 
 try {
-  $field_storage = \Drupal::entityTypeManager()->getStorage("field_config");
+  $field_storage = \Drupal::entityTypeManager()->getStorage('field_config');
   foreach ([
-    "user.user.field_seances_restantes",
-    "user.user.field_essai_utilise",
-    "user.user.field_pack_expire_le",
+    'user.user.field_seances_restantes',
+    'user.user.field_essai_utilise',
+    'user.user.field_pack_expire_le',
   ] as $field_id) {
-    $check((bool) $field_storage->load($field_id), "user field " . $field_id . " exists");
+    $check((bool) $field_storage->load($field_id), 'user field ' . $field_id . ' exists');
   }
 }
 catch (\Throwable $throwable) {
-  $check(FALSE, "user credit field storage is readable");
+  $check(FALSE, 'user credit field storage is readable');
 }
 
 try {
-  $webform = \Drupal::entityTypeManager()->getStorage("webform")->load("cours_particuliers_reservation");
-  $check((bool) $webform, "webform cours_particuliers_reservation exists");
+  $webform = \Drupal::entityTypeManager()->getStorage('webform')->load('cours_particuliers_reservation');
+  $check((bool) $webform, 'webform cours_particuliers_reservation exists');
 
-  if ($webform && method_exists($webform, "getElementsDecoded")) {
+  if ($webform && method_exists($webform, 'getElementsDecoded')) {
     $elements = $webform->getElementsDecoded();
-    $reservation_exists = isset($elements["reservation"]);
-    $reservation_type = $elements["reservation"]["#type"] ?? NULL;
+    $reservation_exists = isset($elements['reservation']);
+    $reservation_type = $elements['reservation']['#type'] ?? NULL;
 
-    $check($reservation_exists, "webform element reservation exists");
-    $check($reservation_type === "webform_booking", "webform element reservation type is webform_booking");
+    $check($reservation_exists, 'webform element reservation exists');
+    $check($reservation_type === 'webform_booking', 'webform element reservation type is webform_booking');
   }
   else {
-    $check(FALSE, "webform element reservation exists");
-    $check(FALSE, "webform element reservation type is webform_booking");
+    $check(FALSE, 'webform element reservation exists');
+    $check(FALSE, 'webform element reservation type is webform_booking');
   }
 }
 catch (\Throwable $throwable) {
-  $check(FALSE, "webform cours_particuliers_reservation exists");
-  $check(FALSE, "webform element reservation exists");
-  $check(FALSE, "webform element reservation type is webform_booking");
+  $check(FALSE, 'webform cours_particuliers_reservation exists');
+  $check(FALSE, 'webform element reservation exists');
+  $check(FALSE, 'webform element reservation type is webform_booking');
 }
 
-$calendar_config = \Drupal::configFactory()->get("unisonges_structure.google_calendar");
+$calendar_config = \Drupal::configFactory()->get('unisonges_structure.google_calendar');
 if ($calendar_config->isNew()) {
-  echo "OK Google Calendar active config is absent; no real sync can be enabled by this script." . PHP_EOL;
+  echo 'OK Google Calendar active config is absent; no real sync can be enabled by this script.' . PHP_EOL;
 }
 else {
-  $enabled = (bool) $calendar_config->get("enabled");
-  $dry_run = (bool) $calendar_config->get("dry_run");
-  $check(!$enabled, "Google Calendar enabled is false");
-  $check($dry_run, "Google Calendar dry_run is true");
+  $enabled = (bool) $calendar_config->get('enabled');
+  $dry_run = (bool) $calendar_config->get('dry_run');
+  $check(!$enabled, 'Google Calendar enabled is false');
+  $check($dry_run, 'Google Calendar dry_run is true');
 }
 
 exit($failed ? 1 : 0);
-'
+PHP
+
+  ddev exec "${DRUSH}" php:script "${guard_script}"
 }
 
 cd "${DRUPAL_DIR}"
