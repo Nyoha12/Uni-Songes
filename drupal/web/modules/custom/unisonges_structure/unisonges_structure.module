@@ -514,6 +514,10 @@ function _unisonges_structure_apply_course_rights_from_order(\Drupal\commerce_or
   if ($order->getState()->value !== 'completed') {
     return;
   }
+  // Do not grant reservation credits for pending manual payments.
+  if (!$order->isPaid()) {
+    return;
+  }
   if ($order->getData('unisonges_course_rights_applied')) {
     return;
   }
