@@ -229,10 +229,23 @@ else {
   $check($dry_run, 'Google Calendar dry_run is true');
 }
 
-exit($failed ? 1 : 0);
+if ($failed) {
+  exit(1);
+}
 PHP
 
-  ddev exec "${DRUSH}" php:script "${guard_script}"
+  if ! ddev exec "${DRUSH}" php:script "${guard_script}"; then
+    warn "Active fixture guards failed."
+    cat <<'EOF'
+For a local standard-profile DDEV database, prepare the missing local-only
+module and config prerequisites with:
+
+  ./scripts/bootstrap-local-fixture-site.sh --dry-run
+
+Review the dry-run output before running --apply. No fixture data was changed.
+EOF
+    exit 1
+  fi
 }
 
 cd "${DRUPAL_DIR}"
