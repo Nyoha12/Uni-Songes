@@ -322,5 +322,107 @@ access:
     roles: {  }
     users: {  }
     permissions: {  }
-handlers: {  }
+handlers:
+  reservation_student_confirmation:
+    id: email
+    handler_id: reservation_student_confirmation
+    label: 'Confirmation élève'
+    notes: ''
+    status: true
+    conditions: {  }
+    weight: 1
+    settings:
+      states:
+        - completed
+      to_mail: '[current-user:mail]'
+      to_options: {  }
+      bcc_mail: ''
+      bcc_options: {  }
+      cc_mail: ''
+      cc_options: {  }
+      from_mail: _default
+      from_options: {  }
+      from_name: _default
+      reply_to: ''
+      return_path: ''
+      sender_mail: ''
+      sender_name: ''
+      subject: 'Votre demande de réservation Uni-Songes'
+      body: |-
+        <p>Bonjour,</p>
+        <p>Votre demande de réservation a bien été enregistrée. Nous vous recontacterons si un ajustement est nécessaire.</p>
+        <ul>
+          <li>Créneau : [webform_submission:values:reservation:value]</li>
+          <li>Mode du cours : [webform_submission:values:mode_cours:value]</li>
+          <li>Instrument : [webform_submission:values:instrument:value]</li>
+          <li>Niveau : [webform_submission:values:niveau_cours:value]</li>
+          <li>Téléphone : [webform_submission:values:telephone:value]</li>
+          <li>Visio, si concerné : [webform_submission:values:plateforme_visio:value]</li>
+          <li>Adresse domicile, si concerné : [webform_submission:values:adresse_domicile:value] [webform_submission:values:code_postal_domicile:value]</li>
+          <li>Adresse studio : 1 rue du chemin vert, 93300 Aubervilliers</li>
+          <li>Notes, si renseignées : [webform_submission:values:notes_supplementaires:value]</li>
+        </ul>
+      excluded_elements: {  }
+      ignore_access: false
+      exclude_empty: true
+      exclude_empty_checkbox: false
+      exclude_attachments: false
+      html: true
+      attachments: false
+      twig: false
+      theme_name: ''
+      langcode: ''
+      parameters: {  }
+      debug: false
+  reservation_admin_notification:
+    id: email
+    handler_id: reservation_admin_notification
+    label: 'Notification réservation'
+    notes: ''
+    status: true
+    conditions: {  }
+    weight: 2
+    settings:
+      states:
+        - completed
+      to_mail: _default
+      to_options: {  }
+      bcc_mail: ''
+      bcc_options: {  }
+      cc_mail: ''
+      cc_options: {  }
+      from_mail: _default
+      from_options: {  }
+      from_name: _default
+      reply_to: '[current-user:mail]'
+      return_path: ''
+      sender_mail: ''
+      sender_name: ''
+      subject: 'Nouvelle demande de réservation cours particuliers'
+      body: |-
+        <p>Nouvelle demande de réservation cours particuliers.</p>
+        <ul>
+          <li>Compte élève : [current-user:mail]</li>
+          <li>Créneau : [webform_submission:values:reservation:value]</li>
+          <li>Mode du cours : [webform_submission:values:mode_cours:value]</li>
+          <li>Instrument : [webform_submission:values:instrument:value]</li>
+          <li>Niveau : [webform_submission:values:niveau_cours:value]</li>
+          <li>Téléphone : [webform_submission:values:telephone:value]</li>
+          <li>Visio, si concerné : [webform_submission:values:plateforme_visio:value]</li>
+          <li>Adresse domicile, si concerné : [webform_submission:values:adresse_domicile:value] [webform_submission:values:code_postal_domicile:value]</li>
+          <li>Adresse studio : 1 rue du chemin vert, 93300 Aubervilliers</li>
+          <li>Notes, si renseignées : [webform_submission:values:notes_supplementaires:value]</li>
+        </ul>
+      excluded_elements: {  }
+      ignore_access: false
+      exclude_empty: true
+      exclude_empty_checkbox: false
+      exclude_attachments: false
+      html: true
+      attachments: false
+      twig: false
+      theme_name: ''
+      langcode: ''
+      parameters: {  }
+      debug: false
 variants: {  }
