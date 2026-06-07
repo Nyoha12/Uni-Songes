@@ -1,4 +1,5 @@
 {% set portal = unisonges_reservation_portal|default({}) %}
+{% set portal_status = portal.status|default('anonymous') %}
 {% set body_markup = content.body|render %}
 
 <article class="unisonges-node-page reservation-portal">
@@ -11,15 +12,15 @@
     <p>Les disponibilités sont consultables sans compte. Pour confirmer une réservation, connectez-vous avec un compte disposant d’une séance active.</p>
   </section>
 
-  <section class="reservation-portal__summary reservation-portal__summary--{{ portal.status|default('anonymous') }}">
+  <section class="reservation-portal__summary reservation-portal__summary--{{ portal_status }}" aria-labelledby="reservation-access-title" aria-describedby="reservation-access-message">
     <div class="reservation-portal__account">
-      <h2>Votre accès réservation</h2>
+      <h2 id="reservation-access-title">Votre accès réservation</h2>
       <p class="reservation-portal__status">{{ portal.status_label }}</p>
-      <p>{{ portal.message }}</p>
+      <p id="reservation-access-message">{{ portal.message }}</p>
 
       {% if portal.is_anonymous %}
         <div class="reservation-portal__actions">
-          <a class="btn btn--cta" href="{{ portal.login_url }}">Se connecter</a>
+          <a class="btn btn--cta" href="{{ portal.login_url }}">Se connecter pour réserver</a>
           <a class="btn" href="{{ portal.register_url }}">Créer un compte</a>
         </div>
       {% else %}
@@ -36,7 +37,11 @@
           {% endif %}
         </dl>
 
-        {% if not portal.can_book %}
+        {% if portal.can_book %}
+          <div class="reservation-portal__actions">
+            <a class="btn btn--cta" href="#reservation-form-title">Choisir un créneau</a>
+          </div>
+        {% else %}
           <div class="reservation-portal__actions">
             <a class="btn btn--cta" href="{{ portal.purchase_url }}">{{ portal.purchase_label }}</a>
           </div>

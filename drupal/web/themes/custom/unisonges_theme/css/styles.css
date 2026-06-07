@@ -1712,8 +1712,8 @@ html, body{ height: 100% !important; overflow: hidden !important; }
 /* UNISONGES_BOOKING_UX_FIXES */
 form[id*="webform-submission-cours-particuliers-reservation"],
 .webform-submission-cours-particuliers-reservation-form,
-.webform-confirmation,
-.webform-confirmation__message{
+.reservation-portal__form .webform-confirmation,
+.reservation-portal__form .webform-confirmation__message{
   max-width: 100%;
   box-sizing: border-box;
 }
@@ -1730,9 +1730,9 @@ form[id*="webform-submission-cours-particuliers-reservation"] .description{
   max-width: 100%;
 }
 
-#unisonges-scrollframe.scrollframe .webform-confirmation,
-#unisonges-scrollframe.scrollframe .messages--status,
-#unisonges-scrollframe.scrollframe .messages.messages--status{
+.reservation-portal__form .webform-confirmation,
+.reservation-portal__form .messages--status,
+.reservation-portal__form .messages.messages--status{
   background: rgba(7, 12, 20, 0.82);
   border: 1px solid rgba(255,255,255,0.16);
   border-radius: 16px;
@@ -1742,8 +1742,8 @@ form[id*="webform-submission-cours-particuliers-reservation"] .description{
   box-shadow: 0 12px 34px rgba(0,0,0,.28);
 }
 
-#unisonges-scrollframe.scrollframe .webform-confirmation a,
-#unisonges-scrollframe.scrollframe .messages--status a{
+.reservation-portal__form .webform-confirmation a,
+.reservation-portal__form .messages--status a{
   color: #fff;
   text-decoration: underline;
 }
@@ -1754,14 +1754,75 @@ form[id*="webform-submission-cours-particuliers-reservation"] textarea{
   max-width: 100%;
 }
 
+form[id*="webform-submission-cours-particuliers-reservation"] label,
+form[id*="webform-submission-cours-particuliers-reservation"] legend{
+  color: #0b1220;
+  font-weight: 800;
+}
+
+form[id*="webform-submission-cours-particuliers-reservation"] input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]),
+form[id*="webform-submission-cours-particuliers-reservation"] select,
+form[id*="webform-submission-cours-particuliers-reservation"] textarea{
+  width: 100%;
+  padding: .72rem .8rem;
+  border: 1px solid rgba(15,23,42,.22);
+  border-radius: 8px;
+  background: #fff;
+  color: #0b1220;
+  font: inherit;
+  line-height: 1.35;
+  box-sizing: border-box;
+}
+
+form[id*="webform-submission-cours-particuliers-reservation"] input:focus,
+form[id*="webform-submission-cours-particuliers-reservation"] select:focus,
+form[id*="webform-submission-cours-particuliers-reservation"] textarea:focus{
+  border-color: #0f766e;
+  outline: 2px solid rgba(15,118,110,.22);
+  outline-offset: 2px;
+}
+
 form[id*="webform-submission-cours-particuliers-reservation"] textarea{
   min-height: 7rem;
   resize: vertical;
 }
 
+form[id*="webform-submission-cours-particuliers-reservation"] .form-actions,
 form[id*="webform-submission-cours-particuliers-reservation"] .webform-actions{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .75rem;
   margin-top: 1rem;
   padding-bottom: .5rem;
+}
+
+form[id*="webform-submission-cours-particuliers-reservation"] .form-actions input[type="submit"],
+form[id*="webform-submission-cours-particuliers-reservation"] .webform-actions input[type="submit"],
+form[id*="webform-submission-cours-particuliers-reservation"] .form-actions .button--primary,
+form[id*="webform-submission-cours-particuliers-reservation"] .webform-actions .button--primary{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.85rem;
+  padding: .72rem 1rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: #0f766e;
+  color: #fff;
+  font-weight: 900;
+  line-height: 1.2;
+  text-decoration: none;
+  box-shadow: 0 6px 14px rgba(2,6,23,.12);
+  cursor: pointer;
+}
+
+form[id*="webform-submission-cours-particuliers-reservation"] .form-actions input[type="submit"]:hover,
+form[id*="webform-submission-cours-particuliers-reservation"] .webform-actions input[type="submit"]:hover,
+form[id*="webform-submission-cours-particuliers-reservation"] .form-actions .button--primary:hover,
+form[id*="webform-submission-cours-particuliers-reservation"] .webform-actions .button--primary:hover{
+  filter: brightness(.96);
+  box-shadow: 0 10px 22px rgba(2,6,23,.16);
 }
 
 /* UNISONGES booking form final error/warning layout */
@@ -2062,6 +2123,21 @@ form[id*="webform-submission-cours-particuliers-reservation"] .alert a,
   margin-top: 1rem;
 }
 
+.reservation-portal__actions .btn{
+  min-height: 2.6rem;
+  border: 1px solid rgba(15,23,42,.16);
+  background: rgba(255,255,255,.72);
+  color: #0b1220;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.reservation-portal__actions .btn--cta{
+  border-color: transparent;
+  background: #0f766e;
+  color: #fff;
+}
+
 .reservation-portal__steps ol{
   margin: 0;
   padding-left: 1.2rem;
@@ -2103,6 +2179,13 @@ form[id*="webform-submission-cours-particuliers-reservation"] .alert a,
 
 @media (max-width: 460px){
   .reservation-portal__actions .btn{
+    width: 100%;
+  }
+
+  form[id*="webform-submission-cours-particuliers-reservation"] .form-actions input[type="submit"],
+  form[id*="webform-submission-cours-particuliers-reservation"] .webform-actions input[type="submit"],
+  form[id*="webform-submission-cours-particuliers-reservation"] .form-actions .button--primary,
+  form[id*="webform-submission-cours-particuliers-reservation"] .webform-actions .button--primary{
     width: 100%;
   }
 }
