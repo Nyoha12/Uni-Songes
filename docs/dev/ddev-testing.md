@@ -12,6 +12,28 @@ active Drupal entity checks fail because core tables such as `key_value` are
 missing. Audits then have to fall back to static code and `config/sync`
 inspection.
 
+If the local database was installed with the Drupal standard profile, Drupal can
+bootstrap but fixture guards may still fail because project modules, user credit
+fields, and the reservation webform are absent. Prepare only that local fixture
+readiness surface with:
+
+```bash
+cd drupal
+./scripts/bootstrap-local-fixture-site.sh --dry-run
+```
+
+Review the dry-run output first. If it only lists the expected local-safe module
+enables and allowlisted config creates, apply it with:
+
+```bash
+cd drupal
+./scripts/bootstrap-local-fixture-site.sh --apply
+```
+
+This bootstrap command does not run full `drush config:import`, does not delete
+active config, does not import unrelated config, does not create fixture data,
+and does not enable real Google Calendar sync.
+
 Run the non-destructive readiness check before active tests:
 
 ```bash
@@ -41,11 +63,15 @@ yet.
 1. Work from WSL `~/Uni-Songes/repo`.
 2. Start or inspect DDEV from `~/Uni-Songes/repo/drupal`.
 3. Run `./scripts/check-local-test-readiness.sh`.
-4. Run `./scripts/create-local-fixtures.sh --dry-run` before attempting local
+4. If the installed local site lacks fixture guard prerequisites, run
+   `./scripts/bootstrap-local-fixture-site.sh --dry-run` and only then
+   `./scripts/bootstrap-local-fixture-site.sh --apply` after reviewing the
+   output.
+5. Run `./scripts/create-local-fixtures.sh --dry-run` before attempting local
    fixture work.
-5. If the database is empty, limit validation to syntax checks and static
+6. If the database is empty, limit validation to syntax checks and static
    inspection until a local fixture set exists.
-6. If a local fixture set exists later, run the purchase, credit, reservation,
+7. If a local fixture set exists later, run the purchase, credit, reservation,
    and Google queue checks against local-only accounts and generated data.
 
 Do not use `uid=1` for functional tests. Use a dedicated local test account. Do
@@ -82,6 +108,11 @@ Minimum fixture shape:
   `reservation` booking element.
 - Google Calendar sync config stays disabled or dry-run; local tests should only
   verify queued rows.
+
+`./scripts/bootstrap-local-fixture-site.sh --apply` covers the module, user
+field, reservation webform, and Google Calendar safety prerequisites above for a
+standard-profile local database. It intentionally does not create users, stores,
+gateways, products, orders, submissions, or any other fixture data.
 
 ## Test Matrix To Enable Later
 

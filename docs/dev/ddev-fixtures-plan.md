@@ -31,6 +31,26 @@ fixture command.
   that writes are not implemented yet. No data is created or updated in this
   phase.
 
+## Implemented Phase 1b
+
+`drupal/scripts/bootstrap-local-fixture-site.sh` prepares a standard-profile
+local DDEV database for the fixture guards without running a full config import.
+
+- `--dry-run` is the default and prints the local-safe module enables and
+  allowlisted config creates that would be needed.
+- `--apply` is required before any change. It enables only the modules needed
+  for the fixture guard surface and imports only the user credit field config
+  plus `webform.webform.cours_particuliers_reservation`.
+- The import path is allowlisted config-entity creation only. It does not call
+  `drush config:import`, does not delete active config, and blocks instead of
+  overwriting a local active config entity that already exists with different
+  data.
+- The script refuses non-local paths such as `/mnt/c`, `/var/www`, and `/srv`,
+  verifies DDEV, Drush, the `key_value` table, and keeps Google Calendar real
+  sync disabled or absent.
+- No fixture users, stores, gateways, products, orders, submissions, or Google
+  credentials are created.
+
 ## Fixture Source Strategy
 
 Fixtures should be generated locally, not imported. The future command should:
@@ -187,9 +207,11 @@ Once the fixtures exist, Codex can run active local DDEV checks for:
    default and `--apply` guarded from writes.
 2. Done: implement read-only environment guards for DDEV presence, Drupal
    bootstrap, required modules, credit fields, webform, and Calendar config.
-3. Next: implement idempotent user, store, gateway, product, and variation
+3. Done: add a local-only bootstrap command for standard-profile DDEV databases
+   that need the module, user field, and reservation webform prerequisites.
+4. Next: implement idempotent user, store, gateway, product, and variation
    creation after the local active database is proven safe.
-4. Add focused local test commands for checkout/order completion and reservation
+5. Add focused local test commands for checkout/order completion and reservation
    submission.
-5. Add an explicit reset mode only after fixture creation is working and covered
+6. Add an explicit reset mode only after fixture creation is working and covered
    by dry-run output.
