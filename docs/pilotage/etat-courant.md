@@ -53,6 +53,7 @@ Le workflow de travail principal est :
 - Le test production connecté avec `uid=2` a confirmé : soumission, décrément crédit, queue Google Calendar `pending_create`, aucun “Oops”.
 - PR #31 appliquée en production : `cours_essai` est plafonné à 1 crédit maximum par utilisateur.
 - Les crédits de cours Commerce sont attribués uniquement quand la commande est `completed` et payée; un paiement sur place en attente ne donne pas de crédit avant réception/validation manuelle.
+- Le webform `cours_particuliers_reservation` configure des emails Webform de confirmation élève et notification site/admin, sans activer la synchronisation Google Calendar réelle.
 
 ## Compte test
 Compte dédié aux tests `/reserver` :
