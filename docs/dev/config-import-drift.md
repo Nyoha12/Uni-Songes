@@ -98,6 +98,66 @@ only for read-only capture in an approved maintenance/debug window.
 - Confirm whether any additional `Only in DB`, `Only in sync`, or `Different`
   items exist after the targeted evidence capture.
 
+## Read-Only Diagnostic Script
+
+Use `drupal/scripts/diagnose-config-drift.sh` to capture the first-pass
+inventory without importing, deleting, exporting, or editing config.
+
+Run it from the Drupal project directory:
+
+```bash
+cd drupal
+./scripts/diagnose-config-drift.sh
+```
+
+The script is safe for a local DDEV checkout and for the VPS because it only
+runs read-only commands:
+
+- `git` commands for HEAD, branch, and short status;
+- `drush status`;
+- `drush config:status`;
+- `drush php:eval` reads against active config storage and sync config storage.
+
+It explicitly does not run full `drush config:import`, partial config import,
+config deletion, active config writes, config export, or edits to
+`drupal/config/sync`.
+
+The script refuses `/mnt/c` paths so the Windows clone is not used
+accidentally. It prefers DDEV Drush when a DDEV project is available, then
+falls back to `./vendor/bin/drush`, then `drush` from `PATH`.
+
+## Diagnostic Interpretation
+
+Read the sections in order:
+
+- `Git`: confirms the branch, exact HEAD SHA, and whether local files are dirty.
+- `Drupal / Drush status`: confirms Drush can bootstrap the site context.
+- `drush config:status`: preserves Drush's own raw status output.
+- `Active vs sync inventory`: lists `Only in DB`, `Only in sync directory`, and
+  `Different` by comparing active config storage with sync storage.
+- `Known blocker inspection`: prints active and sync summaries for the known
+  risky config names:
+  - `block.block.unisonges_branding_barrio`
+  - `block.block.unisonges_main_menu_barrio`
+  - `block.block.unisonges_messages_barrio`
+  - `unisonges_structure.google_calendar`
+  - `webform.webform.cours_particuliers_reservation`
+- `Risk classification for current drift`: groups all drift found by the
+  diagnostic into:
+  - `theme dependency / block drift`: usually Barrio block/theme dependency
+    drift that can block import validation;
+  - `prod-only secret/config`: active-only or environment-specific config such
+    as Google Calendar settings, with token-like values redacted;
+  - `safe targeted config candidate`: config that may be suitable for a small
+    reviewed targeted reconciliation, such as the reservation webform;
+  - `unknown`: drift that has not been classified and must not be imported or
+    deleted blindly.
+
+If the local database is empty or missing the full active config set, the script
+prints a `LIMITATION` block and exits without treating the environment as clean.
+In that case, rerun it against a complete local clone, staging clone, or the VPS
+in read-only mode.
+
 ## Safe Remediation Sequence
 
 1. Keep full `drush config:import` blocked for production until the dependency
@@ -140,7 +200,7 @@ only for read-only capture in an approved maintenance/debug window.
 
 ## Next Recommendation
 
-Prepare a follow-up audit branch that captures the exact active-versus-staged
-config inventory from a safe environment. Only after that inventory is reviewed
-should the project choose the minimal config PR that makes `drush config:import`
-safe again.
+Run the read-only diagnostic locally first. If local active config is
+incomplete, rerun the same script on the VPS in a read-only capture window.
+Only after that inventory is reviewed should the project choose the minimal
+config PR that makes `drush config:import` safe again.
