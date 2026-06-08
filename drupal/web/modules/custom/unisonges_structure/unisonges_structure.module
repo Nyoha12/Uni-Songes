@@ -431,7 +431,7 @@ function _unisonges_structure_course_purchase_form_alter(array &$form, FormState
   }
 
   if (_unisonges_structure_is_cart_form($form, $form_id)) {
-    _unisonges_structure_course_cart_form_alter($form);
+    _unisonges_structure_course_cart_form_alter($form, $form_state);
   }
 
   if (_unisonges_structure_is_checkout_form($form_state, $form_id)) {
@@ -439,6 +439,7 @@ function _unisonges_structure_course_purchase_form_alter(array &$form, FormState
     if ($order && _unisonges_structure_order_has_course_products($order)) {
       if (_unisonges_structure_limit_trial_items_on_order($order)) {
         $order->save();
+        _unisonges_structure_add_trial_quantity_limit_status();
       }
       _unisonges_structure_checkout_form_ux_overrides($form, $form_state, $order);
     }
@@ -473,6 +474,10 @@ function _unisonges_structure_trial_add_to_cart_form_alter(array &$form, FormSta
   }
 }
 
+function _unisonges_structure_add_trial_quantity_limit_status(): void {
+  \Drupal::messenger()->addStatus('Le cours d’essai est limité à une seule séance. La quantité a été ramenée à 1.');
+}
+
 function unisonges_structure_trial_add_to_cart_submit(array &$form, FormStateInterface $form_state): void {
   $order = NULL;
   $cart_id = (int) $form_state->get('cart_id');
@@ -492,7 +497,7 @@ function unisonges_structure_trial_add_to_cart_submit(array &$form, FormStateInt
   }
 
   $order->save();
-  \Drupal::messenger()->addStatus('Le cours d’essai est limité à une seule séance. La quantité a été ramenée à 1.');
+  _unisonges_structure_add_trial_quantity_limit_status();
 }
 
 function _unisonges_structure_get_form_order_item(FormStateInterface $form_state) {
@@ -518,10 +523,11 @@ function _unisonges_structure_is_cart_form(array $form, string $form_id): bool {
   return is_object($view) && method_exists($view, 'id') && $view->id() === 'commerce_cart_form';
 }
 
-function _unisonges_structure_course_cart_form_alter(array &$form): void {
+function _unisonges_structure_course_cart_form_alter(array &$form, FormStateInterface $form_state): void {
   $order = _unisonges_structure_get_cart_form_order($form);
   if ($order && _unisonges_structure_limit_trial_items_on_order($order)) {
     $order->save();
+    _unisonges_structure_add_trial_quantity_limit_status();
   }
 
   $trial_rows = _unisonges_structure_cart_trial_row_indexes($form);
@@ -530,7 +536,7 @@ function _unisonges_structure_course_cart_form_alter(array &$form): void {
   }
 
   foreach (array_keys($trial_rows) as $row_index) {
-    _unisonges_structure_limit_cart_quantity_element($form, $row_index);
+    _unisonges_structure_limit_cart_quantity_element($form, $form_state, $row_index);
   }
 
   if (!isset($form['#validate']) || !is_array($form['#validate'])) {
@@ -612,11 +618,26 @@ function _unisonges_structure_get_order_item_from_view_row($row) {
   return NULL;
 }
 
-function _unisonges_structure_limit_cart_quantity_element(array &$form, $row_index): void {
+function _unisonges_structure_limit_cart_quantity_element(array &$form, FormStateInterface $form_state, $row_index): void {
   foreach (['edit_quantity', 'quantity'] as $field_name) {
     if (isset($form[$field_name][$row_index]) && is_array($form[$field_name][$row_index])) {
       _unisonges_structure_apply_trial_quantity_limit($form[$field_name][$row_index]);
+      _unisonges_structure_set_cart_quantity_form_value($form_state, $field_name, $row_index);
     }
+  }
+}
+
+function _unisonges_structure_set_cart_quantity_form_value(FormStateInterface $form_state, string $field_name, $row_index): void {
+  $values = $form_state->getValue($field_name);
+  if (is_array($values) && array_key_exists($row_index, $values) && (float) $values[$row_index] !== 1.0) {
+    $values[$row_index] = '1';
+    $form_state->setValue($field_name, $values);
+  }
+
+  $input = $form_state->getUserInput();
+  if (isset($input[$field_name]) && is_array($input[$field_name]) && array_key_exists($row_index, $input[$field_name]) && (float) $input[$field_name][$row_index] !== 1.0) {
+    $input[$field_name][$row_index] = '1';
+    $form_state->setUserInput($input);
   }
 }
 
@@ -635,9 +656,14 @@ function _unisonges_structure_limit_trial_quantity_widgets(array &$element): voi
 
 function _unisonges_structure_apply_trial_quantity_limit(array &$element): void {
   $element['#default_value'] = '1';
+  $element['#value'] = '1';
   $element['#min'] = 1;
   $element['#max'] = 1;
   $element['#step'] = 1;
+  if (!isset($element['#attributes']) || !is_array($element['#attributes'])) {
+    $element['#attributes'] = [];
+  }
+  unset($element['#attributes']['value']);
   $element['#attributes']['readonly'] = 'readonly';
   $element['#attributes']['aria-label'] = 'Quantité limitée à 1 pour le cours d’essai';
   _unisonges_structure_append_element_description($element, 'Le cours d’essai est limité à 1.');
