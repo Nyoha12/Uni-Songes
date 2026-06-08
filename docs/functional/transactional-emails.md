@@ -57,23 +57,19 @@ ete rendue et aucun envoi email n'a ete teste.
 - Pour les paiements non finalises automatiquement, les credits ne sont pas
   appliques tant que la commande n'est pas `completed`. Toute copie client doit
   distinguer paiement recu, paiement a finaliser et credits disponibles.
-- Le message de fin de checkout par defaut est en anglais dans la configuration
-  du checkout standard. Ce n'est pas un email, mais cela nuit au parcours
-  transactionnel francophone.
+- La configuration du checkout standard garde son message par defaut en anglais,
+  mais `unisonges_structure` le remplace au rendu pour les commandes de cours et
+  ajoute un CTA `/reserver` quand la commande est payee.
 
 ## Emails manquants pour un parcours propre
 
 Priorite 1 :
-- Clarifier le message de fin de checkout standard, qui reste configure en
-  anglais.
-
-Priorite 2 :
 - Email de modification ou d'annulation de reservation pour l'eleve et le
   professeur/admin.
 - Rappel avant cours, par exemple 24 h avant, une fois la source de verite et la
   strategie cron stabilisees.
 
-Priorite 3 :
+Priorite 2 :
 - Email pack expire ou bientot expire.
 - Email credits faibles ou credits epuises avec CTA achat.
 

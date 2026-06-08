@@ -14,6 +14,7 @@
  */
 
 use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Url;
 use Drupal\node\NodeInterface;
 use Drupal\commerce_product\Entity\Product;
@@ -233,7 +234,9 @@ function _unisonges_structure_sync_ticket_product(NodeInterface $node): void {
 /**
  * UNISONGES_COURSE_BOOKING_RIGHTS
  */
-function unisonges_structure_form_alter(array &$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id): void {
+function unisonges_structure_form_alter(array &$form, FormStateInterface $form_state, $form_id): void {
+  _unisonges_structure_course_purchase_form_alter($form, $form_state, (string) $form_id);
+
   $webform = $form['#webform'] ?? NULL;
   if (!$webform || $webform->id() !== 'cours_particuliers_reservation') {
     return;
@@ -419,6 +422,437 @@ function _unisonges_structure_safe_route_url(string $route_name, string $fallbac
     }
 
     return $fallback . '?' . http_build_query($query);
+  }
+}
+
+function _unisonges_structure_course_purchase_form_alter(array &$form, FormStateInterface $form_state, string $form_id): void {
+  if (_unisonges_structure_is_add_to_cart_form($form_state, $form_id)) {
+    _unisonges_structure_trial_add_to_cart_form_alter($form, $form_state);
+  }
+
+  if (_unisonges_structure_is_cart_form($form, $form_id)) {
+    _unisonges_structure_course_cart_form_alter($form);
+  }
+
+  if (_unisonges_structure_is_checkout_form($form_state, $form_id)) {
+    $order = _unisonges_structure_get_form_order($form, $form_state);
+    if ($order && _unisonges_structure_order_has_course_products($order)) {
+      if (_unisonges_structure_limit_trial_items_on_order($order)) {
+        $order->save();
+      }
+      _unisonges_structure_checkout_form_ux_overrides($form, $form_state, $order);
+    }
+  }
+}
+
+function _unisonges_structure_is_add_to_cart_form(FormStateInterface $form_state, string $form_id): bool {
+  if (strpos($form_id, 'commerce_order_item_') === 0 && strpos($form_id, '_add_to_cart_') !== FALSE && str_ends_with($form_id, '_form')) {
+    return TRUE;
+  }
+
+  $form_object = $form_state->getFormObject();
+  return $form_object && get_class($form_object) === 'Drupal\commerce_cart\Form\AddToCartForm';
+}
+
+function _unisonges_structure_trial_add_to_cart_form_alter(array &$form, FormStateInterface $form_state): void {
+  $order_item = _unisonges_structure_get_form_order_item($form_state);
+  if (!$order_item || _unisonges_structure_order_item_product_bundle($order_item) !== 'cours_essai') {
+    return;
+  }
+
+  _unisonges_structure_limit_trial_quantity_widgets($form);
+
+  $form['unisonges_trial_quantity_notice'] = [
+    '#type' => 'markup',
+    '#markup' => '<p class="unisonges-trial-limit-note">Le cours d’essai est limité à une seule séance par élève.</p>',
+    '#weight' => 30,
+  ];
+
+  if (isset($form['actions']['submit']['#submit']) && is_array($form['actions']['submit']['#submit'])) {
+    _unisonges_structure_append_form_callback($form['actions']['submit']['#submit'], 'unisonges_structure_trial_add_to_cart_submit');
+  }
+}
+
+function unisonges_structure_trial_add_to_cart_submit(array &$form, FormStateInterface $form_state): void {
+  $order = NULL;
+  $cart_id = (int) $form_state->get('cart_id');
+  if ($cart_id > 0) {
+    $order = \Drupal::entityTypeManager()->getStorage('commerce_order')->load($cart_id);
+  }
+
+  if (!$order) {
+    $order_item = _unisonges_structure_get_form_order_item($form_state);
+    if ($order_item && method_exists($order_item, 'getOrder')) {
+      $order = $order_item->getOrder();
+    }
+  }
+
+  if (!$order || !_unisonges_structure_limit_trial_items_on_order($order)) {
+    return;
+  }
+
+  $order->save();
+  \Drupal::messenger()->addStatus('Le cours d’essai est limité à une seule séance. La quantité a été ramenée à 1.');
+}
+
+function _unisonges_structure_get_form_order_item(FormStateInterface $form_state) {
+  $form_object = $form_state->getFormObject();
+  if (!$form_object || !method_exists($form_object, 'getEntity')) {
+    return NULL;
+  }
+
+  $entity = $form_object->getEntity();
+  if ($entity instanceof \Drupal\commerce_order\Entity\OrderItemInterface) {
+    return $entity;
+  }
+
+  return NULL;
+}
+
+function _unisonges_structure_is_cart_form(array $form, string $form_id): bool {
+  if (strpos($form_id, 'views_form_commerce_cart_form') === 0) {
+    return TRUE;
+  }
+
+  $view = $form['#view'] ?? NULL;
+  return is_object($view) && method_exists($view, 'id') && $view->id() === 'commerce_cart_form';
+}
+
+function _unisonges_structure_course_cart_form_alter(array &$form): void {
+  $order = _unisonges_structure_get_cart_form_order($form);
+  if ($order && _unisonges_structure_limit_trial_items_on_order($order)) {
+    $order->save();
+  }
+
+  $trial_rows = _unisonges_structure_cart_trial_row_indexes($form);
+  if (!$trial_rows) {
+    return;
+  }
+
+  foreach (array_keys($trial_rows) as $row_index) {
+    _unisonges_structure_limit_cart_quantity_element($form, $row_index);
+  }
+
+  if (!isset($form['#validate']) || !is_array($form['#validate'])) {
+    $form['#validate'] = [];
+  }
+  _unisonges_structure_append_form_callback($form['#validate'], 'unisonges_structure_course_cart_quantity_validate');
+}
+
+function unisonges_structure_course_cart_quantity_validate(array &$form, FormStateInterface $form_state): void {
+  $trial_rows = _unisonges_structure_cart_trial_row_indexes($form);
+  foreach (array_keys($trial_rows) as $row_index) {
+    foreach (['edit_quantity', 'quantity'] as $field_name) {
+      $values = $form_state->getValue($field_name);
+      if (!is_array($values) || !array_key_exists($row_index, $values)) {
+        continue;
+      }
+
+      if ((float) $values[$row_index] !== 1.0) {
+        $values[$row_index] = '1';
+        $form_state->setValue($field_name, $values);
+      }
+    }
+  }
+}
+
+function _unisonges_structure_cart_trial_row_indexes(array $form): array {
+  $rows = [];
+  $view = $form['#view'] ?? NULL;
+  if (!is_object($view) || empty($view->result) || !is_iterable($view->result)) {
+    return $rows;
+  }
+
+  foreach ($view->result as $row_index => $row) {
+    $order_item = _unisonges_structure_get_order_item_from_view_row($row);
+    if ($order_item && _unisonges_structure_order_item_product_bundle($order_item) === 'cours_essai') {
+      $rows[$row_index] = TRUE;
+    }
+  }
+
+  return $rows;
+}
+
+function _unisonges_structure_get_cart_form_order(array $form) {
+  $view = $form['#view'] ?? NULL;
+  if (!is_object($view) || empty($view->result) || !is_iterable($view->result)) {
+    return NULL;
+  }
+
+  foreach ($view->result as $row) {
+    $order_item = _unisonges_structure_get_order_item_from_view_row($row);
+    if ($order_item && method_exists($order_item, 'getOrder')) {
+      $order = $order_item->getOrder();
+      if ($order instanceof \Drupal\commerce_order\Entity\OrderInterface) {
+        return $order;
+      }
+    }
+  }
+
+  return NULL;
+}
+
+function _unisonges_structure_get_order_item_from_view_row($row) {
+  $candidates = [];
+  if (isset($row->_relationship_entities) && is_array($row->_relationship_entities)) {
+    $candidates = array_merge($candidates, $row->_relationship_entities);
+  }
+  foreach (['_entity', '_object'] as $property) {
+    if (isset($row->{$property})) {
+      $candidates[] = $row->{$property};
+    }
+  }
+
+  foreach ($candidates as $candidate) {
+    if ($candidate instanceof \Drupal\commerce_order\Entity\OrderItemInterface) {
+      return $candidate;
+    }
+  }
+
+  return NULL;
+}
+
+function _unisonges_structure_limit_cart_quantity_element(array &$form, $row_index): void {
+  foreach (['edit_quantity', 'quantity'] as $field_name) {
+    if (isset($form[$field_name][$row_index]) && is_array($form[$field_name][$row_index])) {
+      _unisonges_structure_apply_trial_quantity_limit($form[$field_name][$row_index]);
+    }
+  }
+}
+
+function _unisonges_structure_limit_trial_quantity_widgets(array &$element): void {
+  if (isset($element['#parents'], $element['#type']) && is_array($element['#parents']) && in_array('quantity', $element['#parents'], TRUE)) {
+    _unisonges_structure_apply_trial_quantity_limit($element);
+  }
+
+  foreach ($element as &$child) {
+    if (is_array($child)) {
+      _unisonges_structure_limit_trial_quantity_widgets($child);
+    }
+  }
+  unset($child);
+}
+
+function _unisonges_structure_apply_trial_quantity_limit(array &$element): void {
+  $element['#default_value'] = '1';
+  $element['#min'] = 1;
+  $element['#max'] = 1;
+  $element['#step'] = 1;
+  $element['#attributes']['readonly'] = 'readonly';
+  $element['#attributes']['aria-label'] = 'Quantité limitée à 1 pour le cours d’essai';
+  _unisonges_structure_append_element_description($element, 'Le cours d’essai est limité à 1.');
+}
+
+function _unisonges_structure_append_element_description(array &$element, string $message): void {
+  if (empty($element['#description'])) {
+    $element['#description'] = $message;
+    return;
+  }
+
+  if (is_string($element['#description']) && strpos($element['#description'], $message) === FALSE) {
+    $element['#description'] .= ' ' . $message;
+  }
+}
+
+function _unisonges_structure_is_checkout_form(FormStateInterface $form_state, string $form_id): bool {
+  if (strpos($form_id, 'commerce_checkout_flow_') === 0) {
+    return TRUE;
+  }
+
+  $form_object = $form_state->getFormObject();
+  return $form_object && str_starts_with(get_class($form_object), 'Drupal\commerce_checkout\\');
+}
+
+function _unisonges_structure_get_form_order(array $form, FormStateInterface $form_state) {
+  foreach (['#commerce_order', '#order'] as $key) {
+    if (isset($form[$key]) && $form[$key] instanceof \Drupal\commerce_order\Entity\OrderInterface) {
+      return $form[$key];
+    }
+  }
+
+  $form_object = $form_state->getFormObject();
+  if ($form_object) {
+    foreach (['getOrder', 'getEntity'] as $method) {
+      if (!method_exists($form_object, $method)) {
+        continue;
+      }
+      $entity = $form_object->{$method}();
+      if ($entity instanceof \Drupal\commerce_order\Entity\OrderInterface) {
+        return $entity;
+      }
+    }
+  }
+
+  return NULL;
+}
+
+function _unisonges_structure_checkout_form_ux_overrides(array &$form, FormStateInterface $form_state, \Drupal\commerce_order\Entity\OrderInterface $order): void {
+  $step_id = _unisonges_structure_checkout_step_id($form, $form_state);
+  if ($step_id === 'complete') {
+    _unisonges_structure_replace_checkout_completion_message($form, _unisonges_structure_checkout_completion_text($order));
+    $paid = method_exists($order, 'isPaid') && $order->isPaid();
+    $form['unisonges_course_checkout_complete'] = [
+      '#type' => 'container',
+      '#attributes' => ['class' => ['messages', 'messages--status', 'unisonges-checkout-course-notice', 'unisonges-checkout-course-notice--complete']],
+      '#weight' => -100,
+      'message' => [
+        '#markup' => '<div class="messages__content">' . _unisonges_structure_checkout_completion_text($order) . '</div>',
+      ],
+    ];
+    if ($paid) {
+      $form['unisonges_course_checkout_complete']['reserve'] = [
+        '#type' => 'link',
+        '#title' => 'Réserver un cours',
+        '#url' => Url::fromUserInput('/reserver'),
+        '#attributes' => ['class' => ['btn', 'btn--cta']],
+      ];
+    }
+    return;
+  }
+
+  $form['unisonges_course_payment_notice'] = [
+    '#type' => 'container',
+    '#attributes' => ['class' => ['messages', 'messages--status', 'unisonges-checkout-course-notice']],
+    '#weight' => -100,
+    'message' => [
+      '#markup' => '<div class="messages__content"><strong>Crédits et réservation.</strong> Paiement en ligne : vos crédits sont ouverts après confirmation du paiement. Paiement sur place : vos crédits et le droit de réserver sont ouverts uniquement après réception et validation du paiement par l’équipe.</div>',
+    ],
+  ];
+}
+
+function _unisonges_structure_checkout_step_id(array $form, FormStateInterface $form_state): string {
+  if (!empty($form['#step_id']) && is_scalar($form['#step_id'])) {
+    return (string) $form['#step_id'];
+  }
+
+  foreach (['step_id', 'checkout_step'] as $key) {
+    $value = $form_state->get($key);
+    if (is_scalar($value) && $value !== '') {
+      return (string) $value;
+    }
+  }
+
+  $form_object = $form_state->getFormObject();
+  if ($form_object) {
+    foreach (['getStepId', 'getStep'] as $method) {
+      if (method_exists($form_object, $method)) {
+        $value = $form_object->{$method}();
+        if (is_scalar($value) && $value !== '') {
+          return (string) $value;
+        }
+      }
+    }
+  }
+
+  return '';
+}
+
+function _unisonges_structure_replace_checkout_completion_message(array &$element, string $message): void {
+  foreach (['#markup', '#plain_text', '#text'] as $property) {
+    if (!isset($element[$property]) || !is_scalar($element[$property])) {
+      continue;
+    }
+    $value = (string) $element[$property];
+    if (strpos($value, 'Your order number') !== FALSE || strpos($value, 'You can view your order') !== FALSE) {
+      $element[$property] = $message;
+    }
+  }
+
+  foreach ($element as &$child) {
+    if (is_array($child)) {
+      _unisonges_structure_replace_checkout_completion_message($child, $message);
+    }
+  }
+  unset($child);
+}
+
+function _unisonges_structure_checkout_completion_text(\Drupal\commerce_order\Entity\OrderInterface $order): string {
+  $order_number = method_exists($order, 'getOrderNumber') ? trim((string) $order->getOrderNumber()) : '';
+  $prefix = $order_number !== '' ? 'Commande ' . htmlspecialchars($order_number, ENT_QUOTES, 'UTF-8') . ' confirmée. ' : 'Commande confirmée. ';
+
+  if (method_exists($order, 'isPaid') && $order->isPaid()) {
+    return $prefix . 'Votre paiement est validé et vos crédits de cours sont disponibles. Vous pouvez maintenant choisir un créneau.';
+  }
+
+  return $prefix . 'Votre commande est enregistrée. Avec le paiement sur place, vos crédits et le droit de réserver seront ouverts après validation du paiement par l’équipe.';
+}
+
+function _unisonges_structure_order_has_course_products(\Drupal\commerce_order\Entity\OrderInterface $order): bool {
+  foreach ($order->getItems() as $order_item) {
+    if (in_array(_unisonges_structure_order_item_product_bundle($order_item), _unisonges_structure_course_product_bundles(), TRUE)) {
+      return TRUE;
+    }
+  }
+
+  return FALSE;
+}
+
+function _unisonges_structure_limit_trial_items_on_order(\Drupal\commerce_order\Entity\OrderInterface $order): bool {
+  if (!_unisonges_structure_order_can_be_adjusted($order)) {
+    return FALSE;
+  }
+
+  $changed = FALSE;
+  foreach ($order->getItems() as $order_item) {
+    if (_unisonges_structure_order_item_product_bundle($order_item) !== 'cours_essai') {
+      continue;
+    }
+    if ((float) $order_item->getQuantity() <= 1.0) {
+      continue;
+    }
+
+    $order_item->setQuantity('1');
+    $order_item->save();
+    $changed = TRUE;
+  }
+
+  if ($changed && defined('\Drupal\commerce_order\Entity\OrderInterface::REFRESH_ON_SAVE') && method_exists($order, 'setRefreshState')) {
+    $order->setRefreshState(\Drupal\commerce_order\Entity\OrderInterface::REFRESH_ON_SAVE);
+  }
+
+  return $changed;
+}
+
+function _unisonges_structure_order_can_be_adjusted(\Drupal\commerce_order\Entity\OrderInterface $order): bool {
+  if (!method_exists($order, 'getState')) {
+    return TRUE;
+  }
+
+  $state = (string) ($order->getState()->value ?? '');
+  return $state === '' || in_array($state, ['draft', 'cart'], TRUE);
+}
+
+function _unisonges_structure_order_item_product_bundle($order_item): string {
+  if (!$order_item || !method_exists($order_item, 'getPurchasedEntity')) {
+    return '';
+  }
+
+  $variation = $order_item->getPurchasedEntity();
+  if (!$variation) {
+    return '';
+  }
+
+  if (method_exists($variation, 'getProduct')) {
+    $product = $variation->getProduct();
+    if ($product && method_exists($product, 'bundle')) {
+      return (string) $product->bundle();
+    }
+  }
+
+  if (method_exists($variation, 'bundle')) {
+    return (string) $variation->bundle();
+  }
+
+  return '';
+}
+
+function _unisonges_structure_course_product_bundles(): array {
+  return ['cours_essai', 'cours_deb_inter', 'cours_avance', 'pack_4_deb_inter'];
+}
+
+function _unisonges_structure_append_form_callback(array &$callbacks, string $callback): void {
+  if (!in_array($callback, $callbacks, TRUE)) {
+    $callbacks[] = $callback;
   }
 }
 
