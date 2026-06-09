@@ -163,7 +163,7 @@ $pages = [
     'body' => <<<'HTML'
 <section class="unisonges-page-intro">
   <p>Les cours particuliers Uni-Songes accompagnent les pratiques instrumentales, l'écoute et l'improvisation dans un cadre adapté au niveau de chaque personne.</p>
-  <p>Les formats de cours sont présentés par discipline pour séparer clairement les informations confirmées, les tarifs et les parcours de réservation.</p>
+  <p>Trois catégories de cours particuliers sont ouvertes : didgeridoo, guimbarde et méditation / improvisation. Le cours d'essai est proposé à 10 EUR.</p>
 </section>
 
 <div class="unisonges-card-grid">
@@ -176,13 +176,13 @@ $pages = [
   <article class="unisonges-offer-card">
     <h2 class="unisonges-offer-card__title">Cours de guimbarde</h2>
     <p class="unisonges-offer-card__text">Travail du rythme, de la respiration, des attaques et du jeu mélodique à la guimbarde.</p>
-    <p class="unisonges-offer-card__meta">Tarif à confirmer.</p>
+    <p class="unisonges-offer-card__meta">25 EUR/heure, 15 EUR/heure pour les étudiants.</p>
     <p class="unisonges-offer-card__cta"><a href="/cours/guimbarde">Voir les cours de guimbarde</a></p>
   </article>
   <article class="unisonges-offer-card">
     <h2 class="unisonges-offer-card__title">Méditation / improvisation</h2>
     <p class="unisonges-offer-card__text">Accompagnement autour de l'écoute, de l'improvisation musicale et de la présence sonore.</p>
-    <p class="unisonges-offer-card__meta">Tarif à confirmer.</p>
+    <p class="unisonges-offer-card__meta">25 EUR/heure, 15 EUR/heure pour les étudiants.</p>
     <p class="unisonges-offer-card__cta"><a href="/cours/meditation-improvisation">Voir méditation / improvisation</a></p>
   </article>
 </div>
@@ -199,15 +199,16 @@ HTML,
 
 <section class="unisonges-detail-section">
   <h2>Tarifs confirmés</h2>
-  <p class="unisonges-price-note">Cours particulier : 25 EUR/heure. Tarif étudiant : 15 EUR/heure.</p>
-  <p>Le tarif étudiant est à confirmer au moment de la prise de contact ou de la réservation.</p>
+  <p class="unisonges-price-note">Cours d'essai : 10 EUR. Cours particulier : 25 EUR/heure. Tarif étudiant : 15 EUR/heure.</p>
+  <p>Le tarif étudiant est à confirmer au moment de la réservation.</p>
 </section>
 
 <section class="unisonges-detail-section">
   <h2>Réservation et achat</h2>
-  <p>La réservation de créneau passe par le parcours existant de réservation de cours.</p>
-  <p><a href="/reserver">Réserver un créneau</a></p>
-  <p><a href="/contact">Demander le lien d'achat ou confirmer le tarif étudiant</a></p>
+  <p><a href="/product/4">Acheter un cours d'essai - 10 EUR</a></p>
+  <p><a href="/product/5">Acheter un cours didgeridoo 1h - plein tarif - 25 EUR</a></p>
+  <p><a href="/product/6">Acheter un cours didgeridoo 1h - tarif étudiant - 15 EUR</a></p>
+  <p><a href="/contact">Contacter l'association pour choisir un créneau ou confirmer le tarif étudiant</a></p>
 </section>
 HTML,
   ],
@@ -221,14 +222,14 @@ HTML,
 </section>
 
 <section class="unisonges-detail-section">
-  <h2>Tarif</h2>
-  <p class="unisonges-price-note">Tarif à confirmer par l'association.</p>
-  <p>Le tarif didgeridoo confirmé ne s'applique pas automatiquement à cette discipline tant que l'association ne l'a pas validé explicitement.</p>
+  <h2>Tarifs confirmés</h2>
+  <p class="unisonges-price-note">Cours particulier : 25 EUR/heure. Tarif étudiant : 15 EUR/heure.</p>
 </section>
 
 <section class="unisonges-detail-section">
   <h2>Réservation</h2>
-  <p><a href="/contact">Contacter l'association pour définir le format et le tarif</a></p>
+  <p>Le lien d'achat en ligne pour les cours de guimbarde reste à confirmer.</p>
+  <p><a href="/contact">Contacter l'association pour réserver un cours de guimbarde</a></p>
 </section>
 HTML,
   ],
@@ -242,13 +243,13 @@ HTML,
 </section>
 
 <section class="unisonges-detail-section">
-  <h2>Tarif</h2>
-  <p class="unisonges-price-note">Tarif à confirmer par l'association.</p>
-  <p>Aucun tarif n'est publié ici tant qu'il n'a pas été confirmé pour ce format spécifique.</p>
+  <h2>Tarifs confirmés</h2>
+  <p class="unisonges-price-note">Cours particulier : 25 EUR/heure. Tarif étudiant : 15 EUR/heure.</p>
 </section>
 
 <section class="unisonges-detail-section">
   <h2>Réservation</h2>
+  <p>Le lien d'achat en ligne pour les cours de méditation / improvisation reste à confirmer.</p>
   <p><a href="/contact">Contacter l'association pour construire le format</a></p>
 </section>
 HTML,
@@ -259,33 +260,33 @@ HTML,
     'body' => <<<'HTML'
 <section class="unisonges-page-intro">
   <p>Les stages Uni-Songes rassemblent des formats collectifs autour du didgeridoo, de l'improvisation musicale, de la méditation et de pratiques sonores spéciales.</p>
-  <p>Les pages ci-dessous structurent les familles de stages. Les dates publiées comme contenus Stage continuent d'apparaître automatiquement sur le hub existant.</p>
+  <p>Les pages ci-dessous structurent les familles de stages. Les réservations et billets doivent rester attachés aux dates publiées comme contenus Stage.</p>
 </section>
 
 <div class="unisonges-card-grid">
   <article class="unisonges-offer-card">
     <h2 class="unisonges-offer-card__title">Stages didgeridoo</h2>
     <p class="unisonges-offer-card__text">Un stage débutant par mois et un stage intermédiaire par mois.</p>
-    <p class="unisonges-offer-card__meta">20 EUR par stage.</p>
+    <p class="unisonges-offer-card__meta">20 EUR par stage didgeridoo.</p>
     <p class="unisonges-offer-card__cta"><a href="/stages/didgeridoo">Voir les stages didgeridoo</a></p>
   </article>
   <article class="unisonges-offer-card">
     <h2 class="unisonges-offer-card__title">Musique improvisée / méditation</h2>
     <p class="unisonges-offer-card__text">Formats collectifs autour de l'écoute, de la présence et de l'improvisation.</p>
-    <p class="unisonges-offer-card__meta">20 EUR par stage.</p>
+    <p class="unisonges-offer-card__meta">20 EUR par stage musique improvisée / méditation.</p>
     <p class="unisonges-offer-card__cta"><a href="/stages/musique-improvisee-meditation">Voir musique improvisée / méditation</a></p>
   </article>
   <article class="unisonges-offer-card">
     <h2 class="unisonges-offer-card__title">Stages spéciaux</h2>
     <p class="unisonges-offer-card__text">Gong, guimbarde, éveil musical et autres propositions ponctuelles.</p>
-    <p class="unisonges-offer-card__meta">Publiés selon le calendrier associatif.</p>
+    <p class="unisonges-offer-card__meta">Publiés via le système de pages Stage et de billets existant.</p>
     <p class="unisonges-offer-card__cta"><a href="/stages/speciaux">Voir les stages spéciaux</a></p>
   </article>
 </div>
 
 <section class="unisonges-detail-section">
   <h2>Stages à venir</h2>
-  <p>La zone de publication automatique des stages existants reste active sur cette page.</p>
+  <p>La zone de publication automatique des stages existants reste active sur cette page. Pour réserver, ouvrir la date publiée puis utiliser la billetterie de cette page Stage.</p>
 </section>
 HTML,
   ],
@@ -295,7 +296,7 @@ HTML,
     'body' => <<<'HTML'
 <section class="unisonges-page-intro">
   <p>Les stages didgeridoo sont organisés en deux rendez-vous récurrents : un stage débutant par mois et un stage intermédiaire par mois.</p>
-  <p>Chaque date publiée comme contenu Stage peut être reliée depuis cette page et conserve le système existant de publication et de billetterie.</p>
+  <p>Chaque date publiée comme contenu Stage conserve le système existant de publication et de billetterie.</p>
 </section>
 
 <section class="unisonges-detail-section">
@@ -307,7 +308,7 @@ HTML,
 <section class="unisonges-detail-section">
   <h2>Tarif et prochaines dates</h2>
   <p class="unisonges-price-note">20 EUR par stage didgeridoo.</p>
-  <p><a href="/stages">Voir les prochains stages publiés</a></p>
+  <p><a href="/stages">Voir les prochains stages publiés et choisir une date</a></p>
   <p><a href="/contact">Proposer une date ou demander une information</a></p>
 </section>
 HTML,
@@ -328,6 +329,7 @@ HTML,
 
 <section class="unisonges-detail-section">
   <h2>Réservation</h2>
+  <p>La réservation se fait depuis la page Stage publiée pour la date choisie, avec la billetterie associée.</p>
   <p><a href="/stages">Voir les dates publiées</a></p>
   <p><a href="/contact">Contacter l'association pour une réservation ou une question</a></p>
 </section>
@@ -344,7 +346,7 @@ HTML,
 
 <section class="unisonges-detail-section">
   <h2>Publication des stages</h2>
-  <p>Ces propositions sont publiées avec le système existant de contenus Stage et, si nécessaire, avec les mécanismes de réservation ou de billetterie déjà en place.</p>
+  <p>Ces propositions sont publiées avec le système existant de contenus Stage. Les dates, tarifs et billets sont gérés sur chaque page Stage publiée, sans lien vers un produit générique depuis cette page.</p>
   <p><a href="/stages">Voir les prochains stages publiés</a></p>
 </section>
 HTML,
