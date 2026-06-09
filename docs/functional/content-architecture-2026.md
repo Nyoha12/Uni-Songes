@@ -9,14 +9,14 @@ artistiques. La mise en place est portée par
 
 | Page | Alias | Rôle |
 | --- | --- | --- |
-| Cours | `/cours` | Hub des cours particuliers avec trois entrées : didgeridoo, guimbarde, méditation / improvisation. |
-| Cours de didgeridoo | `/cours/didgeridoo` | Page détaillée du cours de didgeridoo, tous niveaux, avec tarifs confirmés. |
-| Cours de guimbarde | `/cours/guimbarde` | Page dédiée guimbarde, sans tarif affirmé tant qu'il n'est pas confirmé. |
-| Méditation / improvisation | `/cours/meditation-improvisation` | Page dédiée à l'accompagnement individuel autour de l'écoute, de la présence et de l'improvisation. |
-| Stages | `/stages` | Hub des stages avec trois entrées : didgeridoo, musique improvisée / méditation, stages spéciaux. |
-| Stages didgeridoo | `/stages/didgeridoo` | Page des stages mensuels débutant et intermédiaire, tarif 20 EUR. |
-| Musique improvisée / méditation | `/stages/musique-improvisee-meditation` | Page des stages musique improvisée / méditation, tarif 20 EUR. |
-| Stages spéciaux | `/stages/speciaux` | Page des stages gong, guimbarde, éveil musical, etc. |
+| Cours | `/cours` | Hub des cours particuliers avec trois entrées : didgeridoo, guimbarde, méditation / improvisation, et mention du cours d'essai à 10 EUR. |
+| Cours de didgeridoo | `/cours/didgeridoo` | Page détaillée du cours de didgeridoo, tous niveaux, avec cours d'essai à 10 EUR et cours 1h à 25 EUR / 15 EUR étudiant. |
+| Cours de guimbarde | `/cours/guimbarde` | Page dédiée guimbarde, avec tarifs confirmés 25 EUR/heure et 15 EUR/heure étudiant, sans URL produit tant qu'elle n'est pas connue. |
+| Méditation / improvisation | `/cours/meditation-improvisation` | Page dédiée à l'accompagnement individuel autour de l'écoute, de la présence et de l'improvisation, avec tarifs confirmés 25 EUR/heure et 15 EUR/heure étudiant, sans URL produit tant qu'elle n'est pas connue. |
+| Stages | `/stages` | Hub des stages avec trois entrées : didgeridoo, musique improvisée / méditation, stages spéciaux, et routage vers les pages Stage publiées. |
+| Stages didgeridoo | `/stages/didgeridoo` | Page des stages mensuels débutant et intermédiaire, tarif 20 EUR, réservation via les pages Stage publiées. |
+| Musique improvisée / méditation | `/stages/musique-improvisee-meditation` | Page des stages musique improvisée / méditation, tarif 20 EUR, réservation via les pages Stage publiées. |
+| Stages spéciaux | `/stages/speciaux` | Page des stages gong, guimbarde, éveil musical, etc., publiés via le système existant de pages Stage et billets. |
 | Les Artistes de l'asso | `/les-artistes-de-l-asso` | Page de présentation des artistes partenaires, avec sections à compléter. |
 | Services et prestations artistiques | `/services-prestations-artistiques` | Page des services artistiques, pédagogiques et sonores avec CTA contact. |
 
@@ -50,13 +50,30 @@ Le script ne crée pas de produits Commerce, ne crée pas de termes de taxonomie
 ne lance pas `drush config:import`, ne modifie pas `config/sync` et ne supprime
 aucun contenu.
 
+## Décisions de contenu confirmées
+
+- Cours d'essai : 10 EUR, lien `/product/4`.
+- Cours de didgeridoo : 25 EUR/heure, lien `/product/5`.
+- Cours de didgeridoo étudiant : 15 EUR/heure, lien `/product/6`.
+- Cours de guimbarde : 25 EUR/heure, 15 EUR/heure étudiant. Aucun produit
+  Commerce dédié n'est connu dans les documents de suivi ; la page utilise donc
+  un CTA contact.
+- Méditation / improvisation : 25 EUR/heure, 15 EUR/heure étudiant. Aucun
+  produit Commerce dédié n'est connu dans les documents de suivi ; la page
+  utilise donc un CTA contact.
+- Stages didgeridoo : 20 EUR, avec réservation sur les pages Stage publiées.
+- Stages musique improvisée / méditation : 20 EUR, avec réservation sur les
+  pages Stage publiées.
+- Stages spéciaux : gong, guimbarde, éveil musical, etc., via le système
+  existant de publication de stages et de billets.
+
 ## Contenu manuel restant
 
 - Publier les dates réelles des stages comme contenus `Stage`.
 - Relier les prochaines dates depuis les pages de catégories si l'équipe veut
   des liens explicites en plus de la liste automatique.
-- Créer ou ajuster les produits Commerce si des ventes en ligne sont souhaitées.
-- Confirmer les tarifs des cours de guimbarde et méditation / improvisation.
+- Créer ou ajuster les produits Commerce hors de ce script si des ventes en
+  ligne sont souhaitées pour la guimbarde ou méditation / improvisation.
 - Compléter les biographies, photos, liens et prestations des artistes.
 - Finaliser les textes commerciaux et les contraintes techniques des prestations.
 - Ajuster les poids du menu manuellement si un ordre précis est voulu.
@@ -74,14 +91,14 @@ La page `/concerts` et son comportement existant ne sont pas touchés.
 Dry-run local, sans écriture :
 
 ```bash
-cd ~/Uni-Songes/worktrees/content-architecture-2026/drupal
+cd ~/Uni-Songes/worktrees/content-architecture-2026-followup/drupal
 ./scripts/apply-content-architecture-2026.sh --dry-run
 ```
 
 Application locale :
 
 ```bash
-cd ~/Uni-Songes/worktrees/content-architecture-2026/drupal
+cd ~/Uni-Songes/worktrees/content-architecture-2026-followup/drupal
 ./scripts/apply-content-architecture-2026.sh --apply
 ```
 
