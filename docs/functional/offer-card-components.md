@@ -14,7 +14,7 @@ Commerce or reservation logic.
 | `unisonges-offer-card__title` | Offer name or short headline. |
 | `unisonges-offer-card__text` | Short descriptive copy for the offer. |
 | `unisonges-offer-card__meta` | Price, duration, level, capacity, or scheduling metadata. |
-| `unisonges-offer-card__cta` | Primary action link or button for the offer. |
+| `unisonges-offer-card__cta` | Primary action link, button, or link wrapper for the offer. |
 | `unisonges-detail-section` | Supporting content window below the offer grid. |
 | `unisonges-price-note` | Short pricing, eligibility, or payment note. |
 
@@ -76,5 +76,7 @@ payment caveats.
   content.
 - Cards remain readable over the existing Uni-Songes page backgrounds and inside
   the current scroll frame.
+- CTA text remains visible before hover, including when Drupal wraps an inner
+  link inside `unisonges-offer-card__cta`.
 - Hover and focus states keep CTA text legible.
 - Existing pages without these classes are visually unchanged.

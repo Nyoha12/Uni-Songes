@@ -2277,11 +2277,23 @@ form[id*="webform-submission-cours-particuliers-reservation"] .alert a,
   box-shadow: 0 6px 14px rgba(2,6,23,.12);
 }
 
+.unisonges-offer-card__cta a,
+.unisonges-offer-card__cta a:visited{
+  color: inherit;
+  text-decoration: inherit;
+}
+
 .unisonges-offer-card__cta:hover,
-.unisonges-offer-card__cta:focus{
+.unisonges-offer-card__cta:focus,
+.unisonges-offer-card__cta:focus-within{
   color: #fff;
   filter: brightness(.96);
   box-shadow: 0 10px 22px rgba(2,6,23,.16);
+}
+
+.unisonges-offer-card__cta a:hover,
+.unisonges-offer-card__cta a:focus{
+  color: inherit;
 }
 
 .unisonges-detail-section{
