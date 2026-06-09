@@ -1,61 +1,70 @@
 # Commerce offers 2026
 
-This note describes a safe update path for the 2026 Uni-Songes Commerce course
-and stage offer decisions. It does not require config import and does not edit
-`config/sync`.
+This note describes the safe update path for the confirmed 2026 Uni-Songes
+Commerce course offer decisions. It does not require config import and does not
+edit `config/sync`.
 
-## Current production products from diagnostic
-
-| Product | Type | SKU | Current price | Current role |
-| --- | --- | --- | --- | --- |
-| `/product/4` | `cours_essai` | `COURS-ESSAI-20` | 20 EUR | Trial/private course offer. |
-| `/product/5` | `cours_deb_inter` | `COURS-DEB-INTER-ADULTE-40` | 40 EUR | Beginner/intermediate adult course. |
-| `/product/6` | `cours_deb_inter` | `COURS-DEB-INTER-ETUDIANT-30` | 30 EUR | Beginner/intermediate student course. |
-| `/product/7` | `pack_4_deb_inter` | `PACK4-DEB-INTER-ADULTE-100` | 100 EUR | Four-course adult pack. |
-| `/product/8` | `pack_4_deb_inter` | `PACK4-DEB-INTER-ETUDIANT-50` | 50 EUR | Four-course student pack. |
-| `/product/9` | `cours_avance` | `COURS-AVANCE-40` | 40 EUR | Advanced course. |
-
-The update script also lists active `ticket_stage` products and variations at
-runtime because stage products are generated and maintained by the existing
-stage publication/ticket system.
-
-## 2026 target decisions
+## Confirmed decisions
 
 | Offer | Target price | Script action |
 | --- | --- | --- |
-| Didgeridoo private lesson, 1 hour, all levels, full rate | 25 EUR | Update the existing adult beginner/intermediate product if the old or new SKU maps to exactly one `cours_deb_inter` product variation. |
-| Didgeridoo private lesson, 1 hour, all levels, student rate | 15 EUR | Update the existing student beginner/intermediate product if the old or new SKU maps to exactly one `cours_deb_inter` product variation. |
-| Didgeridoo stage | 20 EUR flat | Report matching `ticket_stage` products and proposed price changes only; apply through the stage publication/ticket system after explicit content matching. |
-| Music improvisation / meditation stage | 20 EUR flat | Report matching `ticket_stage` products and proposed price changes only; apply through the stage publication/ticket system after explicit content matching. |
-| Special stages | Existing stage publication/ticket system | No automatic Commerce mutation. |
+| Cours d'essai, one per account | 10 EUR | Update `/product/4` only if the product id, product type, and single variation mapping are safe. Target SKU: `COURS-ESSAI-10`. |
+| Didgeridoo private lesson, 1 hour, all levels, full rate | 25 EUR | Ensure `/product/5` remains the didgeridoo full-rate product. Target SKU: `COURS-DIDGERIDOO-1H-25`. |
+| Didgeridoo private lesson, 1 hour, all levels, student rate | 15 EUR | Ensure `/product/6` remains the didgeridoo student-rate product. Target SKU: `COURS-DIDGERIDOO-1H-ETUDIANT-15`. |
+| Guimbarde private lesson, 1 hour, full rate | 25 EUR | Create or update a `cours_deb_inter` product/variation if absent. Target SKU: `COURS-GUIMBARDE-1H-25`. |
+| Guimbarde private lesson, 1 hour, student rate | 15 EUR | Create or update a `cours_deb_inter` product/variation if absent. Target SKU: `COURS-GUIMBARDE-1H-ETUDIANT-15`. |
+| Méditation / improvisation private lesson, 1 hour, full rate | 25 EUR | Create or update a `cours_deb_inter` product/variation if absent. Target SKU: `COURS-MEDITATION-IMPRO-1H-25`. |
+| Méditation / improvisation private lesson, 1 hour, student rate | 15 EUR | Create or update a `cours_deb_inter` product/variation if absent. Target SKU: `COURS-MEDITATION-IMPRO-1H-ETUDIANT-15`. |
+| Old packs `/product/7` and `/product/8` | N/A | Unpublish only, do not delete. |
+| Old advanced course `/product/9` | N/A | Unpublish only, do not delete. |
+| Stages | Existing stage publication -> ticket system | List `ticket_stage` diagnostics only. Do not create generic fixed stage products in this script. |
+
+## Product type choice
+
+The script reuses the existing `cours_deb_inter` product and variation type for
+new guimbarde and méditation / improvisation private lesson products. This is
+the safest current option because the existing course-credit logic already adds
+one reservable course credit per purchased `cours_deb_inter` order item.
+
+The script does not rename product types or variation types. Those labels are
+configuration and would require a separate, explicit config change.
+
+## Runtime behavior
+
+- Default mode is dry-run.
+- `--apply` is required for all writes.
+- The script uses Drupal Commerce entity APIs through Drush `php:script`; it does
+  not use raw SQL.
+- Apply mode stops before writing if a target SKU/product/title match is
+  ambiguous, if an expected product id has the wrong type, or if new product
+  creation is needed but no unambiguous Commerce store can be selected.
+- New private lesson products are created only for confirmed private lesson
+  offers when no safe existing product/variation match exists.
+- Products `/product/7`, `/product/8`, and `/product/9` are unpublished only when
+  the product id and expected bundle match.
+- `ticket_stage` products are never mutated by this script.
 
 ## Current-vs-target course map
 
 | Current product | Target product | Target SKU | Target price | Apply behavior |
 | --- | --- | --- | --- | --- |
-| `/product/5` `COURS-DEB-INTER-ADULTE-40` | `Cours didgeridoo 1h - tous niveaux - plein tarif` | `COURS-DIDGERIDOO-1H-25` | 25 EUR | Safe to update title, SKU, and variation price if this SKU mapping is unique. |
-| `/product/6` `COURS-DEB-INTER-ETUDIANT-30` | `Cours didgeridoo 1h - tous niveaux - tarif etudiant` | `COURS-DIDGERIDOO-1H-ETUDIANT-15` | 15 EUR | Safe to update title, SKU, and variation price if this SKU mapping is unique. |
-| `/product/4` `COURS-ESSAI-20` | Pending | Pending | Pending | No update. Trial offer decision is still ambiguous. |
-| `/product/7` `PACK4-DEB-INTER-ADULTE-100` | Pending | Pending | Pending | No update, unpublish, or delete without explicit pack decision. |
-| `/product/8` `PACK4-DEB-INTER-ETUDIANT-50` | Pending | Pending | Pending | No update, unpublish, or delete without explicit pack decision. |
-| `/product/9` `COURS-AVANCE-40` | Pending | Pending | Pending | No update or unpublish without explicit consolidation/deactivation decision. |
+| `/product/4` `COURS-ESSAI-20` | `Cours d'essai - 1 seance` | `COURS-ESSAI-10` | 10 EUR | Update title, SKU, and variation price if `/product/4` is safely matched. |
+| `/product/5` `COURS-DEB-INTER-ADULTE-40` or `COURS-DIDGERIDOO-1H-25` | `Cours didgeridoo 1h - tous niveaux - plein tarif` | `COURS-DIDGERIDOO-1H-25` | 25 EUR | Ensure `/product/5` matches the didgeridoo full-rate target. |
+| `/product/6` `COURS-DEB-INTER-ETUDIANT-30` or `COURS-DIDGERIDOO-1H-ETUDIANT-15` | `Cours didgeridoo 1h - tous niveaux - tarif etudiant` | `COURS-DIDGERIDOO-1H-ETUDIANT-15` | 15 EUR | Ensure `/product/6` matches the didgeridoo student-rate target. |
+| Absent or matching guimbarde full-rate product | `Cours guimbarde 1h - tous niveaux - plein tarif` | `COURS-GUIMBARDE-1H-25` | 25 EUR | Create or update a `cours_deb_inter` product/variation. |
+| Absent or matching guimbarde student product | `Cours guimbarde 1h - tous niveaux - tarif etudiant` | `COURS-GUIMBARDE-1H-ETUDIANT-15` | 15 EUR | Create or update a `cours_deb_inter` product/variation. |
+| Absent or matching méditation / improvisation full-rate product | `Cours meditation / improvisation 1h - tous niveaux - plein tarif` | `COURS-MEDITATION-IMPRO-1H-25` | 25 EUR | Create or update a `cours_deb_inter` product/variation. |
+| Absent or matching méditation / improvisation student product | `Cours meditation / improvisation 1h - tous niveaux - tarif etudiant` | `COURS-MEDITATION-IMPRO-1H-ETUDIANT-15` | 15 EUR | Create or update a `cours_deb_inter` product/variation. |
+| `/product/7` `PACK4-DEB-INTER-ADULTE-100` | Unpublished old pack | N/A | N/A | Unpublish product only; no delete. |
+| `/product/8` `PACK4-DEB-INTER-ETUDIANT-50` | Unpublished old pack | N/A | N/A | Unpublish product only; no delete. |
+| `/product/9` `COURS-AVANCE-40` | Unpublished old advanced course | N/A | N/A | Unpublish product only; no delete. |
 
-## Ambiguous decisions
+## Stage handling
 
-- Trial lesson: no explicit decision says whether `cours_essai` stays at 20 EUR,
-  becomes a didgeridoo one-hour offer, is hidden, or is retired.
-- Packs: no explicit decision says whether four-course packs stay available,
-  change price, are hidden, or are retired.
-- Advanced course product: "all levels" suggests the advanced-only product might
-  become redundant, but deactivation needs an explicit decision.
-- Non-didgeridoo private lessons: guimbarde and music improvisation/meditation
-  private lesson prices are not documented by the 2026 decisions above.
-- Product type naming: existing bundle ids (`cours_deb_inter`, `cours_avance`)
-  are still usable for course credit attribution, but changing labels or bundle
-  structure would be later config work.
-- Stage tickets: stage prices are synchronized from stage content
-  `field_ticket_price`; exact stage products/nodes must be matched before an
-  operator changes those prices.
+Stage products remain owned by the existing stage publication -> ticket system.
+The update script lists `ticket_stage` products, linked pages, variations, SKUs,
+prices, and diagnostic categories only. It does not plan or apply price changes
+to stage products, and it does not create generic stage products.
 
 ## Commands
 
@@ -85,14 +94,16 @@ product mapping have been reviewed.
 
 ## Rollback notes
 
-- The script only saves matched Commerce product title fields and matched
-  Commerce product variation SKU/price fields.
+- The script only saves matched Commerce product title/status fields, matched
+  Commerce product variation SKU/price fields, and confirmed new private lesson
+  Commerce product/variation entities.
 - It does not delete products, create orders, create webform submissions, call
   Google Calendar, run config import, or edit `config/sync`.
 - Before production apply, take a database backup.
-- To roll back after apply, restore the database backup or manually set the two
-  updated variations back to:
-  - `COURS-DEB-INTER-ADULTE-40`, 40 EUR, previous adult product title.
-  - `COURS-DEB-INTER-ETUDIANT-30`, 30 EUR, previous student product title.
-- If the script reports ambiguous SKU matches, do not apply; resolve the active
-  Commerce data first and rerun the dry-run.
+- To roll back after apply, restore the database backup or manually reset the
+  changed product titles, SKUs, prices, and publication statuses.
+- Newly created private lesson products can be unpublished manually if the
+  database backup is not restored.
+- If the script reports ambiguous SKU, title, product id, product type, or store
+  matches, do not apply; resolve the active Commerce data first and rerun the
+  dry-run.
