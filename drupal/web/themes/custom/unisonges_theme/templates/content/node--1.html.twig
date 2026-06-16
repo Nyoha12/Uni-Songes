@@ -1,21 +1,5 @@
 <article class="unisonges-node-page">
-  {% include '@unisonges_theme/includes/_hero.html.twig' with { title: label, intro: 'Parcours pédagogiques autour du didgeridoo, du niveau débutant à intermédiaire.' } only %}
-
-  {% include '@unisonges_theme/includes/_card-grid.html.twig' with {
-    cards: [
-      { title: 'Cours débutant', text: 'Bases de respiration, posture et premières techniques pour démarrer sereinement.', url: '/cours/debutant', link_label: 'Voir le cours débutant' },
-      { title: 'Cours intermédiaire', text: 'Approfondissement du groove, de la musicalité et du jeu collectif.', url: '/cours/intermediaire', link_label: 'Voir le cours intermédiaire' }
-    ]
-  } only %}
-
   {% if content.body %}
     <section class="panel node-body">{{ content.body }}</section>
   {% endif %}
-
-  {% include '@unisonges_theme/includes/_actions-row.html.twig' with {
-    actions: [
-      { url: '/reserver', label: 'Réserver un cours' },
-      { url: '/contact', label: 'Poser une question' }
-    ]
-  } only %}
 </article>

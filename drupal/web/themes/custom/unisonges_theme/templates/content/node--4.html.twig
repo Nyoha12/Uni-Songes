@@ -1,22 +1,5 @@
 <article class="unisonges-node-page">
-  {% include '@unisonges_theme/includes/_hero.html.twig' with { title: label, intro: 'Stages immersifs en petits groupes, avec formats adaptés à chaque niveau.' } only %}
-
-  {% include '@unisonges_theme/includes/_card-grid.html.twig' with {
-    cards: [
-      { title: 'Stage débutant', text: 'Découverte guidée en petit groupe avec axes bien-être et musique.', url: '/stages/debutant', link_label: 'Découvrir le stage débutant' },
-      { title: 'Stage intermédiaire', text: 'Approfondissement des techniques et du jeu collectif.', url: '/stages/intermediaire', link_label: 'Découvrir le stage intermédiaire' },
-      { title: 'Masterclass', text: 'Format avancé en immersion avec accompagnement intensif.', url: '/stages/masterclass', link_label: 'Voir la masterclass' }
-    ]
-  } only %}
-
   {% if content.body %}
     <section class="panel node-body">{{ content.body }}</section>
   {% endif %}
-
-  {% include '@unisonges_theme/includes/_actions-row.html.twig' with {
-    actions: [
-      { url: '/contact', label: 'Demander des informations' },
-      { url: '/reserver', label: 'Réserver un cours' }
-    ]
-  } only %}
 </article>
