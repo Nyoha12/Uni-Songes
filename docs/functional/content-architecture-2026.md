@@ -41,18 +41,29 @@ artistiques. La mise en place est portée par
 
 ## Menu principal
 
-Le script crée ou met à jour uniquement ces liens du menu principal :
+Les titres de pages restent ceux de la carte ci-dessus. Le menu principal
+utilise des libellés plus courts pour éviter la surcharge visuelle.
 
-- `Les Artistes de l’asso` -> `/les-artistes-de-l-asso`
-- `Services et prestations artistiques` -> `/services-prestations-artistiques`
+Le script crée ou met à jour uniquement ces liens 2026 du menu principal :
 
-Il ne réordonne pas le menu principal et ne supprime aucun lien existant.
+- `Artistes` -> `/les-artistes-de-l-asso`
+- `Prestations` -> `/services-prestations-artistiques`
+
+Il peut aussi compacter les libellés de liens existants, sans modifier leur
+destination :
+
+- `Concerts` pour un lien existant vers `/concerts` ou `/concerts-dates`
+- `Orchestre` pour un lien existant vers `/orchestre-des-reveurs`
+
+Il ne réordonne pas le menu principal, ne supprime aucun lien existant et ne
+crée pas de nouveau lien pour les pages Concerts ou Orchestre si aucun lien
+correspondant n'existe déjà.
 
 ## Contenu créé par le script
 
 Le script crée ou met à jour les dix nœuds Drupal de type `page` listés dans la
-carte des pages, leurs alias et les deux liens de menu ci-dessus. Les corps de
-page utilisent les classes CSS contractuelles suivantes pour la PR CSS
+carte des pages, leurs alias et les deux liens de menu 2026 ci-dessus. Les
+corps de page utilisent les classes CSS contractuelles suivantes pour la PR CSS
 parallèle :
 
 - `unisonges-page-intro`

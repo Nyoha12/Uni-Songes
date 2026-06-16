@@ -129,8 +129,12 @@ Pages:
 - /services-prestations-artistiques
 
 Main menu links:
-- Les Artistes de l’asso -> /les-artistes-de-l-asso
-- Services et prestations artistiques -> /services-prestations-artistiques
+- Artistes -> /les-artistes-de-l-asso
+- Prestations -> /services-prestations-artistiques
+
+Existing main menu label updates, without destination changes:
+- Concerts -> /concerts or /concerts-dates, if an existing link matches
+- Orchestre -> /orchestre-des-reveurs, if an existing link matches
 
 Guards:
 - dry-run by default; writes require --apply
@@ -405,12 +409,25 @@ HTML,
 
 $menu_links = [
   [
-    'title' => 'Les Artistes de l’asso',
+    'title' => 'Artistes',
     'page_key' => 'artistes',
   ],
   [
-    'title' => 'Services et prestations artistiques',
+    'title' => 'Prestations',
     'page_key' => 'services',
+  ],
+];
+
+$existing_menu_label_updates = [
+  [
+    'title' => 'Concerts',
+    'aliases' => ['/concerts', '/concerts-dates'],
+    'legacy_titles' => ['Concerts & dates à venir', 'Concerts & dates a venir', 'Concerts/dates', 'Concerts / dates'],
+  ],
+  [
+    'title' => 'Orchestre',
+    'aliases' => ['/orchestre-des-reveurs'],
+    'legacy_titles' => ['Orchestre des rêveurs', 'Orchestre des Rêveurs', 'Orchestre de didgeridoo'],
   ],
 ];
 
@@ -521,6 +538,20 @@ foreach ($menu_links as $menu_link) {
   }
   catch (Throwable $throwable) {
     check(FALSE, $menu_link['title'] . ': ' . $throwable->getMessage());
+  }
+}
+
+foreach ($existing_menu_label_updates as $menu_label_update) {
+  try {
+    ensure_existing_menu_label(
+      $menu_label_update['title'],
+      $menu_label_update['aliases'],
+      $menu_label_update['legacy_titles'],
+      $is_apply
+    );
+  }
+  catch (Throwable $throwable) {
+    check(FALSE, $menu_label_update['title'] . ': ' . $throwable->getMessage());
   }
 }
 
@@ -738,6 +769,65 @@ function ensure_menu_link(string $title, NodeInterface $node, string $alias, boo
   else {
     echo 'WOULD_UPDATE main menu link "' . $title . '": ' . implode(', ', $changes) . PHP_EOL;
   }
+}
+
+function ensure_existing_menu_label(string $title, array $aliases, array $legacy_titles, bool $is_apply): void {
+  $storage = \Drupal::entityTypeManager()->getStorage('menu_link_content');
+  $links = $storage->loadByProperties(['menu_name' => 'main']);
+
+  $link = NULL;
+  foreach ($links as $candidate) {
+    if (menu_link_targets_alias($candidate, $aliases)) {
+      $link = $candidate;
+      break;
+    }
+  }
+
+  if (!$link) {
+    foreach ($links as $candidate) {
+      if (in_array($candidate->label(), $legacy_titles, TRUE)) {
+        $link = $candidate;
+        break;
+      }
+    }
+  }
+
+  if (!$link) {
+    echo 'SKIP compact main menu label "' . $title . '": no existing link matched ' . implode(' or ', $aliases) . PHP_EOL;
+    return;
+  }
+
+  if ($link->label() === $title) {
+    echo 'OK compact main menu label "' . $title . '" already matches' . PHP_EOL;
+    return;
+  }
+
+  $old_title = $link->label();
+  if ($is_apply) {
+    $link->set('title', $title);
+    $link->save();
+    echo 'UPDATED compact main menu label "' . $old_title . '" -> "' . $title . '"' . PHP_EOL;
+  }
+  else {
+    echo 'WOULD_UPDATE compact main menu label "' . $old_title . '" -> "' . $title . '"' . PHP_EOL;
+  }
+}
+
+function menu_link_targets_alias(MenuLinkContent $link, array $aliases): bool {
+  $uri = menu_link_uri($link);
+
+  if (strpos($uri, 'internal:') === 0) {
+    $path = substr($uri, strlen('internal:'));
+    return in_array($path, $aliases, TRUE);
+  }
+
+  if (preg_match('/^entity:node\/(\d+)$/', $uri, $matches)) {
+    $path = '/node/' . $matches[1];
+    $alias = \Drupal::service('path_alias.manager')->getAliasByPath($path);
+    return in_array($alias, $aliases, TRUE);
+  }
+
+  return FALSE;
 }
 
 function menu_link_uri(MenuLinkContent $link): string {
