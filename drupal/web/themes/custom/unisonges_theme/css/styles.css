@@ -2207,22 +2207,43 @@ form[id*="webform-submission-cours-particuliers-reservation"] .alert a,
 }
 
 /* UNISONGES_OFFER_CARD_COMPONENTS */
+.unisonges-page-intro,
+.unisonges-offer-card,
+.unisonges-detail-section{
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  color: #102033;
+  font-size: 1rem;
+  line-height: 1.58;
+}
+
 .unisonges-page-intro{
-  max-width: 760px;
-  margin: 0 0 1.5rem;
-  padding: 1rem 1.15rem;
-  border: 1px solid rgba(15,23,42,.14);
+  max-width: 840px;
+  margin: 0 0 1.35rem;
+  padding: 1.15rem 1.25rem;
+  border: 1px solid rgba(15,23,42,.16);
   border-radius: 8px;
-  background: rgba(255,255,255,.74);
-  box-shadow: 0 10px 24px rgba(2,6,23,.08);
+  background: rgba(255,255,255,.86);
+  box-shadow: 0 8px 20px rgba(2,6,23,.08);
+}
+
+.unisonges-page-intro p,
+.unisonges-detail-section p,
+.unisonges-offer-card p{
+  margin-top: 0;
+}
+
+.unisonges-page-intro p:last-child,
+.unisonges-detail-section p:last-child,
+.unisonges-offer-card p:last-child{
+  margin-bottom: 0;
 }
 
 .unisonges-card-grid{
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
+  gap: 1.1rem;
   align-items: stretch;
-  margin: 1rem 0 1.5rem;
+  margin: 1rem 0 1.6rem;
 }
 
 .unisonges-offer-card{
@@ -2230,32 +2251,47 @@ form[id*="webform-submission-cours-particuliers-reservation"] .alert a,
   flex-direction: column;
   min-width: 0;
   min-height: 100%;
-  padding: 1.15rem;
-  border: 1px solid rgba(15,23,42,.14);
+  padding: 1.2rem;
+  border: 1px solid rgba(15,23,42,.16);
   border-radius: 8px;
-  background: rgba(255,255,255,.82);
-  box-shadow: 0 10px 24px rgba(2,6,23,.10);
+  background: rgba(255,255,255,.9);
+  box-shadow: 0 8px 20px rgba(2,6,23,.10);
+  overflow-wrap: break-word;
+  transition: border-color .14s ease, box-shadow .14s ease, transform .14s ease;
+}
+
+.unisonges-offer-card:hover,
+.unisonges-offer-card:focus-within{
+  border-color: rgba(15,118,110,.5);
+  box-shadow: 0 12px 26px rgba(2,6,23,.13);
+  transform: translateY(-1px);
 }
 
 .unisonges-offer-card__title{
-  margin: 0 0 .65rem;
+  margin: 0 0 .55rem;
   color: #0b1220;
-  font-size: 1.2rem;
-  line-height: 1.25;
-  font-weight: 900;
+  font-size: 1.15rem;
+  line-height: 1.28;
+  font-weight: 800;
+  letter-spacing: 0;
 }
 
 .unisonges-offer-card__text{
-  margin: 0 0 .85rem;
+  margin-bottom: .95rem;
   color: #334155;
-  line-height: 1.55;
+  line-height: 1.58;
 }
 
 .unisonges-offer-card__meta{
-  margin: 0 0 1rem;
-  color: #0b1220;
+  margin: 0 0 1.05rem;
+  padding: .62rem .72rem;
+  border: 1px solid rgba(180,83,9,.18);
+  border-left: 4px solid var(--accent2, #f59e0b);
+  border-radius: 8px;
+  background: rgba(255,247,237,.9);
+  color: #5b3413;
   font-weight: 800;
-  line-height: 1.4;
+  line-height: 1.42;
 }
 
 .unisonges-offer-card__cta{
@@ -2264,21 +2300,25 @@ form[id*="webform-submission-cours-particuliers-reservation"] .alert a,
   justify-content: center;
   max-width: 100%;
   min-height: 2.65rem;
-  margin-top: auto;
-  padding: .68rem 1rem;
+  margin: auto 0 0;
+  padding: .68rem 1.05rem;
   border: 1px solid transparent;
   border-radius: 999px;
   background: var(--accent, #0f766e);
   color: #fff;
-  font-weight: 900;
-  line-height: 1.2;
+  font-weight: 800;
+  line-height: 1.22;
   text-align: center;
   text-decoration: none;
   box-shadow: 0 6px 14px rgba(2,6,23,.12);
+  overflow-wrap: break-word;
 }
 
 .unisonges-offer-card__cta a,
 .unisonges-offer-card__cta a:visited{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: inherit;
   text-decoration: inherit;
 }
@@ -2297,22 +2337,46 @@ form[id*="webform-submission-cours-particuliers-reservation"] .alert a,
 }
 
 .unisonges-detail-section{
-  margin: 1.5rem 0;
-  padding: 1.15rem;
-  border: 1px solid rgba(15,23,42,.14);
+  max-width: 840px;
+  margin: 1.35rem 0;
+  padding: 1.15rem 1.25rem;
+  border: 1px solid rgba(15,23,42,.16);
   border-radius: 8px;
-  background: rgba(255,255,255,.74);
+  background: rgba(255,255,255,.84);
+  box-shadow: 0 8px 20px rgba(2,6,23,.07);
+}
+
+.unisonges-detail-section h2{
+  margin: 0 0 .7rem;
+  color: #0b1220;
+  font-size: 1.12rem;
+  line-height: 1.3;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.unisonges-detail-section p > a{
+  color: var(--accent, #0f766e);
+  font-weight: 800;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.unisonges-detail-section p > a:hover,
+.unisonges-detail-section p > a:focus{
+  color: var(--accent2, #f59e0b);
 }
 
 .unisonges-price-note{
-  margin: .85rem 0 0;
-  padding: .75rem .85rem;
+  margin: .85rem 0 1rem;
+  padding: .78rem .9rem;
   border-left: 4px solid var(--accent, #0f766e);
   border-radius: 8px;
-  background: rgba(15,118,110,.10);
+  background: rgba(15,118,110,.11);
   color: #0b4f49;
   font-weight: 800;
   line-height: 1.45;
+  overflow-wrap: break-word;
 }
 
 @media (max-width: 900px){

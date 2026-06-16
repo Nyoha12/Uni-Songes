@@ -162,28 +162,28 @@ $pages = [
     'alias' => '/cours',
     'body' => <<<'HTML'
 <section class="unisonges-page-intro">
-  <p>Les cours particuliers Uni-Songes accompagnent les pratiques instrumentales, l'écoute et l'improvisation dans un cadre adapté au niveau de chaque personne.</p>
-  <p>Trois catégories de cours particuliers sont ouvertes : didgeridoo, guimbarde et méditation / improvisation. Le cours d'essai est proposé à 10 EUR.</p>
+  <p>Les cours particuliers Uni-Songes accompagnent une pratique instrumentale ou sonore avec un cadre individuel, adaptable à votre point de départ et à votre objectif.</p>
+  <p>Trois parcours sont ouverts : didgeridoo, guimbarde et méditation / improvisation. Le cours d'essai est à 10 EUR ; les cours sont à 25 EUR / heure, ou 15 EUR / heure au tarif étudiant.</p>
 </section>
 
 <div class="unisonges-card-grid">
   <article class="unisonges-offer-card">
     <h2 class="unisonges-offer-card__title">Cours de didgeridoo</h2>
-    <p class="unisonges-offer-card__text">Cours particuliers tous niveaux, du premier son aux techniques avancées.</p>
-    <p class="unisonges-offer-card__meta">25 EUR/heure, 15 EUR/heure pour les étudiants.</p>
-    <p class="unisonges-offer-card__cta"><a href="/cours/didgeridoo">Voir les cours de didgeridoo</a></p>
+    <p class="unisonges-offer-card__text">Souffle continu, vibration, rythmes, voix et construction d'un jeu personnel en séance individuelle.</p>
+    <p class="unisonges-offer-card__meta">Essai 10 EUR. Puis 25 EUR / heure, 15 EUR / heure étudiant.</p>
+    <p class="unisonges-offer-card__cta"><a href="/cours/didgeridoo">Voir les tarifs et acheter</a></p>
   </article>
   <article class="unisonges-offer-card">
     <h2 class="unisonges-offer-card__title">Cours de guimbarde</h2>
-    <p class="unisonges-offer-card__text">Travail du rythme, de la respiration, des attaques et du jeu mélodique à la guimbarde.</p>
-    <p class="unisonges-offer-card__meta">25 EUR/heure, 15 EUR/heure pour les étudiants.</p>
-    <p class="unisonges-offer-card__cta"><a href="/cours/guimbarde">Voir les cours de guimbarde</a></p>
+    <p class="unisonges-offer-card__text">Placement, attaques, respiration, rythmes et couleurs de bouche pour développer un jeu vivant.</p>
+    <p class="unisonges-offer-card__meta">25 EUR / heure. Tarif étudiant : 15 EUR / heure.</p>
+    <p class="unisonges-offer-card__cta"><a href="/cours/guimbarde">Réserver un cours</a></p>
   </article>
   <article class="unisonges-offer-card">
     <h2 class="unisonges-offer-card__title">Méditation / improvisation</h2>
-    <p class="unisonges-offer-card__text">Accompagnement autour de l'écoute, de l'improvisation musicale et de la présence sonore.</p>
-    <p class="unisonges-offer-card__meta">25 EUR/heure, 15 EUR/heure pour les étudiants.</p>
-    <p class="unisonges-offer-card__cta"><a href="/cours/meditation-improvisation">Voir méditation / improvisation</a></p>
+    <p class="unisonges-offer-card__text">Écoute, présence, improvisation musicale et exploration sonore dans un accompagnement individuel.</p>
+    <p class="unisonges-offer-card__meta">25 EUR / heure. Tarif étudiant : 15 EUR / heure.</p>
+    <p class="unisonges-offer-card__cta"><a href="/cours/meditation-improvisation">Construire le format</a></p>
   </article>
 </div>
 HTML,
@@ -193,14 +193,14 @@ HTML,
     'alias' => '/cours/didgeridoo',
     'body' => <<<'HTML'
 <section class="unisonges-page-intro">
-  <p>Les cours particuliers de didgeridoo sont ouverts à tous les niveaux : débutant, intermédiaire et avancé.</p>
-  <p>L'accompagnement peut porter sur le souffle continu, les harmoniques, les rythmes, la voix, la composition et la préparation d'un objectif personnel.</p>
+  <p>Le cours particulier de didgeridoo part de votre pratique du moment et avance vers un objectif clair : découvrir l'instrument, stabiliser une technique ou développer un jeu plus personnel.</p>
+  <p>Les séances peuvent travailler le souffle continu, la vibration, les harmoniques, les rythmes, la voix, la composition ou la préparation d'un projet.</p>
 </section>
 
 <section class="unisonges-detail-section">
   <h2>Tarifs confirmés</h2>
-  <p class="unisonges-price-note">Cours d'essai : 10 EUR. Cours particulier : 25 EUR/heure. Tarif étudiant : 15 EUR/heure.</p>
-  <p>Le tarif étudiant est à confirmer au moment de la réservation.</p>
+  <p class="unisonges-price-note">Cours d'essai : 10 EUR. Cours particulier : 25 EUR / heure. Tarif étudiant : 15 EUR / heure.</p>
+  <p>Le tarif étudiant est confirmé au moment de la réservation.</p>
 </section>
 
 <section class="unisonges-detail-section">
@@ -217,18 +217,18 @@ HTML,
     'alias' => '/cours/guimbarde',
     'body' => <<<'HTML'
 <section class="unisonges-page-intro">
-  <p>Les cours de guimbarde proposent un travail progressif sur la tenue de l'instrument, les attaques, les respirations, les rythmes et les couleurs de bouche.</p>
-  <p>Le format peut convenir à une découverte, à une pratique régulière ou à une recherche plus personnelle autour de l'improvisation.</p>
+  <p>Le cours particulier de guimbarde accompagne la découverte ou l'approfondissement de l'instrument dans un cadre simple, précis et adapté à votre pratique.</p>
+  <p>On peut y travailler la tenue, les attaques, la respiration, les rythmes, les mélodies de bouche et l'improvisation.</p>
 </section>
 
 <section class="unisonges-detail-section">
   <h2>Tarifs confirmés</h2>
-  <p class="unisonges-price-note">Cours particulier : 25 EUR/heure. Tarif étudiant : 15 EUR/heure.</p>
+  <p class="unisonges-price-note">Cours particulier : 25 EUR / heure. Tarif étudiant : 15 EUR / heure.</p>
 </section>
 
 <section class="unisonges-detail-section">
   <h2>Réservation</h2>
-  <p>Le lien d'achat en ligne pour les cours de guimbarde reste à confirmer.</p>
+  <p>La réservation se fait pour l'instant par échange direct afin de choisir le créneau et le contenu du cours.</p>
   <p><a href="/contact">Contacter l'association pour réserver un cours de guimbarde</a></p>
 </section>
 HTML,
@@ -238,18 +238,18 @@ HTML,
     'alias' => '/cours/meditation-improvisation',
     'body' => <<<'HTML'
 <section class="unisonges-page-intro">
-  <p>Ces cours accompagnent l'écoute active, la présence, l'improvisation musicale et l'exploration de matières sonores dans un cadre individuel.</p>
-  <p>Le contenu s'adapte au besoin : pratique personnelle, méditation sonore, confiance dans l'improvisation ou préparation d'un projet artistique.</p>
+  <p>Ce cours individuel accompagne l'écoute, la présence et l'improvisation musicale à partir de votre pratique, avec ou sans instrument.</p>
+  <p>Le format peut soutenir une pratique personnelle, une méditation sonore, la confiance dans l'improvisation ou la préparation d'un projet artistique.</p>
 </section>
 
 <section class="unisonges-detail-section">
   <h2>Tarifs confirmés</h2>
-  <p class="unisonges-price-note">Cours particulier : 25 EUR/heure. Tarif étudiant : 15 EUR/heure.</p>
+  <p class="unisonges-price-note">Cours particulier : 25 EUR / heure. Tarif étudiant : 15 EUR / heure.</p>
 </section>
 
 <section class="unisonges-detail-section">
   <h2>Réservation</h2>
-  <p>Le lien d'achat en ligne pour les cours de méditation / improvisation reste à confirmer.</p>
+  <p>La réservation se construit par échange direct pour ajuster le cadre, la durée et l'intention de la séance.</p>
   <p><a href="/contact">Contacter l'association pour construire le format</a></p>
 </section>
 HTML,
@@ -259,34 +259,34 @@ HTML,
     'alias' => '/stages',
     'body' => <<<'HTML'
 <section class="unisonges-page-intro">
-  <p>Les stages Uni-Songes rassemblent des formats collectifs autour du didgeridoo, de l'improvisation musicale, de la méditation et de pratiques sonores spéciales.</p>
-  <p>Les pages ci-dessous structurent les familles de stages. Les réservations et billets doivent rester attachés aux dates publiées comme contenus Stage.</p>
+  <p>Les stages Uni-Songes sont des temps collectifs pour pratiquer le didgeridoo, l'improvisation musicale, la méditation sonore ou des formats ponctuels.</p>
+  <p>Les familles ci-dessous orientent vers les contenus utiles. Les réservations et billets restent attachés aux dates publiées comme pages Stage.</p>
 </section>
 
 <div class="unisonges-card-grid">
   <article class="unisonges-offer-card">
     <h2 class="unisonges-offer-card__title">Stages didgeridoo</h2>
-    <p class="unisonges-offer-card__text">Un stage débutant par mois et un stage intermédiaire par mois.</p>
-    <p class="unisonges-offer-card__meta">20 EUR par stage didgeridoo.</p>
+    <p class="unisonges-offer-card__text">Deux rendez-vous collectifs réguliers : débutant et intermédiaire, selon le calendrier publié.</p>
+    <p class="unisonges-offer-card__meta">20 EUR par stage.</p>
     <p class="unisonges-offer-card__cta"><a href="/stages/didgeridoo">Voir les stages didgeridoo</a></p>
   </article>
   <article class="unisonges-offer-card">
     <h2 class="unisonges-offer-card__title">Musique improvisée / méditation</h2>
-    <p class="unisonges-offer-card__text">Formats collectifs autour de l'écoute, de la présence et de l'improvisation.</p>
-    <p class="unisonges-offer-card__meta">20 EUR par stage musique improvisée / méditation.</p>
+    <p class="unisonges-offer-card__text">Pratique collective de l'écoute, de la présence, de la respiration et de l'improvisation sonore.</p>
+    <p class="unisonges-offer-card__meta">20 EUR par stage.</p>
     <p class="unisonges-offer-card__cta"><a href="/stages/musique-improvisee-meditation">Voir musique improvisée / méditation</a></p>
   </article>
   <article class="unisonges-offer-card">
     <h2 class="unisonges-offer-card__title">Stages spéciaux</h2>
-    <p class="unisonges-offer-card__text">Gong, guimbarde, éveil musical et autres propositions ponctuelles.</p>
-    <p class="unisonges-offer-card__meta">Publiés via le système de pages Stage et de billets existant.</p>
+    <p class="unisonges-offer-card__text">Gong, guimbarde, éveil musical et autres propositions ponctuelles publiées au fil de la saison.</p>
+    <p class="unisonges-offer-card__meta">Tarifs et billets indiqués sur chaque date publiée.</p>
     <p class="unisonges-offer-card__cta"><a href="/stages/speciaux">Voir les stages spéciaux</a></p>
   </article>
 </div>
 
 <section class="unisonges-detail-section">
   <h2>Stages à venir</h2>
-  <p>La zone de publication automatique des stages existants reste active sur cette page. Pour réserver, ouvrir la date publiée puis utiliser la billetterie de cette page Stage.</p>
+  <p>La zone de publication automatique des stages reste active sur cette page. Pour réserver, ouvrez une date publiée puis utilisez la billetterie associée.</p>
 </section>
 HTML,
   ],
@@ -295,19 +295,19 @@ HTML,
     'alias' => '/stages/didgeridoo',
     'body' => <<<'HTML'
 <section class="unisonges-page-intro">
-  <p>Les stages didgeridoo sont organisés en deux rendez-vous récurrents : un stage débutant par mois et un stage intermédiaire par mois.</p>
-  <p>Chaque date publiée comme contenu Stage conserve le système existant de publication et de billetterie.</p>
+  <p>Les stages didgeridoo proposent deux rendez-vous collectifs mensuels : un stage débutant et un stage intermédiaire.</p>
+  <p>Chaque date est publiée comme page Stage avec sa billetterie, son horaire et les informations pratiques.</p>
 </section>
 
 <section class="unisonges-detail-section">
-  <h2>Formats mensuels</h2>
-  <p>Débutant : découverte de l'instrument, vibration de base, respiration et premiers rythmes.</p>
-  <p>Intermédiaire : stabilité du souffle, variations rythmiques, voix, accents et construction de phrases.</p>
+  <h2>Repères de pratique</h2>
+  <p>Débutant mensuel : découverte de l'instrument, vibration de base, respiration et premiers rythmes.</p>
+  <p>Intermédiaire mensuel : stabilité du souffle, variations rythmiques, voix, accents et construction de phrases.</p>
 </section>
 
 <section class="unisonges-detail-section">
   <h2>Tarif et prochaines dates</h2>
-  <p class="unisonges-price-note">20 EUR par stage didgeridoo.</p>
+  <p class="unisonges-price-note">20 EUR par stage.</p>
   <p><a href="/stages">Voir les prochains stages publiés et choisir une date</a></p>
   <p><a href="/contact">Proposer une date ou demander une information</a></p>
 </section>
@@ -319,12 +319,12 @@ HTML,
     'body' => <<<'HTML'
 <section class="unisonges-page-intro">
   <p>Ces stages proposent une pratique collective de l'écoute, de la méditation sonore et de l'improvisation musicale.</p>
-  <p>Le cadre peut associer instruments acoustiques, voix, silence, respiration et exploration de textures sonores.</p>
+  <p>Le cadre peut associer instruments acoustiques, voix, silence, respiration et textures sonores, avec une attention portée au groupe.</p>
 </section>
 
 <section class="unisonges-detail-section">
   <h2>Tarif</h2>
-  <p class="unisonges-price-note">20 EUR par stage musique improvisée / méditation.</p>
+  <p class="unisonges-price-note">20 EUR par stage.</p>
 </section>
 
 <section class="unisonges-detail-section">
@@ -341,12 +341,12 @@ HTML,
     'body' => <<<'HTML'
 <section class="unisonges-page-intro">
   <p>Les stages spéciaux regroupent les propositions ponctuelles : gong, guimbarde, éveil musical et autres formats invités.</p>
-  <p>Ils permettent de publier des formats qui ne rentrent pas dans les rendez-vous mensuels didgeridoo ou méditation / improvisation.</p>
+  <p>Chaque proposition précise son format, son tarif et sa billetterie sur la page Stage publiée.</p>
 </section>
 
 <section class="unisonges-detail-section">
-  <h2>Publication des stages</h2>
-  <p>Ces propositions sont publiées avec le système existant de contenus Stage. Les dates, tarifs et billets sont gérés sur chaque page Stage publiée, sans lien vers un produit générique depuis cette page.</p>
+  <h2>Réservation</h2>
+  <p>Ces propositions passent par le système existant de contenus Stage et de billets. Cette page sert d'orientation, sans créer de produit générique.</p>
   <p><a href="/stages">Voir les prochains stages publiés</a></p>
 </section>
 HTML,
