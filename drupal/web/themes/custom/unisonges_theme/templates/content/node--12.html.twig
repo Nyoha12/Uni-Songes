@@ -1,12 +1,5 @@
 <article class="unisonges-node-page">
-  {% include '@unisonges_theme/includes/_hero.html.twig' with { title: label, intro: 'Stage intermédiaire pour développer technique, rythme et présence sonore.' } only %}
   {% if content.body %}
     <section class="panel node-body">{{ content.body }}</section>
   {% endif %}
-  {% include '@unisonges_theme/includes/_actions-row.html.twig' with {
-    actions: [
-      { url: '/stages', label: 'Retour aux stages' },
-      { url: '/contact', label: 'Demander des informations' }
-    ]
-  } only %}
 </article>

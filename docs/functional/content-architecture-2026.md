@@ -35,6 +35,9 @@ artistiques. La mise en place est portée par
   intermédiaire, sans développer longuement le fonctionnement mensuel.
 - Les stages spéciaux ne créent pas d'offre générique : le format, le tarif et
   les billets restent portés par chaque page Stage publiée.
+- Le corps des pages Drupal est la source de vérité pour les contenus Cours et
+  Stages 2026. Les templates de thème ne doivent pas injecter de sections
+  éditoriales hardcodées qui réintroduisent l'ancienne structure.
 
 ## Menu principal
 
