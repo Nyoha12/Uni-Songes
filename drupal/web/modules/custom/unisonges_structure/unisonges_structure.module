@@ -289,16 +289,16 @@ function _unisonges_structure_build_reservation_portal_context(): array {
     'is_anonymous' => TRUE,
     'display_name' => '',
     'remaining' => NULL,
-    'remaining_label' => 'Connectez-vous pour voir vos séances disponibles.',
+    'remaining_label' => 'Connectez-vous pour préparer votre réservation.',
     'expiry_label' => '',
     'status' => 'anonymous',
-    'status_label' => 'Connexion requise pour confirmer une réservation.',
-    'message' => 'Vous pouvez consulter les disponibilités. La validation du créneau demande un compte connecté.',
+    'status_label' => 'Compte requis avant confirmation.',
+    'message' => 'Les disponibilités restent consultables. Le paiement se décide après le choix du cours et du créneau.',
     'can_book' => FALSE,
     'login_url' => _unisonges_structure_safe_route_url('user.login', '/user/login', ['destination' => '/reserver']),
     'register_url' => _unisonges_structure_safe_route_url('user.register', '/user/register', ['destination' => '/reserver']),
     'purchase_url' => '/cours',
-    'purchase_label' => 'Acheter une séance ou un pack',
+    'purchase_label' => 'Voir les cours',
   ];
 
   $current_user = \Drupal::currentUser();
@@ -311,7 +311,7 @@ function _unisonges_structure_build_reservation_portal_context(): array {
   if (!$account) {
     $context['status'] = 'error';
     $context['status_label'] = 'Compte introuvable.';
-    $context['message'] = 'Impossible de lire vos droits de cours pour le moment.';
+    $context['message'] = 'Impossible de lire votre compte pour le moment.';
     return $context;
   }
 
@@ -338,8 +338,8 @@ function _unisonges_structure_build_reservation_portal_context(): array {
   }
   else {
     $context['status'] = 'blocked';
-    $context['status_label'] = 'Aucune réservation possible pour le moment.';
-    $context['message'] = $message ?: 'Achetez une séance ou un pack avant de confirmer un créneau.';
+    $context['status_label'] = 'Paiement à choisir avant confirmation.';
+    $context['message'] = $message ?: 'Vous pouvez consulter les créneaux. La confirmation se finalise après le choix du paiement.';
   }
 
   return $context;
@@ -415,10 +415,10 @@ function _unisonges_structure_format_course_pack_expiry(string $value): string {
   $today = new \DateTimeImmutable('today');
   $label = $date->format('d/m/Y');
   if ($date < $today) {
-    return 'Pack expiré le ' . $label;
+    return 'Validité échue le ' . $label;
   }
 
-  return 'Pack valable jusqu’au ' . $label;
+  return 'Valable jusqu’au ' . $label;
 }
 
 /**
@@ -1042,7 +1042,7 @@ function _unisonges_structure_user_can_book(\Drupal\user\UserInterface $account,
     }
     if ($expiry < $today) {
       $paid_credit_available = FALSE;
-      $paid_credit_blocked_message = 'Votre pack a expiré. Merci d’acheter une nouvelle formule pour réserver.';
+      $paid_credit_blocked_message = 'Votre validité précédente est échue. Choisissez le cours, le créneau, puis le paiement pour confirmer.';
     }
   }
 
@@ -1050,7 +1050,7 @@ function _unisonges_structure_user_can_book(\Drupal\user\UserInterface $account,
     return TRUE;
   }
 
-  $message = $paid_credit_blocked_message ?: 'Aucune séance disponible. Achetez une séance, un pack, ou choisissez le paiement sur place.';
+  $message = $paid_credit_blocked_message ?: 'Choisissez le cours, le créneau, puis le paiement pour confirmer la réservation.';
   return FALSE;
 }
 
