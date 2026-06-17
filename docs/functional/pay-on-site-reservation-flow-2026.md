@@ -82,6 +82,32 @@ Si une course concurrente laisse la submission sans droit disponible au moment d
 l'insertion, la valeur de reservation est remplacee par une valeur inactive
 `|0`, afin de ne pas bloquer gratuitement le creneau.
 
+## UX checkout et confirmation reservation
+
+Le checkout de cours reste reserve aux comptes connectes. Si un visiteur anonyme
+arrive sur le checkout avec un panier de cours, le module masque l'action de
+continuation et affiche un message explicite :
+"Connectez-vous ou creez un compte pour reserver un cours." Les liens de
+connexion et creation de compte gardent la destination du checkout.
+
+Quand un utilisateur connecte reprend un panier de cours cree anonymement, le
+module rattache la commande au compte courant si la commande n'a pas encore de
+client. Ce rattachement est necessaire pour que les conditions Commerce de la
+passerelle manuelle `Paiement sur place` voient bien le role `authenticated`.
+Sans cela, le pane de paiement peut conclure a tort qu'aucune passerelle n'est
+disponible pour la commande.
+
+Apres une submission valide du formulaire de reservation, `/reserver` affiche une
+confirmation recapitulative au lieu de remettre "Choisir un creneau" comme action
+principale. Le recapitulatif indique :
+
+- le creneau choisi ;
+- le cours, le mode, l'instrument et le niveau ;
+- le lieu ou la plateforme quand l'information est applicable ;
+- l'etat de paiement : credit paye utilise, paiement sur place confirme, ou
+  `COURS À PAYER - paiement sur place` ;
+- les actions suivantes vers le compte ou l'accueil.
+
 ## Confirmation de paiement admin
 
 Quand une commande paiement sur place devient payee :
