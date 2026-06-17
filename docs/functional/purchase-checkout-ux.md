@@ -36,22 +36,6 @@ dans un navigateur et aucune production/VPS n'a ete touchee.
    et ne guidait pas explicitement vers `/reserver`. Le checkout complet pour une
    commande de cours payee affiche maintenant un message francais et un CTA
    "Reserver un cours" vers `/reserver`.
-6. Apres PR #62, une commande de cours issue d'un panier anonyme pouvait rester
-   rattachee au client anonyme meme apres connexion. Comme la passerelle manuelle
-   "Paiement sur place" est conditionnee au role `authenticated`, Commerce pouvait
-   afficher "There are no payment gateways available for this order." Le checkout
-   rattache maintenant uniquement les commandes de cours sans client au compte
-   connecte courant avant le choix du paiement.
-7. Le checkout anonyme de cours n'est pas active. Si un visiteur anonyme arrive
-   sur le tunnel avec un cours, l'action de continuation est masquee et un message
-   visible demande de se connecter ou de creer un compte pour reserver un cours.
-8. Les messages systeme, erreurs de connexion, erreurs Webform, alertes panier et
-   notices checkout sont maintenant rendus comme des boites alignees,
-   distinctes par type, avec roles/aria conserves par le markup Drupal.
-9. La page `/reserver` affiche un indicateur de progression `Compte`, `Creneau`,
-   `Paiement`, `Confirmation`. Apres une reservation valide, elle affiche un
-   recapitulatif du creneau et de l'etat de paiement au lieu de remettre le choix
-   de creneau en action principale.
 
 ## Changements
 
@@ -62,26 +46,4 @@ dans un navigateur et aucune production/VPS n'a ete touchee.
   reservation deviennent disponibles.
 - Message de completion checkout remplace si le message Commerce par defaut en
   anglais est rendu, avec CTA `/reserver` uniquement si la commande est payee.
-- Garde checkout cours : compte requis pour les anonymes et rattachement defensif
-  des paniers de cours anonymes au compte connecte courant.
-- Confirmation de reservation construite depuis la submission Webform sauvegardee
-  et le contexte de paiement PR #62.
-- Styles globaux pour les messages Drupal, les erreurs inline, l'indicateur de
-  progression et le recapitulatif de reservation.
-
-## Prefill identite / contact
-
-Inspection statique : le compte utilisateur expose les champs de droits de cours,
-mais pas de champ persistant telephone/nom/prenom dans la configuration exportee.
-Le profil Commerce `customer` expose une adresse postale.
-
-Le formulaire de reservation pre-remplit donc prudemment :
-
-- le telephone uniquement si un champ utilisateur compatible existe deja
-  (`field_telephone`, `field_phone`, `telephone` ou `phone`) ;
-- l'adresse domicile et le code postal depuis le dernier profil Commerce client.
-
-Suivi propose si l'equipe veut supprimer toute ressaisie de contact : ajouter un
-champ telephone/profile eleve persistant, puis synchroniser explicitement ce champ
-avec le formulaire de reservation. Ce suivi necessitera une PR de configuration
-dediee.
+- Styles minimaux pour les notices de quantite et checkout.
