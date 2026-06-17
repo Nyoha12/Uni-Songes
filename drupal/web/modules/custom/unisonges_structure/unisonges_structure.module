@@ -92,15 +92,10 @@ function unisonges_structure_preprocess_node(array &$variables): void {
   }
 
   $variables['unisonges_reservation_portal'] = _unisonges_structure_build_reservation_portal_context();
-  $variables['unisonges_reservation_confirmation'] = _unisonges_structure_build_recent_reservation_confirmation_context();
-  $variables['unisonges_reservation_form'] = $variables['unisonges_reservation_confirmation']
-    ? []
-    : _unisonges_structure_build_course_reservation_form();
+  $variables['unisonges_reservation_form'] = _unisonges_structure_build_course_reservation_form();
 
   $variables['elements']['#cache']['contexts'][] = 'user';
   $variables['content']['#cache']['contexts'][] = 'user';
-  $variables['elements']['#cache']['contexts'][] = 'url.query_args:reservation';
-  $variables['content']['#cache']['contexts'][] = 'url.query_args:reservation';
 }
 
 /**
@@ -263,7 +258,7 @@ function unisonges_structure_form_alter(array &$form, FormStateInterface $form_s
     }
     $form['unisonges_booking_notice'] = [
       '#type' => 'markup',
-      '#markup' => '<div class="messages messages--warning" role="status" aria-live="polite"><div class="messages__content">Connectez-vous ou créez un compte pour réserver un cours.</div></div>',
+      '#markup' => '<div class="messages messages--status" role="status" aria-live="polite"><div class="messages__content">Connectez-vous pour réserver un créneau.</div></div>',
       '#weight' => 999,
     ];
   }
@@ -283,7 +278,6 @@ function unisonges_structure_form_alter(array &$form, FormStateInterface $form_s
   }
 
   $form['#validate'][] = 'unisonges_structure_booking_form_validate';
-  _unisonges_structure_append_booking_form_submit_callback($form);
   _unisonges_structure_booking_form_ux_overrides($form);
 }
 
@@ -404,185 +398,6 @@ function _unisonges_structure_reservation_portal_notice(string $message): array 
 }
 
 /**
- * Builds the immediate post-submit reservation confirmation context.
- */
-function _unisonges_structure_build_recent_reservation_confirmation_context(): ?array {
-  $request = \Drupal::request();
-  if ((string) $request->query->get('reservation') !== 'confirmed') {
-    return NULL;
-  }
-
-  $current_user = \Drupal::currentUser();
-  if ($current_user->isAnonymous()) {
-    return NULL;
-  }
-
-  try {
-    $stored = \Drupal::service('tempstore.private')
-      ->get('unisonges_structure')
-      ->get('recent_course_reservation_confirmation');
-  }
-  catch (\Throwable $e) {
-    return NULL;
-  }
-
-  if (!is_array($stored)) {
-    return NULL;
-  }
-
-  $sid = (int) ($stored['sid'] ?? 0);
-  $uid = (int) ($stored['uid'] ?? 0);
-  $created = (int) ($stored['created'] ?? 0);
-  if ($sid <= 0 || $uid !== (int) $current_user->id() || $created < \Drupal::time()->getRequestTime() - 1800) {
-    return NULL;
-  }
-
-  try {
-    $submission = \Drupal::entityTypeManager()->getStorage('webform_submission')->load($sid);
-  }
-  catch (\Throwable $e) {
-    return NULL;
-  }
-
-  if (!$submission instanceof \Drupal\webform\WebformSubmissionInterface || $submission->getWebform()->id() !== 'cours_particuliers_reservation') {
-    return NULL;
-  }
-  if ((int) $submission->getOwnerId() !== (int) $current_user->id()) {
-    return NULL;
-  }
-
-  $reservation = unisonges_structure_parse_booking_reservation_value(
-    _unisonges_structure_get_submission_element_string($submission, 'reservation')
-  );
-  if ($reservation === NULL || !empty($reservation['cancelled'])) {
-    return NULL;
-  }
-
-  $payment = _unisonges_structure_get_submission_payment_context($submission);
-  $mode_label = _unisonges_structure_get_submission_option_label($submission, 'mode_cours');
-  $instrument_label = _unisonges_structure_get_submission_option_label($submission, 'instrument');
-  $level_label = _unisonges_structure_get_submission_option_label($submission, 'niveau_cours');
-
-  return [
-    'sid' => $sid,
-    'slot_label' => _unisonges_structure_format_reservation_slot_label($reservation),
-    'course_label' => 'Cours particulier',
-    'mode_label' => $mode_label,
-    'instrument_label' => $instrument_label,
-    'level_label' => $level_label,
-    'location_label' => _unisonges_structure_build_reservation_location_label($submission, $mode_label),
-    'payment_status' => $payment['status'],
-    'payment_label' => _unisonges_structure_reservation_payment_label($payment),
-    'payment_detail' => _unisonges_structure_reservation_payment_detail($payment),
-    'account_url' => _unisonges_structure_safe_route_url('user.page', '/user'),
-    'home_url' => Url::fromRoute('<front>')->toString(),
-  ];
-}
-
-/**
- * Stores the latest saved reservation so /reserver can render a summary.
- */
-function _unisonges_structure_store_recent_reservation_confirmation(\Drupal\webform\WebformSubmissionInterface $webform_submission): void {
-  $sid = (int) $webform_submission->id();
-  $uid = (int) $webform_submission->getOwnerId();
-  if ($sid <= 0 || $uid <= 0 || $webform_submission->getWebform()->id() !== 'cours_particuliers_reservation') {
-    return;
-  }
-
-  try {
-    \Drupal::service('tempstore.private')
-      ->get('unisonges_structure')
-      ->set('recent_course_reservation_confirmation', [
-        'sid' => $sid,
-        'uid' => $uid,
-        'created' => \Drupal::time()->getRequestTime(),
-      ]);
-  }
-  catch (\Throwable $e) {
-    \Drupal::logger('unisonges_structure')->warning('Could not store reservation confirmation context for submission @sid: @message', [
-      '@sid' => $sid,
-      '@message' => $e->getMessage(),
-    ]);
-  }
-}
-
-/**
- * Formats a parsed reservation slot for customer-facing summaries.
- */
-function _unisonges_structure_format_reservation_slot_label(array $reservation): string {
-  if (($reservation['start'] ?? NULL) instanceof \DateTimeImmutable) {
-    return $reservation['start']->format('d/m/Y à H:i');
-  }
-
-  $date = (string) ($reservation['date'] ?? '');
-  $time = (string) ($reservation['time'] ?? '');
-  return trim($date . ' ' . $time);
-}
-
-/**
- * Builds a readable location label for the submitted course mode.
- */
-function _unisonges_structure_build_reservation_location_label(\Drupal\webform\WebformSubmissionInterface $webform_submission, string $mode_label): string {
-  $mode = _unisonges_structure_get_submission_element_string($webform_submission, 'mode_cours');
-  if ($mode === 'domicile') {
-    $address = _unisonges_structure_get_submission_element_string($webform_submission, 'adresse_domicile');
-    $postal_code = _unisonges_structure_get_submission_element_string($webform_submission, 'code_postal_domicile');
-    return trim($address . ($postal_code !== '' ? ' ' . $postal_code : ''));
-  }
-
-  if ($mode === 'visio') {
-    $platform = _unisonges_structure_get_submission_option_label($webform_submission, 'plateforme_visio');
-    return $platform !== '' ? 'Visio - ' . $platform : $mode_label;
-  }
-
-  if ($mode === 'studio') {
-    return 'Studio - 1 rue du chemin vert, 93300 Aubervilliers';
-  }
-
-  return $mode_label;
-}
-
-/**
- * Converts the internal payment context to a concise customer label.
- */
-function _unisonges_structure_reservation_payment_label(array $payment): string {
-  switch ((string) ($payment['status'] ?? '')) {
-    case 'to_pay':
-      return 'COURS À PAYER - paiement sur place';
-
-    case 'paid':
-      return 'Paiement sur place confirmé';
-
-    case 'cancelled':
-      return 'Paiement sur place annulé';
-
-    case 'paid_credit':
-    default:
-      return 'Crédit payé utilisé';
-  }
-}
-
-/**
- * Explains what the reservation payment label means for the next action.
- */
-function _unisonges_structure_reservation_payment_detail(array $payment): string {
-  switch ((string) ($payment['status'] ?? '')) {
-    case 'to_pay':
-      return 'Votre créneau est réservé. Le règlement se fera sur place auprès de l’équipe.';
-
-    case 'paid':
-      return 'Votre créneau est réservé et le paiement sur place a été confirmé.';
-
-    case 'cancelled':
-      return 'Cette réservation est liée à un paiement sur place annulé. Contactez l’équipe avant le cours.';
-
-    case 'paid_credit':
-    default:
-      return 'Votre créneau est réservé avec un crédit de cours déjà payé.';
-  }
-}
-
-/**
  * Formats the course pack expiry date for the front portal.
  */
 function _unisonges_structure_format_course_pack_expiry(string $value): string {
@@ -638,13 +453,6 @@ function _unisonges_structure_course_purchase_form_alter(array &$form, FormState
         $order->save();
         _unisonges_structure_add_trial_quantity_limit_status();
       }
-      if (\Drupal::currentUser()->isAnonymous()) {
-        _unisonges_structure_anonymous_course_checkout_guard($form);
-        return;
-      }
-      if (_unisonges_structure_attach_course_order_to_current_user($order)) {
-        _unisonges_structure_reload_current_get_request();
-      }
       _unisonges_structure_checkout_form_ux_overrides($form, $form_state, $order);
     }
   }
@@ -679,129 +487,7 @@ function _unisonges_structure_trial_add_to_cart_form_alter(array &$form, FormSta
 }
 
 function _unisonges_structure_add_trial_quantity_limit_status(): void {
-  static $added = FALSE;
-  if ($added) {
-    return;
-  }
-
-  $added = TRUE;
-  \Drupal::messenger()->addWarning('Le cours d’essai est limité à une seule séance par élève. La quantité de votre panier a été ajustée à 1.');
-}
-
-/**
- * Blocks anonymous final checkout for course carts with clear account actions.
- */
-function _unisonges_structure_anonymous_course_checkout_guard(array &$form): void {
-  $destination = _unisonges_structure_current_request_path_with_query();
-  $login_url = _unisonges_structure_safe_route_url('user.login', '/user/login', ['destination' => $destination]);
-  $register_url = _unisonges_structure_safe_route_url('user.register', '/user/register', ['destination' => $destination]);
-
-  $form['unisonges_course_login_required'] = [
-    '#type' => 'container',
-    '#attributes' => [
-      'class' => ['messages', 'messages--warning', 'unisonges-checkout-course-notice', 'unisonges-checkout-login-required'],
-      'role' => 'status',
-      'aria-live' => 'polite',
-    ],
-    '#weight' => -200,
-    'message' => [
-      '#markup' => '<div class="messages__content"><strong>Compte requis.</strong> Connectez-vous ou créez un compte pour réserver un cours.</div>',
-    ],
-    'actions' => [
-      '#type' => 'container',
-      '#attributes' => ['class' => ['unisonges-checkout-login-required__actions']],
-      'login' => [
-        '#type' => 'link',
-        '#title' => 'Se connecter',
-        '#url' => Url::fromUserInput($login_url),
-        '#attributes' => ['class' => ['btn', 'btn--cta']],
-      ],
-      'register' => [
-        '#type' => 'link',
-        '#title' => 'Créer un compte',
-        '#url' => Url::fromUserInput($register_url),
-        '#attributes' => ['class' => ['btn']],
-      ],
-    ],
-  ];
-
-  if (isset($form['actions']) && is_array($form['actions'])) {
-    $form['actions']['#access'] = FALSE;
-  }
-  $form['#validate'][] = 'unisonges_structure_anonymous_course_checkout_validate';
-  $form['#cache']['contexts'][] = 'user.roles:authenticated';
-}
-
-/**
- * Validation fallback if an anonymous course checkout submit is still posted.
- */
-function unisonges_structure_anonymous_course_checkout_validate(array &$form, FormStateInterface $form_state): void {
-  if (\Drupal::currentUser()->isAnonymous()) {
-    $form_state->setErrorByName('', 'Connectez-vous ou créez un compte pour réserver un cours.');
-  }
-}
-
-/**
- * Assigns an anonymous course cart to the signed-in customer before payment.
- */
-function _unisonges_structure_attach_course_order_to_current_user(\Drupal\commerce_order\Entity\OrderInterface $order): bool {
-  $current_user = \Drupal::currentUser();
-  if ($current_user->isAnonymous()) {
-    return FALSE;
-  }
-
-  $uid = (int) $current_user->id();
-  $order_uid = method_exists($order, 'getCustomerId') ? (int) $order->getCustomerId() : 0;
-  if ($order_uid > 0 && $order_uid !== $uid) {
-    return FALSE;
-  }
-
-  $changed = FALSE;
-  if ($order_uid !== $uid && method_exists($order, 'setCustomerId')) {
-    $order->setCustomerId($uid);
-    $changed = TRUE;
-  }
-
-  $account = \Drupal\user\Entity\User::load($uid);
-  $email = $account ? trim((string) $account->getEmail()) : '';
-  if ($email !== '' && method_exists($order, 'getEmail') && method_exists($order, 'setEmail') && trim((string) $order->getEmail()) === '') {
-    $order->setEmail($email);
-    $changed = TRUE;
-  }
-
-  if ($changed) {
-    $order->save();
-  }
-
-  return $changed;
-}
-
-/**
- * Reloads the current GET request after mutating checkout state pre-render.
- */
-function _unisonges_structure_reload_current_get_request(): void {
-  $request = \Drupal::request();
-  if (!$request->isMethod('GET')) {
-    return;
-  }
-
-  throw new \Drupal\Core\Form\EnforcedResponseException(
-    new \Symfony\Component\HttpFoundation\RedirectResponse($request->getRequestUri())
-  );
-}
-
-/**
- * Returns the current path and query string for account redirect destinations.
- */
-function _unisonges_structure_current_request_path_with_query(): string {
-  $request = \Drupal::request();
-  $path = $request->getPathInfo() ?: '/';
-  $query = $request->query->all();
-  if (!$query) {
-    return $path;
-  }
-
-  return $path . '?' . http_build_query($query);
+  \Drupal::messenger()->addStatus('Le cours d’essai est limité à une seule séance. La quantité a été ramenée à 1.');
 }
 
 function unisonges_structure_trial_add_to_cart_submit(array &$form, FormStateInterface $form_state): void {
@@ -1047,9 +733,6 @@ function _unisonges_structure_checkout_form_ux_overrides(array &$form, FormState
       '#type' => 'container',
       '#attributes' => ['class' => ['messages', 'messages--status', 'unisonges-checkout-course-notice', 'unisonges-checkout-course-notice--complete']],
       '#weight' => -100,
-      'progress' => [
-        '#markup' => _unisonges_structure_course_flow_progress_markup('confirmation', ['account', 'slot', 'payment']),
-      ],
       'message' => [
         '#markup' => '<div class="messages__content">' . _unisonges_structure_checkout_completion_text($order) . '</div>',
       ],
@@ -1069,45 +752,10 @@ function _unisonges_structure_checkout_form_ux_overrides(array &$form, FormState
     '#type' => 'container',
     '#attributes' => ['class' => ['messages', 'messages--status', 'unisonges-checkout-course-notice']],
     '#weight' => -100,
-    'progress' => [
-      '#markup' => _unisonges_structure_course_flow_progress_markup('payment', ['account']),
-    ],
     'message' => [
-      '#markup' => '<div class="messages__content"><strong>Choix du paiement.</strong> Sélectionnez le paiement en ligne ou le paiement sur place quand il est proposé. Paiement en ligne : vos crédits sont ouverts après confirmation du paiement. Paiement sur place : vous pouvez réserver dès la commande enregistrée ; le cours reste indiqué comme cours à payer.</div>',
+      '#markup' => '<div class="messages__content"><strong>Crédits et réservation.</strong> Paiement en ligne : vos crédits sont ouverts après confirmation du paiement. Paiement sur place : vous pouvez réserver dès la commande enregistrée ; le cours reste à payer sur place.</div>',
     ],
   ];
-}
-
-/**
- * Builds the compact course flow progress indicator.
- */
-function _unisonges_structure_course_flow_progress_markup(string $current_step, array $completed_steps = []): string {
-  $steps = [
-    'account' => 'Compte',
-    'slot' => 'Créneau',
-    'payment' => 'Paiement',
-    'confirmation' => 'Confirmation',
-  ];
-
-  $items = [];
-  foreach ($steps as $key => $label) {
-    $classes = ['course-flow-progress__step'];
-    $aria_current = '';
-    if ($key === $current_step) {
-      $classes[] = 'is-current';
-      $aria_current = ' aria-current="step"';
-    }
-    elseif (in_array($key, $completed_steps, TRUE)) {
-      $classes[] = 'is-complete';
-    }
-    else {
-      $classes[] = 'is-upcoming';
-    }
-
-    $items[] = '<li class="' . implode(' ', $classes) . '"' . $aria_current . '><span class="course-flow-progress__marker" aria-hidden="true"></span><span class="course-flow-progress__label">' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</span></li>';
-  }
-
-  return '<nav class="course-flow-progress" aria-label="Progression de réservation"><ol>' . implode('', $items) . '</ol></nav>';
 }
 
 function _unisonges_structure_checkout_step_id(array $form, FormStateInterface $form_state): string {
@@ -1262,184 +910,7 @@ function _unisonges_structure_booking_form_ux_overrides(array &$form): void {
     }
   }
 
-  _unisonges_structure_prefill_booking_form_for_current_user($form);
   _unisonges_structure_remove_already_submitted_notice($form);
-}
-
-/**
- * Appends a Webform submit callback without replacing Webform's own handlers.
- */
-function _unisonges_structure_append_booking_form_submit_callback(array &$form): void {
-  if (isset($form['actions']['submit']['#submit']) && is_array($form['actions']['submit']['#submit'])) {
-    _unisonges_structure_append_form_callback($form['actions']['submit']['#submit'], 'unisonges_structure_booking_form_submit');
-    return;
-  }
-
-  if (isset($form['#submit']) && is_array($form['#submit'])) {
-    _unisonges_structure_append_form_callback($form['#submit'], 'unisonges_structure_booking_form_submit');
-  }
-}
-
-/**
- * Stores the saved reservation and redirects to a confirmation summary.
- */
-function unisonges_structure_booking_form_submit(array &$form, FormStateInterface $form_state): void {
-  $webform = $form['#webform'] ?? NULL;
-  if (!$webform || $webform->id() !== 'cours_particuliers_reservation') {
-    return;
-  }
-
-  $submission = _unisonges_structure_get_form_webform_submission($form_state);
-  if (!$submission instanceof \Drupal\webform\WebformSubmissionInterface || (int) $submission->id() <= 0) {
-    return;
-  }
-
-  _unisonges_structure_store_recent_reservation_confirmation($submission);
-  $form_state->setRedirectUrl(Url::fromUserInput('/reserver', ['query' => ['reservation' => 'confirmed']]));
-}
-
-/**
- * Returns the Webform submission entity attached to the active form object.
- */
-function _unisonges_structure_get_form_webform_submission(FormStateInterface $form_state): ?\Drupal\webform\WebformSubmissionInterface {
-  $form_object = $form_state->getFormObject();
-  if (!$form_object || !method_exists($form_object, 'getEntity')) {
-    return NULL;
-  }
-
-  $entity = $form_object->getEntity();
-  return $entity instanceof \Drupal\webform\WebformSubmissionInterface ? $entity : NULL;
-}
-
-/**
- * Prefills logged-in reservation fields from known account/profile data.
- */
-function _unisonges_structure_prefill_booking_form_for_current_user(array &$form): void {
-  $current_user = \Drupal::currentUser();
-  if ($current_user->isAnonymous()) {
-    return;
-  }
-
-  $account = \Drupal\user\Entity\User::load($current_user->id());
-  if (!$account) {
-    return;
-  }
-
-  $phone = _unisonges_structure_first_user_field_value($account, [
-    'field_telephone',
-    'field_phone',
-    'telephone',
-    'phone',
-  ]);
-  _unisonges_structure_set_webform_element_default($form, 'telephone', $phone);
-
-  $address = _unisonges_structure_load_latest_customer_profile_address((int) $account->id());
-  _unisonges_structure_set_webform_element_default($form, 'adresse_domicile', $address['address'] ?? '');
-  _unisonges_structure_set_webform_element_default($form, 'code_postal_domicile', $address['postal_code'] ?? '');
-}
-
-/**
- * Returns the first scalar value found on one of the named user fields.
- */
-function _unisonges_structure_first_user_field_value(\Drupal\user\UserInterface $account, array $field_names): string {
-  foreach ($field_names as $field_name) {
-    if (!$account->hasField($field_name) || $account->get($field_name)->isEmpty()) {
-      continue;
-    }
-    $item = $account->get($field_name)->first();
-    if (!$item) {
-      continue;
-    }
-    foreach (['value', 'number'] as $property) {
-      if (isset($item->{$property}) && is_scalar($item->{$property}) && trim((string) $item->{$property}) !== '') {
-        return trim((string) $item->{$property});
-      }
-    }
-  }
-
-  return '';
-}
-
-/**
- * Loads a user's latest Commerce customer profile address, if available.
- */
-function _unisonges_structure_load_latest_customer_profile_address(int $uid): array {
-  if ($uid <= 0) {
-    return [];
-  }
-
-  try {
-    $entity_type_manager = \Drupal::entityTypeManager();
-    if (!$entity_type_manager->hasDefinition('profile')) {
-      return [];
-    }
-
-    $storage = $entity_type_manager->getStorage('profile');
-    $ids = $storage->getQuery()
-      ->accessCheck(FALSE)
-      ->condition('type', 'customer')
-      ->condition('uid', $uid)
-      ->sort('changed', 'DESC')
-      ->range(0, 1)
-      ->execute();
-    if (!$ids) {
-      return [];
-    }
-
-    $profile = $storage->load((int) reset($ids));
-    if (!$profile || !method_exists($profile, 'hasField') || !$profile->hasField('address') || $profile->get('address')->isEmpty()) {
-      return [];
-    }
-
-    $item = $profile->get('address')->first();
-    if (!$item) {
-      return [];
-    }
-
-    $line1 = trim((string) ($item->address_line1 ?? ''));
-    $line2 = trim((string) ($item->address_line2 ?? ''));
-    $postal_code = trim((string) ($item->postal_code ?? ''));
-    $locality = trim((string) ($item->locality ?? ''));
-    $locality_line = trim($postal_code . ' ' . $locality);
-
-    return [
-      'address' => implode("\n", array_filter([$line1, $line2, $locality_line], 'strlen')),
-      'postal_code' => $postal_code,
-    ];
-  }
-  catch (\Throwable $e) {
-    return [];
-  }
-}
-
-/**
- * Sets a Webform element default only when the element has no value yet.
- */
-function _unisonges_structure_set_webform_element_default(array &$form, string $element_key, string $value): void {
-  $value = trim($value);
-  if ($value === '') {
-    return;
-  }
-
-  foreach ([[$element_key], ['elements', $element_key]] as $path) {
-    if (count($path) === 1 && isset($form[$path[0]]) && is_array($form[$path[0]])) {
-      _unisonges_structure_set_element_default_value($form[$path[0]], $value);
-    }
-    elseif (count($path) === 2 && isset($form[$path[0]][$path[1]]) && is_array($form[$path[0]][$path[1]])) {
-      _unisonges_structure_set_element_default_value($form[$path[0]][$path[1]], $value);
-    }
-  }
-}
-
-/**
- * Applies a default value to one form element without overwriting user input.
- */
-function _unisonges_structure_set_element_default_value(array &$element, string $value): void {
-  if (!empty($element['#default_value']) || !empty($element['#value'])) {
-    return;
-  }
-
-  $element['#default_value'] = $value;
 }
 
 function _unisonges_structure_remove_already_submitted_notice(array &$element): void {
