@@ -21,9 +21,14 @@ ete rendue et aucun envoi email n'a ete teste.
 - Professeur/admin apres reservation : le webform
   `cours_particuliers_reservation` configure un handler Webform email vers
   `_default`, donc vers le mail site/admin configure dans Webform.
-- Le module `unisonges_structure` ne contient pas d'envoi mail custom pour les
-  reservations. Il decompte les credits, journalise la transition et met en
-  queue une ligne Google Calendar interne.
+- Le module `unisonges_structure` ne contient pas d'envoi mail custom separe pour
+  les reservations. Il decompte un credit paye ou consomme un droit paiement sur
+  place, journalise la transition et met en queue une ligne Google Calendar
+  interne.
+- Pour une reservation issue d'un droit paiement sur place non confirme,
+  `hook_mail_alter()` ajoute le marqueur `COURS À PAYER` a la notification admin
+  Webform et une ligne prudente au mail eleve indiquant que le cours reste a
+  payer sur place.
 
 ### Achat de cours
 
@@ -55,11 +60,13 @@ ete rendue et aucun envoi email n'a ete teste.
   les credits ajoutes, les credits disponibles et la validite du pack si
   pertinent.
 - Pour les paiements non finalises automatiquement, les credits ne sont pas
-  appliques tant que la commande n'est pas `completed`. Toute copie client doit
-  distinguer paiement recu, paiement a finaliser et credits disponibles.
+  appliques tant que la commande n'est pas `completed` et payee. Pour le paiement
+  sur place, une commande `completed` non payee ouvre seulement un droit de
+  reservation "cours à payer", sans mail "credits disponibles".
 - La configuration du checkout standard garde son message par defaut en anglais,
   mais `unisonges_structure` le remplace au rendu pour les commandes de cours et
-  ajoute un CTA `/reserver` quand la commande est payee.
+  ajoute un CTA `/reserver` quand la commande est payee ou quand une commande
+  paiement sur place peut reserver immediatement.
 
 ## Emails manquants pour un parcours propre
 
@@ -77,5 +84,6 @@ Priorite 2 :
 
 Garder les rappels, modifications et annulations de reservation pour une PR
 dediee. Les prochains emails lies aux credits doivent conserver la meme regle :
-ne jamais promettre de credits avant qu'une commande soit reellement
-`completed` et payee.
+ne jamais promettre de credits payes avant qu'une commande soit reellement
+`completed` et payee. Le flux paiement sur place doit rester libelle comme
+`cours à payer` tant que le paiement admin n'est pas confirme.
