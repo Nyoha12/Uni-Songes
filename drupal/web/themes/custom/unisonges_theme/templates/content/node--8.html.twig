@@ -1,6 +1,15 @@
 {% set portal = unisonges_reservation_portal|default({}) %}
 {% set portal_status = portal.status|default('anonymous') %}
+{% set confirmation = unisonges_reservation_confirmation|default(null) %}
 {% set body_markup = content.body|render %}
+{% set flow_steps = {
+  account: 'Compte',
+  slot: 'Créneau',
+  payment: 'Paiement',
+  confirmation: 'Confirmation'
+} %}
+{% set flow_current = confirmation ? 'confirmation' : (portal.is_anonymous ? 'account' : 'slot') %}
+{% set flow_completed = confirmation ? ['account', 'slot', 'payment'] : (portal.is_anonymous ? [] : ['account']) %}
 
 <article class="unisonges-node-page reservation-portal">
   {% include '@unisonges_theme/includes/_hero.html.twig' with {
@@ -11,6 +20,18 @@
   <section class="reservation-portal__intro">
     <p>Les disponibilités sont consultables sans compte. Pour confirmer une réservation, connectez-vous avec un compte disposant d’une séance active.</p>
   </section>
+
+  <nav class="course-flow-progress" aria-label="Progression de réservation">
+    <ol>
+      {% for key, label in flow_steps %}
+        {% set state_class = key == flow_current ? 'is-current' : (key in flow_completed ? 'is-complete' : 'is-upcoming') %}
+        <li class="course-flow-progress__step {{ state_class }}"{% if key == flow_current %} aria-current="step"{% endif %}>
+          <span class="course-flow-progress__marker" aria-hidden="true"></span>
+          <span class="course-flow-progress__label">{{ label }}</span>
+        </li>
+      {% endfor %}
+    </ol>
+  </nav>
 
   <section class="reservation-portal__summary reservation-portal__summary--{{ portal_status }}" aria-labelledby="reservation-access-title" aria-describedby="reservation-access-message">
     <div class="reservation-portal__account">
@@ -63,8 +84,61 @@
     <section class="panel node-body">{{ body_markup }}</section>
   {% endif %}
 
-  <section class="reservation-portal__form" aria-labelledby="reservation-form-title">
-    <h2 id="reservation-form-title">Choisir un créneau</h2>
-    {{ unisonges_reservation_form }}
-  </section>
+  {% if confirmation %}
+    <section class="reservation-confirmation" aria-labelledby="reservation-confirmation-title">
+      <h2 id="reservation-confirmation-title">Réservation enregistrée</h2>
+      <p class="reservation-confirmation__lead">Votre créneau est confirmé dans le parcours de réservation.</p>
+
+      <dl class="reservation-confirmation__details">
+        <div>
+          <dt>Créneau</dt>
+          <dd>{{ confirmation.slot_label }}</dd>
+        </div>
+        <div>
+          <dt>Cours</dt>
+          <dd>{{ confirmation.course_label }}</dd>
+        </div>
+        {% if confirmation.mode_label %}
+          <div>
+            <dt>Mode</dt>
+            <dd>{{ confirmation.mode_label }}</dd>
+          </div>
+        {% endif %}
+        {% if confirmation.instrument_label %}
+          <div>
+            <dt>Instrument</dt>
+            <dd>{{ confirmation.instrument_label }}</dd>
+          </div>
+        {% endif %}
+        {% if confirmation.level_label %}
+          <div>
+            <dt>Niveau</dt>
+            <dd>{{ confirmation.level_label }}</dd>
+          </div>
+        {% endif %}
+        {% if confirmation.location_label %}
+          <div>
+            <dt>Lieu</dt>
+            <dd>{{ confirmation.location_label }}</dd>
+          </div>
+        {% endif %}
+        <div>
+          <dt>Paiement</dt>
+          <dd><span class="reservation-confirmation__payment reservation-confirmation__payment--{{ confirmation.payment_status }}">{{ confirmation.payment_label }}</span></dd>
+        </div>
+      </dl>
+
+      <p class="reservation-confirmation__payment-detail">{{ confirmation.payment_detail }}</p>
+
+      <div class="reservation-portal__actions">
+        <a class="btn btn--cta" href="{{ confirmation.account_url }}">Retour à mon compte</a>
+        <a class="btn" href="{{ confirmation.home_url }}">Retour à l’accueil</a>
+      </div>
+    </section>
+  {% else %}
+    <section class="reservation-portal__form" aria-labelledby="reservation-form-title">
+      <h2 id="reservation-form-title">Choisir un créneau</h2>
+      {{ unisonges_reservation_form }}
+    </section>
+  {% endif %}
 </article>
