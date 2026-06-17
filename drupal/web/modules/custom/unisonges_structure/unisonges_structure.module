@@ -76,6 +76,13 @@ function unisonges_structure_mail(string $key, array &$message, array $params): 
 }
 
 /**
+ * Implements hook_mail_alter().
+ */
+function unisonges_structure_mail_alter(array &$message): void {
+  _unisonges_structure_alter_reservation_to_pay_mail($message);
+}
+
+/**
  * Implements hook_preprocess_node().
  */
 function unisonges_structure_preprocess_node(array &$variables): void {
@@ -309,6 +316,7 @@ function _unisonges_structure_build_reservation_portal_context(): array {
   }
 
   $remaining = $account->hasField('field_seances_restantes') ? max(0, (int) ($account->get('field_seances_restantes')->value ?? 0)) : 0;
+  $to_pay_remaining = _unisonges_structure_count_available_to_pay_course_rights((int) $account->id());
   $message = '';
   $can_book = _unisonges_structure_user_can_book($account, $message);
   $expiry_value = $account->hasField('field_pack_expire_le') ? (string) ($account->get('field_pack_expire_le')->value ?? '') : '';
@@ -316,6 +324,10 @@ function _unisonges_structure_build_reservation_portal_context(): array {
   $context['display_name'] = trim($account->getDisplayName());
   $context['remaining'] = $remaining;
   $context['remaining_label'] = $remaining <= 1 ? $remaining . ' séance disponible' : $remaining . ' séances disponibles';
+  if ($to_pay_remaining > 0) {
+    $to_pay_label = $to_pay_remaining === 1 ? '1 cours à payer disponible' : $to_pay_remaining . ' cours à payer disponibles';
+    $context['remaining_label'] = $remaining > 0 ? $context['remaining_label'] . ' + ' . $to_pay_label : $to_pay_label;
+  }
   $context['can_book'] = $can_book;
   $context['expiry_label'] = _unisonges_structure_format_course_pack_expiry($expiry_value);
 
@@ -725,7 +737,7 @@ function _unisonges_structure_checkout_form_ux_overrides(array &$form, FormState
         '#markup' => '<div class="messages__content">' . _unisonges_structure_checkout_completion_text($order) . '</div>',
       ],
     ];
-    if ($paid) {
+    if ($paid || _unisonges_structure_order_is_completed_pay_on_site_course_order($order)) {
       $form['unisonges_course_checkout_complete']['reserve'] = [
         '#type' => 'link',
         '#title' => 'Réserver un cours',
@@ -741,7 +753,7 @@ function _unisonges_structure_checkout_form_ux_overrides(array &$form, FormState
     '#attributes' => ['class' => ['messages', 'messages--status', 'unisonges-checkout-course-notice']],
     '#weight' => -100,
     'message' => [
-      '#markup' => '<div class="messages__content"><strong>Crédits et réservation.</strong> Paiement en ligne : vos crédits sont ouverts après confirmation du paiement. Paiement sur place : vos crédits et le droit de réserver sont ouverts uniquement après réception et validation du paiement par l’équipe.</div>',
+      '#markup' => '<div class="messages__content"><strong>Crédits et réservation.</strong> Paiement en ligne : vos crédits sont ouverts après confirmation du paiement. Paiement sur place : vous pouvez réserver dès la commande enregistrée ; le cours reste à payer sur place.</div>',
     ],
   ];
 }
@@ -800,7 +812,11 @@ function _unisonges_structure_checkout_completion_text(\Drupal\commerce_order\En
     return $prefix . 'Votre paiement est validé et vos crédits de cours sont disponibles. Vous pouvez maintenant choisir un créneau.';
   }
 
-  return $prefix . 'Votre commande est enregistrée. Avec le paiement sur place, vos crédits et le droit de réserver seront ouverts après validation du paiement par l’équipe.';
+  if (_unisonges_structure_order_is_completed_pay_on_site_course_order($order)) {
+    return $prefix . 'Votre commande avec paiement sur place est enregistrée. Vous pouvez réserver un créneau maintenant ; le cours restera indiqué comme cours à payer jusqu’à validation du paiement par l’équipe.';
+  }
+
+  return $prefix . 'Votre commande est enregistrée. Vos crédits et le droit de réserver seront ouverts après validation du paiement par l’équipe.';
 }
 
 function _unisonges_structure_order_has_course_products(\Drupal\commerce_order\Entity\OrderInterface $order): bool {
@@ -1008,28 +1024,34 @@ function _unisonges_structure_user_can_book(\Drupal\user\UserInterface $account,
   }
 
   $remaining = (int) ($account->get('field_seances_restantes')->value ?? 0);
-  if ($remaining <= 0) {
-    $message = 'Aucune séance disponible. Achetez une séance, un pack, ou choisissez le paiement sur place.';
-    return FALSE;
-  }
-
+  $has_to_pay_right = _unisonges_structure_count_available_to_pay_course_rights((int) $account->id()) > 0;
+  $paid_credit_blocked_message = '';
   $expiry_value = $account->hasField('field_pack_expire_le') ? ($account->get('field_pack_expire_le')->value ?? '') : '';
-  if ($expiry_value) {
+  $paid_credit_available = $remaining > 0;
+  if ($paid_credit_available && $expiry_value) {
     try {
       $today = new \DateTimeImmutable('today');
       $expiry = new \DateTimeImmutable($expiry_value);
     }
     catch (\Throwable $e) {
+      if ($has_to_pay_right) {
+        return TRUE;
+      }
       $message = 'Impossible de lire la validité de vos droits de cours pour le moment.';
       return FALSE;
     }
     if ($expiry < $today) {
-      $message = 'Votre pack a expiré. Merci d’acheter une nouvelle formule pour réserver.';
-      return FALSE;
+      $paid_credit_available = FALSE;
+      $paid_credit_blocked_message = 'Votre pack a expiré. Merci d’acheter une nouvelle formule pour réserver.';
     }
   }
 
-  return TRUE;
+  if ($paid_credit_available || $has_to_pay_right) {
+    return TRUE;
+  }
+
+  $message = $paid_credit_blocked_message ?: 'Aucune séance disponible. Achetez une séance, un pack, ou choisissez le paiement sur place.';
+  return FALSE;
 }
 
 function _unisonges_structure_parse_booking_form_value($value): array {
@@ -1269,14 +1291,29 @@ function _unisonges_structure_get_booking_value_seats(string $value, string $exp
 }
 
 function _unisonges_structure_apply_course_rights_from_order(\Drupal\commerce_order\Entity\OrderInterface $order): void {
-  if ($order->getState()->value !== 'completed') {
+  $state = (string) ($order->getState()->value ?? '');
+  $is_pay_on_site = _unisonges_structure_order_uses_pay_on_site_payment($order);
+  if ($state !== 'completed') {
+    if ($is_pay_on_site && in_array($state, ['canceled', 'cancelled'], TRUE)) {
+      _unisonges_structure_cancel_pending_to_pay_course_rights_from_order($order);
+    }
     return;
   }
-  // Do not grant reservation credits for pending manual payments.
+
+  if ($is_pay_on_site && !$order->isPaid()) {
+    _unisonges_structure_ensure_to_pay_course_rights_from_order($order);
+    return;
+  }
   if (!$order->isPaid()) {
     return;
   }
+
   if ($order->getData('unisonges_course_rights_applied')) {
+    return;
+  }
+
+  if ($is_pay_on_site && _unisonges_structure_order_has_to_pay_course_rights($order)) {
+    _unisonges_structure_apply_paid_course_rights_from_to_pay_order($order);
     return;
   }
 
@@ -1448,6 +1485,695 @@ function _unisonges_structure_format_course_credit_count(int $count): string {
   return $count . ' crédits de cours';
 }
 
+function _unisonges_structure_order_is_completed_pay_on_site_course_order(\Drupal\commerce_order\Entity\OrderInterface $order): bool {
+  return (string) ($order->getState()->value ?? '') === 'completed'
+    && _unisonges_structure_order_uses_pay_on_site_payment($order)
+    && _unisonges_structure_order_has_course_products($order);
+}
+
+function _unisonges_structure_order_uses_pay_on_site_payment(\Drupal\commerce_order\Entity\OrderInterface $order): bool {
+  if (method_exists($order, 'hasField') && $order->hasField('payment_gateway') && !$order->get('payment_gateway')->isEmpty()) {
+    $gateway_item = $order->get('payment_gateway')->first();
+    $gateway = $gateway_item && isset($gateway_item->entity) ? $gateway_item->entity : NULL;
+    if ($gateway && _unisonges_structure_payment_gateway_is_pay_on_site($gateway)) {
+      return TRUE;
+    }
+
+    $gateway_id = $gateway_item ? (string) ($gateway_item->target_id ?? '') : '';
+    if ($gateway_id !== '') {
+      try {
+        $gateway = \Drupal::entityTypeManager()->getStorage('commerce_payment_gateway')->load($gateway_id);
+        if ($gateway && _unisonges_structure_payment_gateway_is_pay_on_site($gateway)) {
+          return TRUE;
+        }
+      }
+      catch (\Throwable $e) {
+        // Fall through to the exact gateway-id fallback below.
+      }
+    }
+    if ($gateway_id === 'manual') {
+      return TRUE;
+    }
+  }
+
+  $order_id = (int) $order->id();
+  if ($order_id <= 0) {
+    return FALSE;
+  }
+
+  try {
+    $entity_type_manager = \Drupal::entityTypeManager();
+    if (!$entity_type_manager->hasDefinition('commerce_payment')) {
+      return FALSE;
+    }
+
+    $query = $entity_type_manager->getStorage('commerce_payment')->getQuery()->accessCheck(FALSE);
+    try {
+      $query->condition('order_id', $order_id);
+      $payment_ids = $query->execute();
+    }
+    catch (\Throwable $e) {
+      $query = $entity_type_manager->getStorage('commerce_payment')->getQuery()->accessCheck(FALSE);
+      $query->condition('order_id.target_id', $order_id);
+      $payment_ids = $query->execute();
+    }
+
+    if (!$payment_ids) {
+      return FALSE;
+    }
+
+    foreach ($entity_type_manager->getStorage('commerce_payment')->loadMultiple($payment_ids) as $payment) {
+      if (method_exists($payment, 'hasField') && $payment->hasField('payment_gateway') && !$payment->get('payment_gateway')->isEmpty()) {
+        $gateway_item = $payment->get('payment_gateway')->first();
+        $gateway = $gateway_item && isset($gateway_item->entity) ? $gateway_item->entity : NULL;
+        if ($gateway && _unisonges_structure_payment_gateway_is_pay_on_site($gateway)) {
+          return TRUE;
+        }
+        $gateway_id = $gateway_item ? (string) ($gateway_item->target_id ?? '') : '';
+        if ($gateway_id === 'manual') {
+          return TRUE;
+        }
+      }
+    }
+  }
+  catch (\Throwable $e) {
+    \Drupal::logger('unisonges_structure')->warning('Could not inspect payments for order @order while detecting pay-on-site payment: @message', [
+      '@order' => $order_id,
+      '@message' => $e->getMessage(),
+    ]);
+  }
+
+  return FALSE;
+}
+
+function _unisonges_structure_payment_gateway_is_pay_on_site($gateway): bool {
+  if (is_object($gateway) && method_exists($gateway, 'getPluginId') && (string) $gateway->getPluginId() === 'manual') {
+    return TRUE;
+  }
+
+  if (is_object($gateway) && method_exists($gateway, 'id') && (string) $gateway->id() === 'manual') {
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
+function _unisonges_structure_ensure_to_pay_course_rights_from_order(\Drupal\commerce_order\Entity\OrderInterface $order): void {
+  if (!_unisonges_structure_to_pay_rights_table_exists()) {
+    _unisonges_structure_log_missing_to_pay_rights_table_once();
+    return;
+  }
+
+  $order_id = (int) $order->id();
+  $uid = (int) $order->getCustomerId();
+  if ($order_id <= 0 || $uid <= 0) {
+    return;
+  }
+
+  $account = \Drupal\user\Entity\User::load($uid);
+  if (!$account) {
+    return;
+  }
+
+  $now = \Drupal::time()->getRequestTime();
+  $table = _unisonges_structure_to_pay_rights_table_name();
+  $ensured = 0;
+
+  foreach ($order->getItems() as $order_item) {
+    $source_order_item_id = (int) $order_item->id();
+    if ($source_order_item_id <= 0) {
+      \Drupal::logger('unisonges_structure')->warning('Pay-on-site rights skipped for order @order because an order item has no saved ID.', [
+        '@order' => $order_id,
+      ]);
+      continue;
+    }
+
+    $bundle = _unisonges_structure_order_item_product_bundle($order_item);
+    $credit_count = _unisonges_structure_to_pay_credit_count_for_order_item($order_item, $account);
+    for ($credit_index = 1; $credit_index <= $credit_count; $credit_index++) {
+      \Drupal::database()->merge($table)
+        ->keys([
+          'order_id' => $order_id,
+          'source_order_item_id' => $source_order_item_id,
+          'credit_index' => $credit_index,
+        ])
+        ->insertFields([
+          'order_id' => $order_id,
+          'uid' => $uid,
+          'source_order_item_id' => $source_order_item_id,
+          'credit_index' => $credit_index,
+          'product_bundle' => $bundle,
+          'remaining_to_pay_credits' => 1,
+          'webform_submission_id' => NULL,
+          'status' => 'pending_payment',
+          'created' => $now,
+          'changed' => $now,
+          'consumed' => NULL,
+          'paid' => NULL,
+          'cancelled' => NULL,
+        ])
+        ->updateFields([
+          'uid' => $uid,
+          'product_bundle' => $bundle,
+        ])
+        ->execute();
+      $ensured++;
+    }
+  }
+
+  if ($ensured > 0) {
+    \Drupal::logger('unisonges_structure')->notice('Pay-on-site course rights ensured for unpaid manual order @order and user @uid (@count unit(s)).', [
+      '@order' => $order_id,
+      '@uid' => $uid,
+      '@count' => $ensured,
+    ]);
+  }
+}
+
+function _unisonges_structure_to_pay_credit_count_for_order_item($order_item, \Drupal\user\UserInterface $account): int {
+  $bundle = _unisonges_structure_order_item_product_bundle($order_item);
+  if (!in_array($bundle, _unisonges_structure_course_product_bundles(), TRUE)) {
+    return 0;
+  }
+
+  $quantity = (int) round((float) $order_item->getQuantity());
+  if ($quantity < 1) {
+    $quantity = 1;
+  }
+
+  switch ($bundle) {
+    case 'cours_essai':
+      if ($account->hasField('field_essai_utilise') && (bool) ($account->get('field_essai_utilise')->value ?? FALSE)) {
+        return 0;
+      }
+      if (_unisonges_structure_user_has_active_to_pay_trial_right((int) $account->id())) {
+        return 0;
+      }
+      return 1;
+
+    case 'cours_deb_inter':
+    case 'cours_avance':
+      return $quantity;
+
+    case 'pack_4_deb_inter':
+      return 4 * $quantity;
+  }
+
+  return 0;
+}
+
+function _unisonges_structure_user_has_active_to_pay_trial_right(int $uid): bool {
+  if ($uid <= 0 || !_unisonges_structure_to_pay_rights_table_exists()) {
+    return FALSE;
+  }
+
+  return (bool) \Drupal::database()->select(_unisonges_structure_to_pay_rights_table_name(), 'r')
+    ->condition('uid', $uid)
+    ->condition('product_bundle', 'cours_essai')
+    ->condition('status', ['pending_payment', 'consumed'], 'IN')
+    ->countQuery()
+    ->execute()
+    ->fetchField();
+}
+
+function _unisonges_structure_cancel_pending_to_pay_course_rights_from_order(\Drupal\commerce_order\Entity\OrderInterface $order): void {
+  if (!_unisonges_structure_to_pay_rights_table_exists()) {
+    return;
+  }
+
+  $order_id = (int) $order->id();
+  if ($order_id <= 0) {
+    return;
+  }
+
+  $now = \Drupal::time()->getRequestTime();
+  \Drupal::database()->update(_unisonges_structure_to_pay_rights_table_name())
+    ->fields([
+      'status' => 'cancelled',
+      'remaining_to_pay_credits' => 0,
+      'changed' => $now,
+      'cancelled' => $now,
+    ])
+    ->condition('order_id', $order_id)
+    ->condition('status', 'pending_payment')
+    ->execute();
+}
+
+function _unisonges_structure_order_has_to_pay_course_rights(\Drupal\commerce_order\Entity\OrderInterface $order): bool {
+  if (!_unisonges_structure_to_pay_rights_table_exists()) {
+    return FALSE;
+  }
+
+  $order_id = (int) $order->id();
+  if ($order_id <= 0) {
+    return FALSE;
+  }
+
+  return (bool) \Drupal::database()->select(_unisonges_structure_to_pay_rights_table_name(), 'r')
+    ->condition('order_id', $order_id)
+    ->countQuery()
+    ->execute()
+    ->fetchField();
+}
+
+function _unisonges_structure_apply_paid_course_rights_from_to_pay_order(\Drupal\commerce_order\Entity\OrderInterface $order): void {
+  if (!_unisonges_structure_to_pay_rights_table_exists()) {
+    return;
+  }
+
+  $uid = (int) $order->getCustomerId();
+  if ($uid <= 0) {
+    return;
+  }
+
+  $account = \Drupal\user\Entity\User::load($uid);
+  if (!$account) {
+    return;
+  }
+
+  foreach (['field_seances_restantes', 'field_essai_utilise', 'field_pack_expire_le'] as $field_name) {
+    if (!$account->hasField($field_name)) {
+      \Drupal::logger('unisonges_structure')->error('Pay-on-site course rights could not be finalized for order @order and user @uid because user field @field is missing.', [
+        '@order' => $order->id(),
+        '@uid' => $uid,
+        '@field' => $field_name,
+      ]);
+      return;
+    }
+  }
+
+  $table = _unisonges_structure_to_pay_rights_table_name();
+  $rows = \Drupal::database()->select($table, 'r')
+    ->fields('r')
+    ->condition('order_id', (int) $order->id())
+    ->condition('status', ['pending_payment', 'consumed'], 'IN')
+    ->orderBy('id', 'ASC')
+    ->execute()
+    ->fetchAll();
+
+  if (!$rows) {
+    return;
+  }
+
+  $remaining = (int) ($account->get('field_seances_restantes')->value ?? 0);
+  $essai_utilise = (bool) ($account->get('field_essai_utilise')->value ?? FALSE);
+  $expiry_value = $account->get('field_pack_expire_le')->value ?? '';
+  $expiry = $expiry_value ? new \DateTimeImmutable($expiry_value) : NULL;
+  $today = new \DateTimeImmutable('today');
+  $changed = FALSE;
+  $credits_added = 0;
+  $pack_expiry_for_email = NULL;
+  $pack_items_to_extend = [];
+  $pending_ids = [];
+  $consumed_ids = [];
+  $consumed_sids = [];
+
+  if ($expiry && $expiry < $today) {
+    $remaining = 0;
+    $expiry = NULL;
+    $account->set('field_pack_expire_le', NULL);
+    $changed = TRUE;
+  }
+
+  foreach ($rows as $row) {
+    $id = (int) $row->id;
+    if ((string) $row->status === 'consumed') {
+      $consumed_ids[] = $id;
+      $sid = (int) ($row->webform_submission_id ?? 0);
+      if ($sid > 0) {
+        $consumed_sids[$sid] = TRUE;
+      }
+      continue;
+    }
+
+    if ((int) $row->remaining_to_pay_credits <= 0) {
+      continue;
+    }
+
+    $pending_ids[] = $id;
+    switch ((string) $row->product_bundle) {
+      case 'cours_essai':
+        if (!$essai_utilise) {
+          $remaining += 1;
+          $credits_added += 1;
+          $essai_utilise = TRUE;
+          $changed = TRUE;
+        }
+        break;
+
+      case 'cours_deb_inter':
+      case 'cours_avance':
+        $remaining += 1;
+        $credits_added += 1;
+        $changed = TRUE;
+        break;
+
+      case 'pack_4_deb_inter':
+        $remaining += 1;
+        $credits_added += 1;
+        $pack_items_to_extend[(int) $row->source_order_item_id] = TRUE;
+        $changed = TRUE;
+        break;
+    }
+  }
+
+  foreach (array_keys($pack_items_to_extend) as $source_order_item_id) {
+    $base = ($expiry && $expiry >= $today) ? $expiry : $today;
+    $expiry = $base->modify('+6 months');
+    $pack_expiry_for_email = $expiry;
+  }
+
+  if ($changed) {
+    $account->set('field_seances_restantes', $remaining);
+    $account->set('field_essai_utilise', $essai_utilise ? 1 : 0);
+    if ($expiry) {
+      $account->set('field_pack_expire_le', $expiry->format('Y-m-d'));
+    }
+    $account->save();
+  }
+
+  $now = \Drupal::time()->getRequestTime();
+  $paid_ids = array_merge($pending_ids, $consumed_ids);
+  if ($paid_ids) {
+    \Drupal::database()->update($table)
+      ->fields([
+        'status' => 'paid',
+        'remaining_to_pay_credits' => 0,
+        'changed' => $now,
+        'paid' => $now,
+      ])
+      ->condition('id', $paid_ids, 'IN')
+      ->execute();
+  }
+
+  $order->setData('unisonges_course_rights_applied', TRUE);
+  $order->save();
+
+  foreach (array_keys($consumed_sids) as $sid) {
+    $submission = \Drupal::entityTypeManager()->getStorage('webform_submission')->load((int) $sid);
+    if ($submission instanceof \Drupal\webform\WebformSubmissionInterface) {
+      _unisonges_structure_queue_google_calendar_booking_sync($submission, 'pending_update');
+    }
+  }
+
+  \Drupal::logger('unisonges_structure')->notice('Pay-on-site order @order payment finalized for user @uid: @added paid credit(s) added, @consumed consumed reservation(s) kept without duplicate credit.', [
+    '@order' => $order->id(),
+    '@uid' => $uid,
+    '@added' => $credits_added,
+    '@consumed' => count($consumed_ids),
+  ]);
+
+  if ($credits_added > 0) {
+    _unisonges_structure_send_course_rights_applied_mail($order, $account, $credits_added, $remaining, $pack_expiry_for_email);
+  }
+}
+
+function _unisonges_structure_count_available_to_pay_course_rights(int $uid): int {
+  if ($uid <= 0 || !_unisonges_structure_to_pay_rights_table_exists()) {
+    return 0;
+  }
+
+  return (int) \Drupal::database()->select(_unisonges_structure_to_pay_rights_table_name(), 'r')
+    ->condition('uid', $uid)
+    ->condition('status', 'pending_payment')
+    ->condition('remaining_to_pay_credits', 0, '>')
+    ->countQuery()
+    ->execute()
+    ->fetchField();
+}
+
+function _unisonges_structure_consume_booking_right(\Drupal\user\UserInterface $account, \Drupal\webform\WebformSubmissionInterface $webform_submission): array {
+  if (_unisonges_structure_user_has_valid_paid_credit($account)) {
+    return _unisonges_structure_consume_paid_booking_credit($account);
+  }
+
+  return _unisonges_structure_consume_to_pay_booking_right($account, $webform_submission);
+}
+
+function _unisonges_structure_user_has_valid_paid_credit(\Drupal\user\UserInterface $account): bool {
+  if (!$account->hasField('field_seances_restantes')) {
+    return FALSE;
+  }
+
+  if ((int) ($account->get('field_seances_restantes')->value ?? 0) <= 0) {
+    return FALSE;
+  }
+
+  $expiry_value = $account->hasField('field_pack_expire_le') ? (string) ($account->get('field_pack_expire_le')->value ?? '') : '';
+  if ($expiry_value === '') {
+    return TRUE;
+  }
+
+  try {
+    $today = new \DateTimeImmutable('today');
+    $expiry = new \DateTimeImmutable($expiry_value);
+  }
+  catch (\Throwable $e) {
+    return FALSE;
+  }
+
+  return $expiry >= $today;
+}
+
+function _unisonges_structure_consume_paid_booking_credit(\Drupal\user\UserInterface $account): array {
+  $remaining = max(0, (int) ($account->get('field_seances_restantes')->value ?? 0) - 1);
+  $account->set('field_seances_restantes', $remaining);
+
+  if ($remaining === 0 && $account->hasField('field_pack_expire_le') && !$account->get('field_pack_expire_le')->isEmpty()) {
+    $account->set('field_pack_expire_le', NULL);
+  }
+
+  $account->save();
+
+  return [
+    'type' => 'paid_credit',
+    'right_id' => 0,
+  ];
+}
+
+function _unisonges_structure_consume_to_pay_booking_right(\Drupal\user\UserInterface $account, \Drupal\webform\WebformSubmissionInterface $webform_submission): array {
+  $uid = (int) $account->id();
+  $sid = (int) $webform_submission->id();
+  if ($uid <= 0 || $sid <= 0 || !_unisonges_structure_to_pay_rights_table_exists()) {
+    return ['type' => '', 'right_id' => 0];
+  }
+
+  $table = _unisonges_structure_to_pay_rights_table_name();
+  $row = \Drupal::database()->select($table, 'r')
+    ->fields('r')
+    ->condition('uid', $uid)
+    ->condition('status', 'pending_payment')
+    ->condition('remaining_to_pay_credits', 0, '>')
+    ->orderBy('created', 'ASC')
+    ->orderBy('id', 'ASC')
+    ->range(0, 1)
+    ->execute()
+    ->fetchObject();
+
+  if (!$row) {
+    return ['type' => '', 'right_id' => 0];
+  }
+
+  $now = \Drupal::time()->getRequestTime();
+  $updated = \Drupal::database()->update($table)
+    ->fields([
+      'status' => 'consumed',
+      'remaining_to_pay_credits' => 0,
+      'webform_submission_id' => $sid,
+      'changed' => $now,
+      'consumed' => $now,
+    ])
+    ->condition('id', (int) $row->id)
+    ->condition('status', 'pending_payment')
+    ->condition('remaining_to_pay_credits', 0, '>')
+    ->execute();
+
+  if ($updated <= 0) {
+    return ['type' => '', 'right_id' => 0];
+  }
+
+  if ((string) $row->product_bundle === 'cours_essai' && $account->hasField('field_essai_utilise') && !(bool) ($account->get('field_essai_utilise')->value ?? FALSE)) {
+    $account->set('field_essai_utilise', 1);
+    $account->save();
+  }
+
+  \Drupal::logger('unisonges_structure')->notice('COURS À PAYER reservation @sid consumed pay-on-site right @right from order @order for user @uid.', [
+    '@sid' => $sid,
+    '@right' => $row->id,
+    '@order' => $row->order_id,
+    '@uid' => $uid,
+  ]);
+
+  return [
+    'type' => 'pay_on_site',
+    'right_id' => (int) $row->id,
+    'order_id' => (int) $row->order_id,
+    'source_order_item_id' => (int) $row->source_order_item_id,
+  ];
+}
+
+function _unisonges_structure_acquire_course_rights_lock(int $uid): bool {
+  if ($uid <= 0) {
+    return FALSE;
+  }
+
+  if (!\Drupal::lock()->acquire(_unisonges_structure_course_rights_lock_id($uid), 30.0)) {
+    return FALSE;
+  }
+
+  register_shutdown_function('_unisonges_structure_release_course_rights_lock', $uid);
+  return TRUE;
+}
+
+function _unisonges_structure_release_course_rights_lock(int $uid): void {
+  if ($uid <= 0) {
+    return;
+  }
+
+  \Drupal::lock()->release(_unisonges_structure_course_rights_lock_id($uid));
+}
+
+function _unisonges_structure_course_rights_lock_id(int $uid): string {
+  return 'unisonges_structure:course_rights:' . $uid;
+}
+
+function _unisonges_structure_get_submission_payment_context(\Drupal\webform\WebformSubmissionInterface $webform_submission): array {
+  $context = [
+    'status' => 'paid_credit',
+    'label' => 'crédit payé',
+    'source' => 'paid_credit',
+    'log_label' => 'paid_credit',
+    'order_id' => 0,
+    'source_order_item_id' => 0,
+  ];
+
+  $row = _unisonges_structure_get_submission_to_pay_right($webform_submission);
+  if (!$row) {
+    return $context;
+  }
+
+  $context['source'] = 'pay_on_site';
+  $context['order_id'] = (int) $row->order_id;
+  $context['source_order_item_id'] = (int) $row->source_order_item_id;
+
+  if ((string) $row->status === 'paid') {
+    $context['status'] = 'paid';
+    $context['label'] = 'paiement sur place confirmé';
+    $context['log_label'] = 'pay_on_site_paid';
+    return $context;
+  }
+
+  if ((string) $row->status === 'cancelled') {
+    $context['status'] = 'cancelled';
+    $context['label'] = 'paiement sur place annulé';
+    $context['log_label'] = 'pay_on_site_cancelled';
+    return $context;
+  }
+
+  $context['status'] = 'to_pay';
+  $context['label'] = 'COURS À PAYER';
+  $context['log_label'] = 'COURS À PAYER';
+  return $context;
+}
+
+function _unisonges_structure_get_submission_to_pay_right(\Drupal\webform\WebformSubmissionInterface $webform_submission): ?object {
+  $sid = (int) $webform_submission->id();
+  if ($sid <= 0 || !_unisonges_structure_to_pay_rights_table_exists()) {
+    return NULL;
+  }
+
+  $row = \Drupal::database()->select(_unisonges_structure_to_pay_rights_table_name(), 'r')
+    ->fields('r')
+    ->condition('webform_submission_id', $sid)
+    ->orderBy('id', 'ASC')
+    ->range(0, 1)
+    ->execute()
+    ->fetchObject();
+
+  return $row ?: NULL;
+}
+
+function _unisonges_structure_alter_reservation_to_pay_mail(array &$message): void {
+  $params = $message['params'] ?? [];
+  $webform_submission = NULL;
+  foreach (['webform_submission', 'submission'] as $key) {
+    if (($params[$key] ?? NULL) instanceof \Drupal\webform\WebformSubmissionInterface) {
+      $webform_submission = $params[$key];
+      break;
+    }
+  }
+
+  if (!$webform_submission instanceof \Drupal\webform\WebformSubmissionInterface || $webform_submission->getWebform()->id() !== 'cours_particuliers_reservation') {
+    return;
+  }
+
+  $payment = _unisonges_structure_get_submission_payment_context($webform_submission);
+  if ($payment['status'] !== 'to_pay') {
+    $owner = $webform_submission->getOwner();
+    if (!$owner instanceof \Drupal\user\UserInterface || _unisonges_structure_user_has_valid_paid_credit($owner) || _unisonges_structure_count_available_to_pay_course_rights((int) $owner->id()) <= 0) {
+      return;
+    }
+    $payment['status'] = 'to_pay';
+  }
+
+  if ($payment['status'] !== 'to_pay') {
+    return;
+  }
+
+  $subject = (string) ($message['subject'] ?? '');
+  $is_admin_notification = strpos($subject, 'Nouvelle demande de réservation cours particuliers') !== FALSE;
+  if ($is_admin_notification && strpos($subject, 'COURS À PAYER') === FALSE) {
+    $message['subject'] = '[COURS À PAYER] ' . $subject;
+  }
+
+  $line = $is_admin_notification
+    ? '<p><strong>COURS À PAYER</strong> - réservation issue d’une commande avec paiement sur place non confirmé.</p>'
+    : '<p>Paiement : cours à payer sur place.</p>';
+  _unisonges_structure_append_mail_body_once($message, $line);
+}
+
+function _unisonges_structure_append_mail_body_once(array &$message, string $line): void {
+  if (!isset($message['body']) || !is_array($message['body'])) {
+    $message['body'] = [];
+  }
+
+  foreach ($message['body'] as $existing) {
+    if (is_string($existing) && strpos($existing, strip_tags($line)) !== FALSE) {
+      return;
+    }
+    if (is_string($existing) && strpos($existing, $line) !== FALSE) {
+      return;
+    }
+  }
+
+  $message['body'][] = $line;
+}
+
+function _unisonges_structure_to_pay_rights_table_name(): string {
+  return 'unisonges_structure_course_to_pay_right';
+}
+
+function _unisonges_structure_to_pay_rights_table_exists(): bool {
+  try {
+    return \Drupal::database()->schema()->tableExists(_unisonges_structure_to_pay_rights_table_name());
+  }
+  catch (\Throwable $e) {
+    return FALSE;
+  }
+}
+
+function _unisonges_structure_log_missing_to_pay_rights_table_once(): void {
+  static $logged = FALSE;
+  if ($logged) {
+    return;
+  }
+
+  \Drupal::logger('unisonges_structure')->warning('Pay-on-site course rights table @table is missing; run database updates before using pay-on-site reservation rights.', [
+    '@table' => _unisonges_structure_to_pay_rights_table_name(),
+  ]);
+  $logged = TRUE;
+}
+
 function unisonges_structure_webform_submission_insert(\Drupal\webform\WebformSubmissionInterface $webform_submission): void {
   if ($webform_submission->getWebform()->id() !== 'cours_particuliers_reservation') {
     return;
@@ -1488,27 +2214,42 @@ function unisonges_structure_webform_submission_insert(\Drupal\webform\WebformSu
       return;
     }
 
-    if (!$account->hasField('field_seances_restantes')) {
-      \Drupal::logger('unisonges_structure')->error('Reservation submission @sid could not decrement credits for user @uid because field_seances_restantes is missing.', [
+    if (!_unisonges_structure_acquire_course_rights_lock($uid)) {
+      $inactive_value = _unisonges_structure_build_inactive_booking_value($booking['slot']);
+      $fallback_updated = _unisonges_structure_update_stored_submission_reservation($webform_submission, $inactive_value);
+      \Drupal::logger('unisonges_structure')->warning('Reservation submission @sid was marked inactive because course rights for user @uid are currently locked (updated=@updated).', [
         '@sid' => $webform_submission->id(),
         '@uid' => $uid,
+        '@updated' => $fallback_updated ? 'yes' : 'no',
       ]);
       return;
     }
 
-    $remaining = (int) ($account->get('field_seances_restantes')->value ?? 0);
-    if ($remaining <= 0) {
-      return;
+    try {
+      $account = \Drupal\user\Entity\User::load($uid);
+      if (!$account || !$account->hasField('field_seances_restantes')) {
+        \Drupal::logger('unisonges_structure')->error('Reservation submission @sid could not consume a course right for user @uid because field_seances_restantes is missing.', [
+          '@sid' => $webform_submission->id(),
+          '@uid' => $uid,
+        ]);
+        return;
+      }
+
+      $consumption = _unisonges_structure_consume_booking_right($account, $webform_submission);
+      if ($consumption['type'] === '') {
+        $inactive_value = _unisonges_structure_build_inactive_booking_value($booking['slot']);
+        $fallback_updated = _unisonges_structure_update_stored_submission_reservation($webform_submission, $inactive_value);
+        \Drupal::logger('unisonges_structure')->warning('Reservation submission @sid was marked inactive because no paid credit or pay-on-site right remained for user @uid at insert time (updated=@updated).', [
+          '@sid' => $webform_submission->id(),
+          '@uid' => $uid,
+          '@updated' => $fallback_updated ? 'yes' : 'no',
+        ]);
+        return;
+      }
     }
-
-    $remaining = max(0, $remaining - 1);
-    $account->set('field_seances_restantes', $remaining);
-
-    if ($remaining === 0 && $account->hasField('field_pack_expire_le') && !$account->get('field_pack_expire_le')->isEmpty()) {
-      $account->set('field_pack_expire_le', NULL);
+    finally {
+      _unisonges_structure_release_course_rights_lock($uid);
     }
-
-    $account->save();
 
     _unisonges_structure_queue_google_calendar_booking_sync($webform_submission, 'pending_create');
 
@@ -1597,8 +2338,9 @@ function _unisonges_structure_log_booking_transition(\Drupal\webform\WebformSubm
     $transition = 'modified';
   }
 
+  $payment = _unisonges_structure_get_submission_payment_context($webform_submission);
   \Drupal::logger('unisonges_booking_sync')->notice(
-    'Booking @transition on @webform_id submission @sid (uid=@uid, uuid=@uuid, trigger=@trigger, old=@old, new=@new).',
+    'Booking @transition on @webform_id submission @sid (uid=@uid, uuid=@uuid, trigger=@trigger, payment=@payment, old=@old, new=@new).',
     [
       '@transition' => $transition,
       '@webform_id' => $webform_submission->getWebform()->id(),
@@ -1606,6 +2348,7 @@ function _unisonges_structure_log_booking_transition(\Drupal\webform\WebformSubm
       '@uid' => $webform_submission->getOwnerId(),
       '@uuid' => $webform_submission->uuid(),
       '@trigger' => $trigger,
+      '@payment' => $payment['log_label'],
       '@old' => $original_reservation ?? '',
       '@new' => $current_reservation,
     ]
@@ -1691,6 +2434,7 @@ function unisonges_structure_build_google_calendar_dry_run_payload(\Drupal\webfo
   $slot_duration = _unisonges_structure_get_booking_slot_duration_minutes($webform_submission);
   $end = $reservation['start']->modify('+' . $slot_duration . ' minutes');
   $timezone = (string) $reservation['timezone'];
+  $payment = _unisonges_structure_get_submission_payment_context($webform_submission);
 
   return [
     'summary' => _unisonges_structure_build_booking_google_summary($webform_submission),
@@ -1709,6 +2453,11 @@ function unisonges_structure_build_google_calendar_dry_run_payload(\Drupal\webfo
         'drupal_webform_id' => $webform_submission->getWebform()->id(),
         'drupal_submission_id' => (string) $webform_submission->id(),
         'drupal_submission_uuid' => (string) $webform_submission->uuid(),
+        'payment_status' => $payment['status'],
+        'payment_label' => $payment['label'],
+        'payment_source' => $payment['source'],
+        'commerce_order_id' => $payment['order_id'] > 0 ? (string) $payment['order_id'] : '',
+        'commerce_order_item_id' => $payment['source_order_item_id'] > 0 ? (string) $payment['source_order_item_id'] : '',
         'unisonges_sync_version' => '1',
       ],
     ],
@@ -1788,13 +2537,15 @@ function _unisonges_structure_queue_google_calendar_booking_sync(\Drupal\webform
       ->updateFields($fields)
       ->execute();
 
+    $payment = _unisonges_structure_get_submission_payment_context($webform_submission);
     \Drupal::logger('unisonges_booking_sync')->notice(
-      'Booking Google Calendar dry-run sync queued as @action for submission @sid (uuid=@uuid, reservation=@reservation).',
+      'Booking Google Calendar dry-run sync queued as @action for submission @sid (uuid=@uuid, reservation=@reservation, payment=@payment).',
       [
         '@action' => $sync_action,
         '@sid' => $sid,
         '@uuid' => $webform_submission->uuid(),
         '@reservation' => $reservation_value,
+        '@payment' => $payment['log_label'],
       ]
     );
   }
@@ -1927,6 +2678,10 @@ function _unisonges_structure_get_webform_element_definition(\Drupal\webform\Web
  */
 function _unisonges_structure_build_booking_google_summary(\Drupal\webform\WebformSubmissionInterface $webform_submission): string {
   $parts = ['Cours particulier'];
+  $payment = _unisonges_structure_get_submission_payment_context($webform_submission);
+  if ($payment['status'] === 'to_pay') {
+    $parts[] = 'COURS À PAYER';
+  }
   foreach (['instrument', 'mode_cours'] as $element_key) {
     $label = _unisonges_structure_get_submission_option_label($webform_submission, $element_key);
     if ($label !== '') {
@@ -1969,16 +2724,26 @@ function _unisonges_structure_build_booking_google_location(\Drupal\webform\Webf
  * Builds the Google Calendar description for a course booking.
  */
 function _unisonges_structure_build_booking_google_description(\Drupal\webform\WebformSubmissionInterface $webform_submission): string {
+  $payment = _unisonges_structure_get_submission_payment_context($webform_submission);
   $lines = [
     'sid: ' . (string) $webform_submission->id(),
     'uuid: ' . (string) $webform_submission->uuid(),
     'uid: ' . (string) $webform_submission->getOwnerId(),
+    'payment_status: ' . $payment['status'],
+    'payment_label: ' . $payment['label'],
+    'payment_source: ' . $payment['source'],
     'telephone: ' . _unisonges_structure_get_submission_element_string($webform_submission, 'telephone'),
     'instrument: ' . _unisonges_structure_get_submission_option_label($webform_submission, 'instrument'),
     'niveau_cours: ' . _unisonges_structure_get_submission_option_label($webform_submission, 'niveau_cours'),
     'notes_supplementaires: ' . _unisonges_structure_get_submission_element_string($webform_submission, 'notes_supplementaires'),
     'didgeridoo_pret: ' . _unisonges_structure_get_submission_option_label($webform_submission, 'didgeridoo_pret'),
   ];
+  if ($payment['order_id'] > 0) {
+    $lines[] = 'commerce_order_id: ' . (string) $payment['order_id'];
+  }
+  if ($payment['source_order_item_id'] > 0) {
+    $lines[] = 'commerce_order_item_id: ' . (string) $payment['source_order_item_id'];
+  }
 
   return implode("\n", $lines);
 }

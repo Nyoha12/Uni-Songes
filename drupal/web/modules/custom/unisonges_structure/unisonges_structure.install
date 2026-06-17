@@ -107,6 +107,112 @@ function unisonges_structure_schema(): array {
     ],
   ];
 
+  $schema['unisonges_structure_course_to_pay_right'] = [
+    'description' => 'Pay-on-site course reservation rights created from completed unpaid manual Commerce orders.',
+    'fields' => [
+      'id' => [
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary key.',
+      ],
+      'order_id' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Source Commerce order ID.',
+      ],
+      'uid' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'User ID owning the right.',
+      ],
+      'source_order_item_id' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Source Commerce order item ID.',
+      ],
+      'credit_index' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Stable one-based credit index within the source order item.',
+      ],
+      'product_bundle' => [
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Source Commerce product bundle at creation time.',
+      ],
+      'remaining_to_pay_credits' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 1,
+        'description' => 'Remaining reservable to-pay credit units for this row; 1 while available, 0 once consumed, paid, or cancelled.',
+      ],
+      'webform_submission_id' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'description' => 'Consuming Webform submission ID once reserved.',
+      ],
+      'status' => [
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => 'pending_payment',
+        'description' => 'Right status, for example pending_payment, consumed, paid, or cancelled.',
+      ],
+      'created' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Unix timestamp when the right was created.',
+      ],
+      'changed' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Unix timestamp when the right was last changed.',
+      ],
+      'consumed' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'description' => 'Unix timestamp when the right was consumed by a reservation.',
+      ],
+      'paid' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'description' => 'Unix timestamp when the source order payment was confirmed.',
+      ],
+      'cancelled' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'description' => 'Unix timestamp when the right was cancelled.',
+      ],
+    ],
+    'primary key' => ['id'],
+    'unique keys' => [
+      'source_credit' => ['order_id', 'source_order_item_id', 'credit_index'],
+    ],
+    'indexes' => [
+      'uid_status' => ['uid', 'status', 'changed'],
+      'order_status' => ['order_id', 'status', 'changed'],
+      'submission' => ['webform_submission_id'],
+      'source_order_item' => ['source_order_item_id'],
+    ],
+  ];
+
   return $schema;
 }
 
@@ -147,4 +253,19 @@ function unisonges_structure_update_11002(): void {
   }
 
   $config->save();
+}
+
+/**
+ * Create the pay-on-site course reservation rights table.
+ */
+function unisonges_structure_update_11003(): void {
+  $table = 'unisonges_structure_course_to_pay_right';
+  $database_schema = \Drupal::database()->schema();
+
+  if ($database_schema->tableExists($table)) {
+    return;
+  }
+
+  $schema = unisonges_structure_schema();
+  $database_schema->createTable($table, $schema[$table]);
 }
