@@ -105,38 +105,45 @@ Regles fonctionnelles :
 - Pour `Payer en ligne`, le tunnel redirige seulement apres selection cours +
   creneau vers la page du produit Commerce selectionne quand elle est resolvable,
   sinon vers `/cours`.
-- Pour `Payer sur place`, le tunnel affiche l'etape visible apres selection mais
-  indique clairement que la reservation n'est pas confirmee : aucune commande
-  manuelle et aucun droit `COURS À PAYER` ne sont crees dans cette PR.
+- Pour `Payer sur place`, le tunnel revalide le creneau, cree une commande
+  Commerce manuelle non payee, cree le droit PR #62 `pending_payment`, cree la
+  submission Webform, puis affiche une confirmation seulement si la reservation
+  est marquee `COURS À PAYER`.
 - Aucun changement `config/sync`, Composer, DDEV, script de deploiement ou prix
   Commerce n'est ajoute.
 - Aucun appel Google reel n'est ajoute.
 - La table et le modele PR #62 `COURS À PAYER` ne sont pas modifies.
 
-## Ce qui n'est pas encore un succes backend
+## Ce qui est cable dans le code
 
-- Le creneau choisi dans `/reservation-cours` n'est pas encore reserve ni bloque
-  durablement. Il est seulement valide contre les reservations deja enregistrees.
+- Parcours paiement sur place :
+  - choix du cours ;
+  - choix du creneau sans exigence de credit/paiement prealable ;
+  - revalidation du format, de la capacite et des conflits juste avant la
+    confirmation ;
+  - creation d'une commande Commerce manuelle non payee ;
+  - creation puis consommation d'un droit `COURS À PAYER` lie a cette commande ;
+  - creation de la submission Webform de reservation ;
+  - confirmation affichee uniquement apres verification du statut
+    `COURS À PAYER`.
+
+## Ce qui n'est pas encore complet
+
 - Le paiement en ligne ne rattache pas encore le creneau au panier ou a la
   commande Commerce.
-- Le paiement sur place ne cree pas encore la commande manuelle `completed`
-  non payee ni le droit PR #62 `pending_payment`.
-- Aucune Webform submission de reservation n'est creee par le nouveau tunnel.
-- Les mails Webform, le dry-run Google Calendar et le label `COURS À PAYER`
-  restent donc uniquement actifs pour le flux historique deja branche sur le
-  Webform.
+- Le parcours paiement sur place n'a pas ete teste en navigateur/DDEV dans cette
+  PR ; la PR doit rester draft tant que ce test runtime n'est pas fait.
 
 ## Prochaine PR requise
 
-- Ajouter le handoff backend apres l'etape paiement :
-  - paiement sur place : creer ou rattacher une commande manuelle, declencher la
-    creation du droit PR #62, puis creer/consommer la reservation comme
-    `COURS À PAYER` ;
-  - paiement en ligne : creer le panier/commande Commerce avec le contexte
-    creneau, rediriger checkout, puis finaliser la Webform submission sans
-    redemander le creneau.
-- Proteger la concurrence : verrou de creneau pendant la confirmation finale,
-  expiration propre des selections temporaires, message clair si le creneau est
-  pris avant paiement.
+- Tester en navigateur/DDEV le parcours paiement sur place complet : cours,
+  creneau, paiement sur place, commande manuelle, droit `COURS À PAYER`,
+  submission Webform, mails et queue Google dry-run.
+- Ajouter le handoff paiement en ligne : creer le panier/commande Commerce avec
+  le contexte creneau, rediriger checkout, puis finaliser la Webform submission
+  sans redemander le creneau.
+- Durcir la concurrence : conserver le verrou de confirmation finale, ajouter
+  une expiration propre des selections temporaires et garder un message clair si
+  le creneau est pris avant paiement.
 - Tester en navigateur/DDEV les parcours connecte, anonyme, paiement sur place,
   paiement en ligne, retour checkout, conflits, capacite et mails.

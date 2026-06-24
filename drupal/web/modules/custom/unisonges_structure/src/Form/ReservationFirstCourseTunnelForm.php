@@ -94,7 +94,7 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
         '#markup' => '<h2>' . $this->t('Réserver un cours') . '</h2>',
       ],
       'copy' => [
-        '#markup' => '<p>' . $this->t('Choisissez le cours et le créneau avant le paiement. La confirmation finale reste séparée du choix de créneau.') . '</p>',
+        '#markup' => '<p>' . $this->t('Choisissez le cours et le créneau avant le paiement. La réservation est confirmée uniquement après validation du paiement choisi.') . '</p>',
       ],
     ];
 
@@ -115,8 +115,8 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       return $form;
     }
 
-    if ($step === 'pay_on_site_pending') {
-      $this->buildPayOnSitePendingStep($form, $stored);
+    if ($step === 'confirmed') {
+      $this->buildConfirmedStep($form, $stored);
       return $form;
     }
 
@@ -305,6 +305,9 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
         ],
         '#required' => TRUE,
       ],
+      'payment_notes' => [
+        '#markup' => '<p class="reservation-first-course__note">' . $this->t('Paiement sur place : le créneau est confirmé après validation et marqué COURS À PAYER.') . '</p><p class="reservation-first-course__note">' . $this->t('Paiement en ligne : vous continuez vers le parcours d’achat classique ; le créneau sélectionné n’est pas réservé.') . '</p>',
+      ],
     ];
 
     $form['actions'] = [
@@ -336,45 +339,48 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     $choice = (string) $form_state->getValue('payment_choice');
     $stored = $this->getStoredSelection();
     $stored['payment_choice'] = $choice;
-    $stored['step'] = $choice === 'pay_on_site' ? 'pay_on_site_pending' : 'payment';
+    $stored['step'] = 'payment';
     $this->setStoredSelection($stored);
 
     if ($choice === 'online') {
-      $this->messenger()->addStatus($this->t('Cours et créneau sélectionnés. Continuez vers le paiement en ligne ; le créneau n’est pas encore confirmé automatiquement.'));
+      $this->messenger()->addStatus($this->t('Le paiement en ligne avec réservation de créneau sera finalisé prochainement. Vous pouvez continuer vers le parcours d’achat classique ; le créneau sélectionné n’est pas réservé.'));
       $form_state->setRedirectUrl($this->getOnlinePaymentUrl($stored));
       return;
     }
 
-    $form_state->set('step', 'pay_on_site_pending');
+    try {
+      $confirmation = $this->confirmPayOnSiteReservation($stored);
+    }
+    catch (\Throwable $e) {
+      $this->logger('unisonges_structure')->error('Reservation-first pay-on-site confirmation failed for user @uid: @message', [
+        '@uid' => $this->currentAccount->id(),
+        '@message' => $e->getMessage(),
+      ]);
+      $this->messenger()->addError($this->t('La réservation n’a pas pu être confirmée. Merci de réessayer ou de nous contacter.'));
+      $stored['step'] = 'payment';
+      $this->setStoredSelection($stored);
+      $form_state->set('step', 'payment');
+      $form_state->setRebuild(TRUE);
+      return;
+    }
+
+    $stored = $confirmation + $stored;
+    $stored['step'] = 'confirmed';
+    $this->setStoredSelection($stored);
+    $form_state->set('step', 'confirmed');
     $form_state->setRebuild(TRUE);
   }
 
-  private function buildPayOnSitePendingStep(array &$form, array $stored): void {
+  private function buildConfirmedStep(array &$form, array $stored): void {
     $form['summary'] = $this->buildSummary($stored);
     $form['step'] = [
       '#type' => 'container',
-      '#attributes' => ['class' => ['reservation-first-course__panel', 'reservation-first-course__panel--warning']],
+      '#attributes' => ['class' => ['reservation-first-course__panel', 'reservation-first-course__panel--success']],
       'title' => [
-        '#markup' => '<h3>' . $this->t('Paiement sur place sélectionné') . '</h3>',
+        '#markup' => '<h3>' . $this->t('Réservation confirmée') . '</h3>',
       ],
       'message' => [
-        '#markup' => '<p><strong>' . $this->t('Réservation non confirmée.') . '</strong> ' . $this->t('Le choix “Payer sur place” est mémorisé pour ce parcours, mais aucune commande manuelle ni aucun droit “COURS À PAYER” n’est encore créé. Le créneau ne sera confirmé qu’après raccord à la validation de paiement.') . '</p>',
-      ],
-    ];
-
-    $form['actions'] = [
-      '#type' => 'actions',
-      'previous' => [
-        '#type' => 'submit',
-        '#value' => $this->t('Modifier le paiement'),
-        '#submit' => ['::submitBackToPayment'],
-        '#limit_validation_errors' => [],
-      ],
-      'restart' => [
-        '#type' => 'submit',
-        '#value' => $this->t('Recommencer'),
-        '#submit' => ['::submitRestart'],
-        '#limit_validation_errors' => [],
+        '#markup' => '<p><strong>' . $this->t('COURS À PAYER') . '</strong> — ' . $this->t('votre créneau est confirmé avec paiement sur place.') . '</p>',
       ],
     ];
   }
@@ -384,7 +390,7 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       'course' => $this->t('Compte / cours'),
       'slot' => $this->t('Créneau'),
       'payment' => $this->t('Paiement'),
-      'pay_on_site_pending' => $this->t('À finaliser'),
+      'confirmed' => $this->t('Confirmation'),
     ];
     $current_index = array_search($step, array_keys($steps), TRUE);
     if ($current_index === FALSE) {
@@ -453,7 +459,7 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       '#type' => 'webform_booking',
       '#title' => $this->t('Choisir un créneau'),
       '#parents' => ['reservation'],
-      '#description' => $this->t('Le créneau est choisi avant le paiement. Il sera confirmé seulement après raccord au paiement.'),
+      '#description' => $this->t('Le créneau est choisi avant le paiement. Il sera confirmé après validation du paiement choisi.'),
       '#required' => TRUE,
       '#days_visible' => '30',
       '#slot_duration' => 60,
@@ -591,9 +597,233 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     return Url::fromUserInput('/cours', ['query' => ['reservation-first' => '1']]);
   }
 
+  private function confirmPayOnSiteReservation(array $stored): array {
+    $booking = $this->validateStoredBooking($stored);
+    if (!_unisonges_structure_acquire_booking_slot_lock($booking['slot'])) {
+      throw new \RuntimeException('Unable to acquire booking slot lock.');
+    }
+
+    $transaction = \Drupal::database()->startTransaction();
+    try {
+      $conflict_message = _unisonges_structure_get_booking_conflict_message($booking['slot'], $booking['seats'], (int) $this->currentAccount->id(), $this->getReservationCapacity()['seats_slot']);
+      if ($conflict_message !== '') {
+        throw new \RuntimeException('Booking slot conflict before pay-on-site confirmation.');
+      }
+
+      $order = $this->createPayOnSiteOrder($stored);
+      _unisonges_structure_ensure_to_pay_course_rights_from_order($order);
+      if (!$this->orderHasPendingToPayRight((int) $order->id())) {
+        throw new \RuntimeException('Pay-on-site right was not created for the order.');
+      }
+
+      $submission = $this->createReservationSubmission($stored, (int) $order->id());
+      $payment = _unisonges_structure_get_submission_payment_context($submission);
+      if (($payment['status'] ?? '') !== 'to_pay') {
+        throw new \RuntimeException('Reservation submission was not marked COURS À PAYER.');
+      }
+    }
+    catch (\Throwable $e) {
+      if (method_exists($transaction, 'rollBack')) {
+        $transaction->rollBack();
+      }
+      throw $e;
+    }
+    finally {
+      _unisonges_structure_release_booking_slot_lock($booking['slot']);
+    }
+
+    return [
+      'submission_id' => (int) $submission->id(),
+      'order_id' => (int) $order->id(),
+      'payment_label' => 'COURS À PAYER',
+    ];
+  }
+
+  private function validateStoredBooking(array $stored): array {
+    $reservation_value = (string) ($stored['reservation_value'] ?? '');
+    $booking = _unisonges_structure_parse_booking_form_value($reservation_value);
+    if ($booking['error'] !== '' || $booking['slot'] === '') {
+      throw new \RuntimeException('Stored reservation value is invalid.');
+    }
+
+    $capacity = $this->getReservationCapacity();
+    if ($booking['seats'] > $capacity['max_seats_per_booking']) {
+      throw new \RuntimeException('Stored reservation exceeds capacity.');
+    }
+
+    return $booking;
+  }
+
+  private function createPayOnSiteOrder(array $stored) {
+    $context = $this->getSelectedCourseCommerceContext((string) ($stored['course'] ?? ''));
+    $uid = (int) $this->currentAccount->id();
+    if ($uid <= 0) {
+      throw new \RuntimeException('Missing user for pay-on-site order.');
+    }
+
+    $order_storage = $this->entityTypeManager->getStorage('commerce_order');
+    $order_item_storage = $this->entityTypeManager->getStorage('commerce_order_item');
+    $order = $order_storage->create([
+      'type' => 'default',
+      'uid' => $uid,
+      'mail' => $this->getCurrentUserMail(),
+      'store_id' => $context['store_id'],
+      'state' => 'draft',
+    ]);
+    if (method_exists($order, 'hasField') && $order->hasField('payment_gateway')) {
+      $order->set('payment_gateway', 'manual');
+    }
+    $order->save();
+
+    $variation = $context['variation'];
+    $order_item_values = [
+      'type' => method_exists($variation, 'getOrderItemTypeId') ? $variation->getOrderItemTypeId() : 'default',
+      'purchased_entity' => $variation,
+      'quantity' => '1',
+      'order_id' => $order->id(),
+    ];
+    if (method_exists($variation, 'getPrice')) {
+      $order_item_values['unit_price'] = $variation->getPrice();
+    }
+    $order_item = $order_item_storage->create($order_item_values);
+    $order_item->save();
+
+    $order->set('order_items', [['target_id' => $order_item->id()]]);
+    if (method_exists($order, 'getState')) {
+      try {
+        $state = $order->getState();
+        if (method_exists($state, 'isTransitionAllowed') && method_exists($state, 'applyTransitionById') && $state->isTransitionAllowed('place')) {
+          $state->applyTransitionById('place');
+        }
+        else {
+          $order->set('state', 'completed');
+        }
+      }
+      catch (\Throwable $e) {
+        $order->set('state', 'completed');
+      }
+    }
+    else {
+      $order->set('state', 'completed');
+    }
+    $order->save();
+
+    return $order;
+  }
+
+  private function getSelectedCourseCommerceContext(string $course): array {
+    if (!$this->entityTypeManager->hasDefinition('commerce_product')) {
+      throw new \RuntimeException('Commerce product storage is unavailable.');
+    }
+
+    $product_storage = $this->entityTypeManager->getStorage('commerce_product');
+    $product = NULL;
+    if (strpos($course, 'product:') === 0) {
+      $product = $product_storage->load((int) substr($course, strlen('product:')));
+    }
+    elseif (strpos($course, 'bundle:') === 0) {
+      $bundle = substr($course, strlen('bundle:'));
+      $ids = $product_storage->getQuery()
+        ->accessCheck(FALSE)
+        ->condition('type', $bundle)
+        ->condition('status', 1)
+        ->range(0, 1)
+        ->execute();
+      $product = $ids ? $product_storage->load((int) reset($ids)) : NULL;
+    }
+
+    if (!$product || !method_exists($product, 'getVariations') || !method_exists($product, 'bundle')) {
+      throw new \RuntimeException('Selected course product could not be resolved.');
+    }
+
+    foreach ($product->getVariations() as $variation) {
+      if ($variation && (!method_exists($variation, 'isPublished') || $variation->isPublished())) {
+        return [
+          'product' => $product,
+          'variation' => $variation,
+          'store_id' => $this->getProductStoreId($product),
+          'bundle' => (string) $product->bundle(),
+        ];
+      }
+    }
+
+    throw new \RuntimeException('Selected course product has no purchasable variation.');
+  }
+
+  private function getProductStoreId($product): int {
+    if (method_exists($product, 'getStores')) {
+      $stores = $product->getStores();
+      $store = $stores ? reset($stores) : NULL;
+      if ($store && method_exists($store, 'id')) {
+        return (int) $store->id();
+      }
+    }
+    if (method_exists($product, 'hasField') && $product->hasField('stores') && !$product->get('stores')->isEmpty()) {
+      return (int) $product->get('stores')->target_id;
+    }
+
+    $ids = $this->entityTypeManager->getStorage('commerce_store')->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('status', 1)
+      ->range(0, 1)
+      ->execute();
+    if ($ids) {
+      return (int) reset($ids);
+    }
+
+    throw new \RuntimeException('No store found for selected course product.');
+  }
+
+  private function getCurrentUserMail(): string {
+    if (method_exists($this->currentAccount, 'getEmail')) {
+      return (string) $this->currentAccount->getEmail();
+    }
+
+    return '';
+  }
+
+  private function orderHasPendingToPayRight(int $order_id): bool {
+    if ($order_id <= 0 || !_unisonges_structure_to_pay_rights_table_exists()) {
+      return FALSE;
+    }
+
+    return (bool) \Drupal::database()->select(_unisonges_structure_to_pay_rights_table_name(), 'r')
+      ->condition('order_id', $order_id)
+      ->condition('status', 'pending_payment')
+      ->condition('remaining_to_pay_credits', 0, '>')
+      ->countQuery()
+      ->execute()
+      ->fetchField();
+  }
+
+  private function createReservationSubmission(array $stored, int $order_id) {
+    if (!$this->entityTypeManager->hasDefinition('webform_submission')) {
+      throw new \RuntimeException('Webform submission storage is unavailable.');
+    }
+
+    $course_label = (string) ($stored['course_label'] ?? $this->getCourseLabel((string) ($stored['course'] ?? '')));
+    $data = [
+      'reservation' => (string) $stored['reservation_value'],
+      'notes_supplementaires' => 'Cours sélectionné : ' . $course_label . '. Paiement : sur place.',
+      'unisonges_payment_choice' => 'pay_on_site',
+      'unisonges_pay_on_site_order_id' => (string) $order_id,
+      'unisonges_course_label' => $course_label,
+    ];
+
+    $submission = $this->entityTypeManager->getStorage('webform_submission')->create([
+      'webform_id' => 'cours_particuliers_reservation',
+      'uid' => (int) $this->currentAccount->id(),
+      'in_draft' => FALSE,
+      'data' => $data,
+    ]);
+    $submission->save();
+
+    return $submission;
+  }
+
   private function resolveStep(FormStateInterface $form_state, array $stored): string {
     $step = (string) ($form_state->get('step') ?: ($stored['step'] ?? 'course'));
-    return in_array($step, ['course', 'slot', 'payment', 'pay_on_site_pending'], TRUE) ? $step : 'course';
+    return in_array($step, ['course', 'slot', 'payment', 'confirmed'], TRUE) ? $step : 'course';
   }
 
   private function getStoredSelection(): array {

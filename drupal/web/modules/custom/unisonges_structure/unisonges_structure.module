@@ -1905,11 +1905,24 @@ function _unisonges_structure_count_available_to_pay_course_rights(int $uid): in
 }
 
 function _unisonges_structure_consume_booking_right(\Drupal\user\UserInterface $account, \Drupal\webform\WebformSubmissionInterface $webform_submission): array {
+  $preferred_to_pay_order_id = _unisonges_structure_get_preferred_to_pay_order_id($webform_submission);
+  if ($preferred_to_pay_order_id > 0) {
+    return _unisonges_structure_consume_to_pay_booking_right($account, $webform_submission, $preferred_to_pay_order_id);
+  }
+
   if (_unisonges_structure_user_has_valid_paid_credit($account)) {
     return _unisonges_structure_consume_paid_booking_credit($account);
   }
 
   return _unisonges_structure_consume_to_pay_booking_right($account, $webform_submission);
+}
+
+function _unisonges_structure_get_preferred_to_pay_order_id(\Drupal\webform\WebformSubmissionInterface $webform_submission): int {
+  if (_unisonges_structure_get_submission_element_string($webform_submission, 'unisonges_payment_choice') !== 'pay_on_site') {
+    return 0;
+  }
+
+  return max(0, (int) _unisonges_structure_get_submission_element_string($webform_submission, 'unisonges_pay_on_site_order_id'));
 }
 
 function _unisonges_structure_user_has_valid_paid_credit(\Drupal\user\UserInterface $account): bool {
@@ -1953,7 +1966,7 @@ function _unisonges_structure_consume_paid_booking_credit(\Drupal\user\UserInter
   ];
 }
 
-function _unisonges_structure_consume_to_pay_booking_right(\Drupal\user\UserInterface $account, \Drupal\webform\WebformSubmissionInterface $webform_submission): array {
+function _unisonges_structure_consume_to_pay_booking_right(\Drupal\user\UserInterface $account, \Drupal\webform\WebformSubmissionInterface $webform_submission, int $preferred_order_id = 0): array {
   $uid = (int) $account->id();
   $sid = (int) $webform_submission->id();
   if ($uid <= 0 || $sid <= 0 || !_unisonges_structure_to_pay_rights_table_exists()) {
@@ -1961,11 +1974,15 @@ function _unisonges_structure_consume_to_pay_booking_right(\Drupal\user\UserInte
   }
 
   $table = _unisonges_structure_to_pay_rights_table_name();
-  $row = \Drupal::database()->select($table, 'r')
+  $query = \Drupal::database()->select($table, 'r')
     ->fields('r')
     ->condition('uid', $uid)
     ->condition('status', 'pending_payment')
-    ->condition('remaining_to_pay_credits', 0, '>')
+    ->condition('remaining_to_pay_credits', 0, '>');
+  if ($preferred_order_id > 0) {
+    $query->condition('order_id', $preferred_order_id);
+  }
+  $row = $query
     ->orderBy('created', 'ASC')
     ->orderBy('id', 'ASC')
     ->range(0, 1)

@@ -2269,9 +2269,19 @@ form[id*="webform-submission-cours-particuliers-reservation"] .alert a,
   overflow-wrap: anywhere;
 }
 
+.reservation-first-course__note{
+  margin: .35rem 0 0;
+  color: #475569;
+}
+
 .reservation-first-course__panel--warning{
   border-color: rgba(245,158,11,.45);
   background: rgba(245,158,11,.12);
+}
+
+.reservation-first-course__panel--success{
+  border-color: rgba(15,118,110,.38);
+  background: rgba(15,118,110,.12);
 }
 
 @media (max-width: 760px){
