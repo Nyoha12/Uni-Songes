@@ -8,6 +8,11 @@ ete utilise pour ce document.
 
 - `/reserver` : page node `8`, rendue par
   `drupal/web/themes/custom/unisonges_theme/templates/content/node--8.html.twig`.
+  Elle reste disponible pour le flux historique des eleves qui ont deja un droit
+  de reservation, mais elle oriente maintenant vers le nouveau parcours guide.
+- `/reservation-cours` : route applicative
+  `unisonges_structure.reservation_course_tunnel`, rendue par
+  `Drupal\unisonges_structure\Form\ReservationFirstCourseTunnelForm`.
 - `unisonges_structure_preprocess_node()` : injecte le contexte
   `unisonges_reservation_portal` et le formulaire Webform dans la page `/reserver`.
 - Webform `cours_particuliers_reservation` :
@@ -28,6 +33,9 @@ ete utilise pour ce document.
   la table `unisonges_structure_course_to_pay_right` cree des droits durables
   `pending_payment`, puis les reservations consommees sont marquees
   `COURS À PAYER`.
+- Le nouveau tunnel stocke temporairement la selection cours + creneau dans le
+  private tempstore `unisonges_structure` sous la cle
+  `course_reservation_first_tunnel`.
 
 ## Bloqueurs actuels
 
@@ -83,24 +91,50 @@ Regles fonctionnelles :
     avant de choisir un creneau ;
   - le submit guard existant reste en place pour eviter de creer des
     reservations sans droit rattache.
-- Aucun nouveau chemin public n'est ajoute.
+- Ajout du route/form `/reservation-cours` :
+  - les anonymes voient les actions connexion/creation de compte avec
+    `destination=/reservation-cours` ;
+  - les utilisateurs connectes choisissent d'abord le cours ;
+  - ils choisissent ensuite le creneau via l'element `webform_booking`
+    configure sur le Webform existant ;
+  - cette validation de creneau verifie le format, la capacite et les conflits
+    de reservations existantes, sans appeler `_unisonges_structure_user_can_book`
+    et donc sans exiger de droit paye avant le choix du creneau ;
+  - l'etape suivante presente explicitement `Payer en ligne` et
+    `Payer sur place`.
+- Pour `Payer en ligne`, le tunnel redirige seulement apres selection cours +
+  creneau vers la page du produit Commerce selectionne quand elle est resolvable,
+  sinon vers `/cours`.
+- Pour `Payer sur place`, le tunnel affiche l'etape visible apres selection mais
+  indique clairement que la reservation n'est pas confirmee : aucune commande
+  manuelle et aucun droit `COURS À PAYER` ne sont crees dans cette PR.
 - Aucun changement `config/sync`, Composer, DDEV, script de deploiement ou prix
   Commerce n'est ajoute.
 - Aucun appel Google reel n'est ajoute.
 - La table et le modele PR #62 `COURS À PAYER` ne sont pas modifies.
 
-## Reste a faire
+## Ce qui n'est pas encore un succes backend
 
-- Ajouter un petit controleur/formulaire dedie au tunnel reservation-first, ou
-  une evolution equivalente testee, qui stocke temporairement compte, cours et
-  creneau.
-- Definir le modele de stockage temporaire : session, private tempstore ou entite
-  interne expirante, avec duree de vie et nettoyage.
-- Creer le choix de paiement apres selection cours + creneau :
-  - paiement sur place : creer ou rattacher une commande manuelle et un droit
-    PR #62, puis soumettre/consommer la reservation comme `COURS À PAYER` ;
+- Le creneau choisi dans `/reservation-cours` n'est pas encore reserve ni bloque
+  durablement. Il est seulement valide contre les reservations deja enregistrees.
+- Le paiement en ligne ne rattache pas encore le creneau au panier ou a la
+  commande Commerce.
+- Le paiement sur place ne cree pas encore la commande manuelle `completed`
+  non payee ni le droit PR #62 `pending_payment`.
+- Aucune Webform submission de reservation n'est creee par le nouveau tunnel.
+- Les mails Webform, le dry-run Google Calendar et le label `COURS À PAYER`
+  restent donc uniquement actifs pour le flux historique deja branche sur le
+  Webform.
+
+## Prochaine PR requise
+
+- Ajouter le handoff backend apres l'etape paiement :
+  - paiement sur place : creer ou rattacher une commande manuelle, declencher la
+    creation du droit PR #62, puis creer/consommer la reservation comme
+    `COURS À PAYER` ;
   - paiement en ligne : creer le panier/commande Commerce avec le contexte
-    creneau, rediriger checkout, puis confirmer sans redemander le creneau.
+    creneau, rediriger checkout, puis finaliser la Webform submission sans
+    redemander le creneau.
 - Proteger la concurrence : verrou de creneau pendant la confirmation finale,
   expiration propre des selections temporaires, message clair si le creneau est
   pris avant paiement.

@@ -285,6 +285,7 @@ function unisonges_structure_form_alter(array &$form, FormStateInterface $form_s
  * Builds the front reservation portal state for /reserver.
  */
 function _unisonges_structure_build_reservation_portal_context(): array {
+  $tunnel_url = _unisonges_structure_safe_route_url('unisonges_structure.reservation_course_tunnel', '/reservation-cours');
   $context = [
     'is_anonymous' => TRUE,
     'display_name' => '',
@@ -295,8 +296,9 @@ function _unisonges_structure_build_reservation_portal_context(): array {
     'status_label' => 'Compte requis avant confirmation.',
     'message' => 'Les disponibilités restent consultables. Le paiement se décide après le choix du cours et du créneau.',
     'can_book' => FALSE,
-    'login_url' => _unisonges_structure_safe_route_url('user.login', '/user/login', ['destination' => '/reserver']),
-    'register_url' => _unisonges_structure_safe_route_url('user.register', '/user/register', ['destination' => '/reserver']),
+    'login_url' => _unisonges_structure_safe_route_url('user.login', '/user/login', ['destination' => '/reservation-cours']),
+    'register_url' => _unisonges_structure_safe_route_url('user.register', '/user/register', ['destination' => '/reservation-cours']),
+    'tunnel_url' => $tunnel_url,
     'purchase_url' => '/cours',
     'purchase_label' => 'Voir les cours',
   ];

@@ -10,6 +10,9 @@
 
   <section class="reservation-portal__intro">
     <p>Les disponibilités restent consultables avant confirmation. Le parcours cible suit l’ordre : compte, cours, créneau, paiement, confirmation.</p>
+    <div class="reservation-portal__actions">
+      <a class="btn btn--cta" href="{{ portal.tunnel_url|default('/reservation-cours') }}">Démarrer le parcours guidé</a>
+    </div>
   </section>
 
   <section class="reservation-portal__summary reservation-portal__summary--{{ portal_status }}" aria-labelledby="reservation-access-title" aria-describedby="reservation-access-message">
@@ -40,10 +43,11 @@
 
           <div class="reservation-portal__actions">
             <a class="btn btn--cta" href="#reservation-form-title">Choisir un créneau</a>
+            <a class="btn" href="{{ portal.tunnel_url|default('/reservation-cours') }}">Parcours guidé</a>
           </div>
         {% else %}
           <div class="reservation-portal__actions">
-            <a class="btn btn--cta" href="#reservation-form-title">Choisir un créneau</a>
+            <a class="btn btn--cta" href="{{ portal.tunnel_url|default('/reservation-cours') }}">Choisir cours et créneau</a>
             <a class="btn" href="{{ portal.purchase_url }}">{{ portal.purchase_label }}</a>
           </div>
         {% endif %}
