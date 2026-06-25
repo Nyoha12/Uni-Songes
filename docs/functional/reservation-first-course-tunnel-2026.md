@@ -110,6 +110,12 @@ Regles fonctionnelles :
     `plateforme_visio` si le mode est `visio`, `adresse_domicile` et
     `code_postal_domicile` si le mode est `domicile`, `didgeridoo_pret` si
     l'instrument est `didgeridoo`, et `notes_supplementaires` si utile ;
+  - les cles Webform verifiees dans `cours_particuliers_reservation` sont :
+    `mode_cours=visio|studio|domicile`, `instrument=guimbarde|didgeridoo`,
+    `plateforme_visio=zoom|google_meet|skype|whatsapp|autre`,
+    `didgeridoo_pret=oui|non`; `adresse_domicile` est un textarea conditionnel
+    au mode `domicile`, et `code_postal_domicile` est conditionnel au mode
+    `domicile` avec le pattern `^\d{5}$` ;
   - l'etape suivante presente explicitement `Payer en ligne` et
     `Payer sur place`.
 - Pour `Payer en ligne`, le tunnel redirige seulement apres selection cours +

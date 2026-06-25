@@ -788,7 +788,7 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       return '';
     }
 
-    $regex = '~' . str_replace('~', '\\~', $pattern) . '~u';
+    $regex = '~^(?:' . str_replace('~', '\\~', $pattern) . ')$~u';
     $match = @preg_match($regex, $value);
     if ($match === 1) {
       return '';
