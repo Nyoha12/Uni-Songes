@@ -294,7 +294,7 @@ function _unisonges_structure_build_reservation_portal_context(): array {
     'expiry_label' => '',
     'status' => 'anonymous',
     'status_label' => 'Compte requis avant confirmation.',
-    'message' => 'Les disponibilités restent consultables. Le paiement se décide après le choix du cours et du créneau.',
+    'message' => 'Les disponibilités restent consultables. Le paiement se décide après le choix du cours, du créneau et des détails.',
     'can_book' => FALSE,
     'login_url' => _unisonges_structure_safe_route_url('user.login', '/user/login', ['destination' => '/reservation-cours']),
     'register_url' => _unisonges_structure_safe_route_url('user.register', '/user/register', ['destination' => '/reservation-cours']),
@@ -341,7 +341,7 @@ function _unisonges_structure_build_reservation_portal_context(): array {
   else {
     $context['status'] = 'blocked';
     $context['status_label'] = 'Paiement à choisir avant confirmation.';
-    $context['message'] = $message ?: 'Vous pouvez consulter les créneaux. La confirmation se finalise après le choix du paiement.';
+    $context['message'] = $message ?: 'Vous pouvez consulter les créneaux. La confirmation se finalise après les détails et le choix du paiement.';
   }
 
   return $context;
@@ -1044,7 +1044,7 @@ function _unisonges_structure_user_can_book(\Drupal\user\UserInterface $account,
     }
     if ($expiry < $today) {
       $paid_credit_available = FALSE;
-      $paid_credit_blocked_message = 'Votre validité précédente est échue. Choisissez le cours, le créneau, puis le paiement pour confirmer.';
+      $paid_credit_blocked_message = 'Votre validité précédente est échue. Choisissez le cours, le créneau, les détails, puis le paiement pour confirmer.';
     }
   }
 
@@ -1052,7 +1052,7 @@ function _unisonges_structure_user_can_book(\Drupal\user\UserInterface $account,
     return TRUE;
   }
 
-  $message = $paid_credit_blocked_message ?: 'Choisissez le cours, le créneau, puis le paiement pour confirmer la réservation.';
+  $message = $paid_credit_blocked_message ?: 'Choisissez le cours, le créneau, les détails, puis le paiement pour confirmer la réservation.';
   return FALSE;
 }
 

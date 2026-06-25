@@ -25,6 +25,33 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     'cours_avance',
   ];
 
+  private const DETAIL_FIELDS = [
+    'mode_cours',
+    'plateforme_visio',
+    'adresse_domicile',
+    'code_postal_domicile',
+    'telephone',
+    'instrument',
+    'didgeridoo_pret',
+    'niveau_cours',
+    'notes_supplementaires',
+  ];
+
+  private const ALWAYS_REQUIRED_DETAIL_FIELDS = [
+    'mode_cours',
+    'telephone',
+    'instrument',
+    'niveau_cours',
+  ];
+
+  private const OPTION_DETAIL_FIELDS = [
+    'mode_cours',
+    'plateforme_visio',
+    'instrument',
+    'didgeridoo_pret',
+    'niveau_cours',
+  ];
+
   /**
    * The current user.
    *
@@ -107,6 +134,11 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
 
     if ($step === 'slot') {
       $this->buildSlotStep($form, $stored);
+      return $form;
+    }
+
+    if ($step === 'details') {
+      $this->buildDetailsStep($form, $stored);
       return $form;
     }
 
@@ -226,7 +258,7 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       ],
       'next' => [
         '#type' => 'submit',
-        '#value' => $this->t('Choisir le paiement'),
+        '#value' => $this->t('Renseigner les détails'),
         '#button_type' => 'primary',
         '#validate' => ['::validateSlotStep'],
         '#submit' => ['::submitSlotStep'],
@@ -271,6 +303,72 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     $stored = $this->getStoredSelection();
     $stored['reservation_value'] = $reservation_value;
     $stored['slot_label'] = $this->formatReservationValue($reservation_value);
+    $stored['step'] = 'details';
+    unset($stored['payment_choice']);
+    $this->setStoredSelection($stored);
+
+    $form_state->set('step', 'details');
+    $form_state->setRebuild(TRUE);
+  }
+
+  private function buildDetailsStep(array &$form, array $stored): void {
+    if (empty($stored['course']) || empty($stored['reservation_value'])) {
+      $form['empty'] = $this->buildResetNotice($this->t('Choisissez un cours et un créneau avant de renseigner les détails.'));
+      return;
+    }
+
+    $details = is_array($stored['details'] ?? NULL) ? $stored['details'] : [];
+    $form['summary'] = $this->buildSummary($stored);
+    $form['step'] = [
+      '#type' => 'container',
+      '#attributes' => ['class' => ['reservation-first-course__panel']],
+      'title' => [
+        '#markup' => '<h3>' . $this->t('3. Détails du cours') . '</h3>',
+      ],
+      'mode_cours' => $this->buildDetailElement('mode_cours', $details),
+      'plateforme_visio' => $this->buildDetailElement('plateforme_visio', $details),
+      'adresse_domicile' => $this->buildDetailElement('adresse_domicile', $details),
+      'code_postal_domicile' => $this->buildDetailElement('code_postal_domicile', $details),
+      'telephone' => $this->buildDetailElement('telephone', $details),
+      'instrument' => $this->buildDetailElement('instrument', $details),
+      'didgeridoo_pret' => $this->buildDetailElement('didgeridoo_pret', $details),
+      'niveau_cours' => $this->buildDetailElement('niveau_cours', $details),
+      'notes_supplementaires' => $this->buildDetailElement('notes_supplementaires', $details),
+    ];
+
+    $form['actions'] = [
+      '#type' => 'actions',
+      'previous' => [
+        '#type' => 'submit',
+        '#value' => $this->t('Modifier le créneau'),
+        '#submit' => ['::submitBackToSlot'],
+        '#limit_validation_errors' => [],
+      ],
+      'next' => [
+        '#type' => 'submit',
+        '#value' => $this->t('Choisir le paiement'),
+        '#button_type' => 'primary',
+        '#validate' => ['::validateDetailsStep'],
+        '#submit' => ['::submitDetailsStep'],
+      ],
+    ];
+  }
+
+  public function validateDetailsStep(array &$form, FormStateInterface $form_state): void {
+    $details = $this->normalizeDetailsValues($form_state->getValues());
+    $errors = $this->validateDetailsValues($details);
+    foreach ($errors as $key => $message) {
+      $form_state->setErrorByName($key, $message);
+    }
+
+    if (!$errors) {
+      $form_state->set('course_details', $details);
+    }
+  }
+
+  public function submitDetailsStep(array &$form, FormStateInterface $form_state): void {
+    $stored = $this->getStoredSelection();
+    $stored['details'] = $form_state->get('course_details');
     $stored['step'] = 'payment';
     unset($stored['payment_choice']);
     $this->setStoredSelection($stored);
@@ -284,13 +382,21 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       $form['empty'] = $this->buildResetNotice($this->t('Choisissez un cours et un créneau avant le paiement.'));
       return;
     }
+    if (!$this->storedDetailsAreComplete($stored)) {
+      $form['empty'] = $this->buildStepNotice(
+        $this->t('Renseignez les détails du cours avant le paiement.'),
+        $this->t('Renseigner les détails'),
+        '::submitBackToDetails'
+      );
+      return;
+    }
 
     $form['summary'] = $this->buildSummary($stored);
     $form['step'] = [
       '#type' => 'container',
       '#attributes' => ['class' => ['reservation-first-course__panel']],
       'title' => [
-        '#markup' => '<h3>' . $this->t('3. Choix du paiement') . '</h3>',
+        '#markup' => '<h3>' . $this->t('4. Choix du paiement') . '</h3>',
       ],
       'notice' => [
         '#markup' => '<p>' . $this->t('Le créneau n’est pas encore confirmé. Choisissez le mode de paiement pour continuer.') . '</p>',
@@ -314,8 +420,8 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       '#type' => 'actions',
       'previous' => [
         '#type' => 'submit',
-        '#value' => $this->t('Modifier le créneau'),
-        '#submit' => ['::submitBackToSlot'],
+        '#value' => $this->t('Modifier les détails'),
+        '#submit' => ['::submitBackToDetails'],
         '#limit_validation_errors' => [],
       ],
       'next' => [
@@ -389,6 +495,7 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     $steps = [
       'course' => $this->t('Compte / cours'),
       'slot' => $this->t('Créneau'),
+      'details' => $this->t('Détails'),
       'payment' => $this->t('Paiement'),
       'confirmed' => $this->t('Confirmation'),
     ];
@@ -435,6 +542,25 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
           '#type' => 'submit',
           '#value' => $this->t('Recommencer'),
           '#submit' => ['::submitRestart'],
+          '#limit_validation_errors' => [],
+        ],
+      ],
+    ];
+  }
+
+  private function buildStepNotice($message, $button_label, string $submit_handler): array {
+    return [
+      '#type' => 'container',
+      '#attributes' => ['class' => ['reservation-first-course__panel']],
+      'message' => [
+        '#markup' => '<p>' . Html::escape((string) $message) . '</p>',
+      ],
+      'actions' => [
+        '#type' => 'actions',
+        'next' => [
+          '#type' => 'submit',
+          '#value' => $button_label,
+          '#submit' => [$submit_handler],
           '#limit_validation_errors' => [],
         ],
       ],
@@ -511,6 +637,215 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     }
 
     return [];
+  }
+
+  private function buildDetailElement(string $key, array $stored_details): array {
+    $source = $this->getWebformElement($key);
+    $type = (string) ($source['#type'] ?? 'textfield');
+    if (!in_array($type, ['radios', 'select', 'tel', 'textarea', 'textfield'], TRUE)) {
+      $type = 'textfield';
+    }
+
+    $element = [
+      '#type' => $type,
+      '#title' => $source['#title'] ?? $this->detailFieldFallbackTitle($key),
+      '#parents' => [$key],
+      '#default_value' => (string) ($stored_details[$key] ?? ''),
+      '#required' => in_array($key, self::ALWAYS_REQUIRED_DETAIL_FIELDS, TRUE),
+    ];
+
+    foreach (['#options', '#empty_option', '#description', '#placeholder', '#pattern', '#pattern_error', '#attributes', '#size', '#maxlength', '#states'] as $property) {
+      if (array_key_exists($property, $source)) {
+        $element[$property] = $source[$property];
+      }
+    }
+
+    if ($this->detailFieldIsConditionallyRequired($key)) {
+      $element['#required'] = FALSE;
+    }
+
+    return $element;
+  }
+
+  private function getWebformElement(string $key): array {
+    try {
+      if (!$this->entityTypeManager->hasDefinition('webform')) {
+        return [];
+      }
+      $webform = $this->entityTypeManager->getStorage('webform')->load('cours_particuliers_reservation');
+      if ($webform && method_exists($webform, 'getElementDecoded')) {
+        $element = $webform->getElementDecoded($key);
+        return is_array($element) ? $element : [];
+      }
+    }
+    catch (\Throwable $e) {
+      return [];
+    }
+
+    return [];
+  }
+
+  private function detailFieldFallbackTitle(string $key): string {
+    $titles = [
+      'mode_cours' => 'Mode du cours',
+      'plateforme_visio' => 'Plateforme de visio',
+      'adresse_domicile' => 'Adresse complète',
+      'code_postal_domicile' => 'Code postal',
+      'telephone' => 'Téléphone',
+      'instrument' => 'Instrument',
+      'didgeridoo_pret' => 'Le professeur doit-il fournir un didgeridoo ?',
+      'niveau_cours' => 'Niveau du cours',
+      'notes_supplementaires' => 'Notes supplémentaires',
+    ];
+
+    return $titles[$key] ?? $key;
+  }
+
+  private function detailFieldIsConditionallyRequired(string $key): bool {
+    return in_array($key, ['plateforme_visio', 'adresse_domicile', 'code_postal_domicile', 'didgeridoo_pret'], TRUE);
+  }
+
+  private function normalizeDetailsValues(array $values): array {
+    $details = [];
+    foreach (self::DETAIL_FIELDS as $key) {
+      $value = $values[$key] ?? '';
+      if (is_array($value)) {
+        $value = implode(', ', array_filter(array_map('strval', $value), 'strlen'));
+      }
+      $details[$key] = trim((string) $value);
+    }
+
+    return $details;
+  }
+
+  private function validateDetailsValues(array $details): array {
+    $errors = [];
+    foreach ($this->requiredDetailFields($details) as $key) {
+      if (($details[$key] ?? '') === '') {
+        $errors[$key] = $this->t('Renseignez @field.', [
+          '@field' => mb_strtolower($this->detailFieldLabel($key)),
+        ]);
+      }
+    }
+
+    foreach ($this->detailFieldsToValidate($details) as $key) {
+      $value = (string) ($details[$key] ?? '');
+      if ($value === '') {
+        continue;
+      }
+      if (!$this->detailValueIsAllowedOption($key, $value)) {
+        $errors[$key] = $this->t('Choisissez une valeur valide pour @field.', [
+          '@field' => mb_strtolower($this->detailFieldLabel($key)),
+        ]);
+        continue;
+      }
+      $pattern_error = $this->validateDetailPattern($key, $value);
+      if ($pattern_error !== '') {
+        $errors[$key] = $pattern_error;
+      }
+    }
+
+    return $errors;
+  }
+
+  private function detailFieldsToValidate(array $details): array {
+    return array_values(array_unique(array_merge(
+      $this->requiredDetailFields($details),
+      ['notes_supplementaires']
+    )));
+  }
+
+  private function requiredDetailFields(array $details): array {
+    $required = self::ALWAYS_REQUIRED_DETAIL_FIELDS;
+    if (($details['mode_cours'] ?? '') === 'visio') {
+      $required[] = 'plateforme_visio';
+    }
+    if (($details['mode_cours'] ?? '') === 'domicile') {
+      $required[] = 'adresse_domicile';
+      $required[] = 'code_postal_domicile';
+    }
+    if (($details['instrument'] ?? '') === 'didgeridoo') {
+      $required[] = 'didgeridoo_pret';
+    }
+
+    return $required;
+  }
+
+  private function detailValueIsAllowedOption(string $key, string $value): bool {
+    $source = $this->getWebformElement($key);
+    $options = $source['#options'] ?? NULL;
+    if (!is_array($options) || $options === []) {
+      return !in_array($key, self::OPTION_DETAIL_FIELDS, TRUE);
+    }
+
+    return array_key_exists($value, $options);
+  }
+
+  private function validateDetailPattern(string $key, string $value): string {
+    $source = $this->getWebformElement($key);
+    $pattern = trim((string) ($source['#pattern'] ?? ''));
+    if ($pattern === '') {
+      return '';
+    }
+
+    $regex = '~' . str_replace('~', '\\~', $pattern) . '~u';
+    $match = @preg_match($regex, $value);
+    if ($match === 1) {
+      return '';
+    }
+
+    return (string) ($source['#pattern_error'] ?? $this->t('La valeur saisie pour @field n’est pas valide.', [
+      '@field' => mb_strtolower($this->detailFieldLabel($key)),
+    ]));
+  }
+
+  private function detailFieldLabel(string $key): string {
+    $source = $this->getWebformElement($key);
+    return (string) ($source['#title'] ?? $this->detailFieldFallbackTitle($key));
+  }
+
+  private function storedDetailsAreComplete(array $stored): bool {
+    try {
+      $this->validateStoredDetails($stored);
+    }
+    catch (\Throwable $e) {
+      return FALSE;
+    }
+
+    return TRUE;
+  }
+
+  private function validateStoredDetails(array $stored): array {
+    $details = $this->normalizeDetailsValues(is_array($stored['details'] ?? NULL) ? $stored['details'] : []);
+    $errors = $this->validateDetailsValues($details);
+    if ($errors) {
+      throw new \RuntimeException('Stored course details are missing or invalid: ' . implode(', ', array_keys($errors)));
+    }
+
+    return $details;
+  }
+
+  private function filterSubmissionDetails(array $details): array {
+    $data = [];
+    foreach (self::ALWAYS_REQUIRED_DETAIL_FIELDS as $key) {
+      $data[$key] = $details[$key];
+    }
+
+    if (($details['mode_cours'] ?? '') === 'visio') {
+      $data['plateforme_visio'] = $details['plateforme_visio'];
+    }
+    if (($details['mode_cours'] ?? '') === 'domicile') {
+      $data['adresse_domicile'] = $details['adresse_domicile'];
+      $data['code_postal_domicile'] = $details['code_postal_domicile'];
+    }
+    if (($details['instrument'] ?? '') === 'didgeridoo') {
+      $data['didgeridoo_pret'] = $details['didgeridoo_pret'];
+    }
+    if (($details['notes_supplementaires'] ?? '') !== '') {
+      $data['notes_supplementaires'] = $details['notes_supplementaires'];
+    }
+
+    return $data;
   }
 
   private function getCourseOptions(): array {
@@ -599,6 +934,7 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
 
   private function confirmPayOnSiteReservation(array $stored): array {
     $booking = $this->validateStoredBooking($stored);
+    $this->validateStoredDetails($stored);
     if (!_unisonges_structure_acquire_booking_slot_lock($booking['slot'])) {
       throw new \RuntimeException('Unable to acquire booking slot lock.');
     }
@@ -802,13 +1138,17 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     }
 
     $course_label = (string) ($stored['course_label'] ?? $this->getCourseLabel((string) ($stored['course'] ?? '')));
-    $data = [
+    $details = $this->validateStoredDetails($stored);
+    $data = $this->filterSubmissionDetails($details) + [
       'reservation' => (string) $stored['reservation_value'],
-      'notes_supplementaires' => 'Cours sélectionné : ' . $course_label . '. Paiement : sur place.',
       'unisonges_payment_choice' => 'pay_on_site',
       'unisonges_pay_on_site_order_id' => (string) $order_id,
       'unisonges_course_label' => $course_label,
     ];
+    $payment_note = 'Cours sélectionné : ' . $course_label . '. Paiement : sur place.';
+    $data['notes_supplementaires'] = trim((string) ($data['notes_supplementaires'] ?? '')) !== ''
+      ? trim((string) $data['notes_supplementaires']) . "\n\n" . $payment_note
+      : $payment_note;
 
     $submission = $this->entityTypeManager->getStorage('webform_submission')->create([
       'webform_id' => 'cours_particuliers_reservation',
@@ -823,7 +1163,7 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
 
   private function resolveStep(FormStateInterface $form_state, array $stored): string {
     $step = (string) ($form_state->get('step') ?: ($stored['step'] ?? 'course'));
-    return in_array($step, ['course', 'slot', 'payment', 'confirmed'], TRUE) ? $step : 'course';
+    return in_array($step, ['course', 'slot', 'details', 'payment', 'confirmed'], TRUE) ? $step : 'course';
   }
 
   private function getStoredSelection(): array {
@@ -858,6 +1198,14 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     $stored['step'] = 'slot';
     $this->setStoredSelection($stored);
     $form_state->set('step', 'slot');
+    $form_state->setRebuild(TRUE);
+  }
+
+  public function submitBackToDetails(array &$form, FormStateInterface $form_state): void {
+    $stored = $this->getStoredSelection();
+    $stored['step'] = 'details';
+    $this->setStoredSelection($stored);
+    $form_state->set('step', 'details');
     $form_state->setRebuild(TRUE);
   }
 

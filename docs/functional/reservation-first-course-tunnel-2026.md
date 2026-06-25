@@ -33,8 +33,8 @@ ete utilise pour ce document.
   la table `unisonges_structure_course_to_pay_right` cree des droits durables
   `pending_payment`, puis les reservations consommees sont marquees
   `COURS À PAYER`.
-- Le nouveau tunnel stocke temporairement la selection cours + creneau dans le
-  private tempstore `unisonges_structure` sous la cle
+- Le nouveau tunnel stocke temporairement la selection cours + creneau + details
+  du cours dans le private tempstore `unisonges_structure` sous la cle
   `course_reservation_first_tunnel`.
 
 ## Bloqueurs actuels
@@ -60,10 +60,11 @@ ete utilise pour ce document.
 1. Compte / identification.
 2. Choix du cours.
 3. Choix du creneau.
-4. Choix du paiement :
+4. Details du cours.
+5. Choix du paiement :
    - paiement en ligne ;
    - paiement sur place.
-5. Confirmation.
+6. Confirmation.
 
 Regles fonctionnelles :
 
@@ -71,7 +72,10 @@ Regles fonctionnelles :
   condition prealable avant le choix du creneau.
 - Un utilisateur connecte doit pouvoir choisir le cours et le creneau avant que
   le site demande le paiement.
-- Le choix du paiement doit etre explicite apres la selection cours + creneau.
+- Les details metier requis par le Webform doivent etre collectes avant le choix
+  du paiement.
+- Le choix du paiement doit etre explicite apres la selection cours + creneau +
+  details.
 - Paiement sur place : reutiliser le modele PR #62 et marquer la reservation
   `COURS À PAYER`.
 - Paiement en ligne : envoyer vers un checkout Commerce normal seulement apres
@@ -86,7 +90,7 @@ Regles fonctionnelles :
 - Documentation d'audit et de cadrage du tunnel reservation-first.
 - Ajustement minimal de l'entree `/reserver` :
   - le texte public presente le parcours cible dans l'ordre compte, cours,
-    creneau, paiement, confirmation ;
+    creneau, details, paiement, confirmation ;
   - les messages de blocage ne disent plus d'acheter un pack ou des credits
     avant de choisir un creneau ;
   - le submit guard existant reste en place pour eviter de creer des
@@ -100,15 +104,24 @@ Regles fonctionnelles :
   - cette validation de creneau verifie le format, la capacite et les conflits
     de reservations existantes, sans appeler `_unisonges_structure_user_can_book`
     et donc sans exiger de droit paye avant le choix du creneau ;
+  - ils renseignent ensuite les details du cours a partir des libelles, options,
+    patterns et champs conditionnels lus sur le Webform existant :
+    `mode_cours`, `telephone`, `instrument`, `niveau_cours`,
+    `plateforme_visio` si le mode est `visio`, `adresse_domicile` et
+    `code_postal_domicile` si le mode est `domicile`, `didgeridoo_pret` si
+    l'instrument est `didgeridoo`, et `notes_supplementaires` si utile ;
   - l'etape suivante presente explicitement `Payer en ligne` et
     `Payer sur place`.
 - Pour `Payer en ligne`, le tunnel redirige seulement apres selection cours +
-  creneau vers la page du produit Commerce selectionne quand elle est resolvable,
-  sinon vers `/cours`.
+  creneau + details vers la page du produit Commerce selectionne quand elle est
+  resolvable, sinon vers `/cours`.
 - Pour `Payer sur place`, le tunnel revalide le creneau, cree une commande
   Commerce manuelle non payee, cree le droit PR #62 `pending_payment`, cree la
   submission Webform, puis affiche une confirmation seulement si la reservation
   est marquee `COURS À PAYER`.
+- La submission Webform n'est plus creee avec seulement `reservation` et des
+  marqueurs internes : les champs metier requis et conditionnels du parcours
+  choisi sont presents et valides avant creation.
 - Aucun changement `config/sync`, Composer, DDEV, script de deploiement ou prix
   Commerce n'est ajoute.
 - Aucun appel Google reel n'est ajoute.
@@ -119,11 +132,14 @@ Regles fonctionnelles :
 - Parcours paiement sur place :
   - choix du cours ;
   - choix du creneau sans exigence de credit/paiement prealable ;
+  - collecte et validation serveur des details Webform obligatoires et
+    conditionnels ;
   - revalidation du format, de la capacite et des conflits juste avant la
     confirmation ;
   - creation d'une commande Commerce manuelle non payee ;
   - creation puis consommation d'un droit `COURS À PAYER` lie a cette commande ;
-  - creation de la submission Webform de reservation ;
+  - creation de la submission Webform de reservation avec les details metier
+    complets ;
   - confirmation affichee uniquement apres verification du statut
     `COURS À PAYER`.
 
