@@ -149,6 +149,60 @@ Regles fonctionnelles :
   - confirmation affichee uniquement apres verification du statut
     `COURS À PAYER`.
 
+## Correction runtime du selecteur et des retours
+
+La version installee inspectee est `webform_booking` 1.1.11 avec Webform
+6.3.0-beta7. La cause du warning etait l'utilisation directe de
+`getElementDecoded('reservation')` : ce getter expose la configuration brute,
+avant que Webform ajoute `#webform_key`, `#webform`, `#webform_id` et les autres
+metadonnees runtime. Le FormElement de `webform_booking` lit
+`#webform_key` sans garde dans ses callbacks process et pre-render.
+
+Ajouter seulement `#webform_key` aurait supprime le warning sans rendre le
+calendrier utilisable. Le plugin Webform doit aussi attacher sa bibliotheque et
+ses `drupalSettings`, qui utilisent `#webform` pour interroger les routes de
+disponibilite. Le tunnel charge donc maintenant l'element initialise du vrai
+Webform `cours_particuliers_reservation`, avec :
+
+- `#webform_key = reservation` ;
+- `#webform = cours_particuliers_reservation` ;
+- `#webform_id = cours_particuliers_reservation--reservation`, fourni par
+  Webform meme s'il n'est pas consulte directement par `webform_booking` ;
+- `#parents = ['reservation']` pour recevoir `slot` et `seats`.
+
+L'element est ensuite prepare par le mecanisme supporte
+`plugin.manager.webform.element::processElement()`. Toute la configuration du
+Webform reste ainsi la source de verite : dates et exclusions, jours visibles,
+intervalles, duree, capacite, maximum par reservation, libelles et disponibilite
+calculee a partir des submissions existantes. Le submit reconsulte les jours et
+creneaux exposes par le controleur de disponibilite de cette meme version avant
+d'accepter une valeur pre-remplie ou nouvellement choisie. Aucun
+`#webform_submission` n'est necessaire dans ce formulaire autonome et aucune
+submission n'est creee pour
+afficher le selecteur. La valeur d'input pre-remplie est le slot
+`YYYY-MM-DD HH:MM`; le tempstore conserve la valeur canonique
+`YYYY-MM-DD HH:MM|N`. Le JavaScript de cette version contrib ne surligne pas
+l'ancien slot dans le calendrier. Il initialise aussi les places a `1` hors
+submission Webform ; cela correspond a la configuration actuelle
+`seats_slot=1` et `max_seats_per_booking=1`, mais devra etre revu si la capacite
+multi-places est activee plus tard.
+
+Pour les navigations entre etapes, le tempstore reste la source des valeurs
+metier valides. Avant chaque rebuild reussi, le tunnel retire de `getValues()`
+et `getUserInput()` uniquement ses champs (`course`, `reservation`, details,
+paiement et bouton soumis), puis retire ses valeurs de validation transitoires.
+Les `#default_value` peuvent donc rehydrater proprement l'etape cible. Un vrai
+changement de cours invalide le creneau, les details, le paiement et une
+eventuelle confirmation ; continuer avec le meme cours les conserve. Si le
+produit stocke n'est plus une cle des cours publies accessibles, le tunnel
+revient au choix du cours avec un message controle. `Recommencer` supprime le
+private tempstore et applique le meme nettoyage FormState.
+
+Le code de `webform_booking` a ete inspecte dans le projet DDEV principal sans
+le modifier. L'acces au socket Docker etait refuse dans cet environnement :
+aucun runtime DDEV ni test navigateur des scenarios d'acceptation n'a donc ete
+execute pour cette correction.
+
 ## Ce qui n'est pas encore complet
 
 - Le paiement en ligne ne rattache pas encore le creneau au panier ou a la

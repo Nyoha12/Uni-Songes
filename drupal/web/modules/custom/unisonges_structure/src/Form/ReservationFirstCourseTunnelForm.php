@@ -80,11 +80,19 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
    */
   private $moduleHandler;
 
-  public function __construct(AccountProxyInterface $current_account, PrivateTempStoreFactory $temp_store_factory, EntityTypeManagerInterface $entity_type_manager, ModuleHandlerInterface $module_handler) {
+  /**
+   * The Webform element plugin manager, when Webform is available.
+   *
+   * @var \Drupal\webform\Plugin\WebformElementManagerInterface|null
+   */
+  private $webformElementManager;
+
+  public function __construct(AccountProxyInterface $current_account, PrivateTempStoreFactory $temp_store_factory, EntityTypeManagerInterface $entity_type_manager, ModuleHandlerInterface $module_handler, $webform_element_manager = NULL) {
     $this->currentAccount = $current_account;
     $this->tempStoreFactory = $temp_store_factory;
     $this->entityTypeManager = $entity_type_manager;
     $this->moduleHandler = $module_handler;
+    $this->webformElementManager = $webform_element_manager;
   }
 
   /**
@@ -95,7 +103,8 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       $container->get('current_user'),
       $container->get('tempstore.private'),
       $container->get('entity_type.manager'),
-      $container->get('module_handler')
+      $container->get('module_handler'),
+      $container->has('plugin.manager.webform.element') ? $container->get('plugin.manager.webform.element') : NULL
     );
   }
 
@@ -111,6 +120,7 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
    */
   public function buildForm(array $form, FormStateInterface $form_state): array {
     $stored = $this->getStoredSelection();
+    $stored = $this->ensureStoredCourseIsAvailable($stored, $form_state);
     $step = $this->resolveStep($form_state, $stored);
 
     $form['#attributes']['class'][] = 'reservation-first-course';
@@ -184,6 +194,8 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
   }
 
   private function buildCourseStep(array &$form, array $stored): void {
+    $options = $this->getCourseOptions();
+    $stored_course = (string) ($stored['course'] ?? '');
     $form['step'] = [
       '#type' => 'container',
       '#attributes' => ['class' => ['reservation-first-course__panel']],
@@ -194,8 +206,8 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
         '#type' => 'radios',
         '#title' => $this->t('Cours'),
         '#parents' => ['course'],
-        '#options' => $this->getCourseOptions(),
-        '#default_value' => $stored['course'] ?? '',
+        '#options' => $options,
+        '#default_value' => array_key_exists($stored_course, $options) ? $stored_course : NULL,
         '#required' => TRUE,
       ],
     ];
@@ -214,7 +226,7 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
 
   public function validateCourseStep(array &$form, FormStateInterface $form_state): void {
     $course = (string) $form_state->getValue('course');
-    if (!isset($this->getCourseOptions()[$course])) {
+    if (!array_key_exists($course, $this->getCourseOptions())) {
       $form_state->setErrorByName('course', $this->t('Choisissez un cours.'));
     }
   }
@@ -222,14 +234,15 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
   public function submitCourseStep(array &$form, FormStateInterface $form_state): void {
     $course = (string) $form_state->getValue('course');
     $stored = $this->getStoredSelection();
+    if (($stored['course'] ?? '') !== $course) {
+      $this->invalidateCourseDependentSelection($stored);
+    }
     $stored['course'] = $course;
     $stored['course_label'] = $this->getCourseLabel($course);
     $stored['step'] = 'slot';
-    unset($stored['reservation_value'], $stored['slot_label'], $stored['payment_choice']);
     $this->setStoredSelection($stored);
 
-    $form_state->set('step', 'slot');
-    $form_state->setRebuild(TRUE);
+    $this->prepareStepRebuild($form_state, 'slot');
   }
 
   private function buildSlotStep(array &$form, array $stored): void {
@@ -238,6 +251,8 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       return;
     }
 
+    $reservation_element = $this->buildReservationElement($stored['reservation_value'] ?? '');
+    $reservation_available = ($reservation_element['#type'] ?? '') === 'webform_booking';
     $form['summary'] = $this->buildSummary($stored);
     $form['step'] = [
       '#type' => 'container',
@@ -245,7 +260,7 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       'title' => [
         '#markup' => '<h3>' . $this->t('2. Choix du créneau') . '</h3>',
       ],
-      'reservation' => $this->buildReservationElement($stored['reservation_value'] ?? ''),
+      'reservation' => $reservation_element,
     ];
 
     $form['actions'] = [
@@ -260,6 +275,7 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
         '#type' => 'submit',
         '#value' => $this->t('Renseigner les détails'),
         '#button_type' => 'primary',
+        '#disabled' => !$reservation_available,
         '#validate' => ['::validateSlotStep'],
         '#submit' => ['::submitSlotStep'],
       ],
@@ -295,6 +311,20 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       return;
     }
 
+    try {
+      if (!$this->reservationSlotIsAvailable($booking['slot'], $booking['seats'])) {
+        $form_state->setErrorByName('reservation', $this->t('Ce créneau n’est plus disponible. Choisissez-en un autre.'));
+        return;
+      }
+    }
+    catch (\Throwable $e) {
+      $this->logger('unisonges_structure')->error('Unable to verify reservation slot availability: @message', [
+        '@message' => $e->getMessage(),
+      ]);
+      $form_state->setErrorByName('reservation', $this->t('La disponibilité du créneau n’a pas pu être vérifiée. Réessayez dans quelques instants.'));
+      return;
+    }
+
     $form_state->set('reservation_value', $normalized);
   }
 
@@ -307,8 +337,7 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     unset($stored['payment_choice']);
     $this->setStoredSelection($stored);
 
-    $form_state->set('step', 'details');
-    $form_state->setRebuild(TRUE);
+    $this->prepareStepRebuild($form_state, 'details');
   }
 
   private function buildDetailsStep(array &$form, array $stored): void {
@@ -373,8 +402,7 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     unset($stored['payment_choice']);
     $this->setStoredSelection($stored);
 
-    $form_state->set('step', 'payment');
-    $form_state->setRebuild(TRUE);
+    $this->prepareStepRebuild($form_state, 'payment');
   }
 
   private function buildPaymentStep(array &$form, array $stored): void {
@@ -568,46 +596,51 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
   }
 
   private function buildReservationElement(string $default_value): array {
-    $source = $this->getWebformReservationElement();
-    if (!$this->moduleHandler->moduleExists('webform_booking')) {
-      return [
-        '#type' => 'textfield',
-        '#title' => $this->t('Créneau'),
-        '#parents' => ['reservation'],
-        '#description' => $this->t('Format attendu : AAAA-MM-JJ HH:MM. Le sélecteur de créneaux sera utilisé quand le module webform_booking est disponible.'),
-        '#placeholder' => '2026-07-01 14:00',
-        '#default_value' => $default_value ? preg_replace('/\|\\d+$/', '', $default_value) : '',
-        '#required' => TRUE,
-      ];
+    if (!$this->moduleHandler->moduleExists('webform_booking') || !$this->webformElementManager || !method_exists($this->webformElementManager, 'processElement')) {
+      return $this->buildUnavailableReservationElement();
     }
 
-    $element = [
-      '#type' => 'webform_booking',
-      '#title' => $this->t('Choisir un créneau'),
-      '#parents' => ['reservation'],
-      '#description' => $this->t('Le créneau est choisi avant le paiement. Il sera confirmé après validation du paiement choisi.'),
-      '#required' => TRUE,
-      '#days_visible' => '30',
-      '#slot_duration' => 60,
-      '#seats_slot' => '1',
-      '#max_seats_per_booking' => 1,
-      '#time_interval' => '9:00|16:30',
-      '#no_slots' => $this->t('Aucune disponibilité ouverte sur cette période.'),
-      '#date_label' => $this->t('Date'),
-      '#slot_label' => $this->t('Créneau'),
-      '#seats_label' => $this->t('Places'),
-    ];
-
-    foreach (['#days_visible', '#slot_duration', '#seats_slot', '#max_seats_per_booking', '#time_interval', '#date_label', '#slot_label', '#seats_label'] as $key) {
-      if (isset($source[$key])) {
-        $element[$key] = $source[$key];
+    try {
+      $element = $this->getWebformReservationElement();
+      if (($element['#type'] ?? '') !== 'webform_booking'
+        || ($element['#webform_key'] ?? '') !== 'reservation'
+        || ($element['#webform'] ?? '') !== 'cours_particuliers_reservation') {
+        throw new \RuntimeException('The initialized reservation Webform element is unavailable.');
       }
-    }
-    if ($default_value !== '') {
-      $element['#default_value'] = $default_value;
-    }
 
-    return $element;
+      $element['#title'] = $this->t('Choisir un créneau');
+      $element['#parents'] = ['reservation'];
+      $element['#description'] = $this->t('Le créneau est choisi avant le paiement. Il sera confirmé après validation du paiement choisi.');
+      $element['#required'] = TRUE;
+
+      $parsed_default = unisonges_structure_parse_booking_reservation_value($default_value);
+      if ($parsed_default !== NULL && empty($parsed_default['cancelled'])) {
+        // The widget input expects the slot without the persisted "|N" suffix.
+        $element['#default_value'] = $parsed_default['date'] . ' ' . $parsed_default['time'];
+      }
+      else {
+        unset($element['#default_value']);
+      }
+
+      // Apply the Webform plugin's supported Form API preparation. This adds
+      // the booking library, drupalSettings, slot/seats children and callbacks.
+      $this->webformElementManager->processElement($element);
+      return $element;
+    }
+    catch (\Throwable $e) {
+      $this->logger('unisonges_structure')->error('Unable to prepare the reservation Webform element: @message', [
+        '@message' => $e->getMessage(),
+      ]);
+      return $this->buildUnavailableReservationElement();
+    }
+  }
+
+  private function buildUnavailableReservationElement(): array {
+    return [
+      '#type' => 'item',
+      '#title' => $this->t('Choisir un créneau'),
+      '#markup' => '<p class="messages messages--error">' . $this->t('Le sélecteur de créneaux est temporairement indisponible. Rechargez la page ou contactez-nous si le problème persiste.') . '</p>',
+    ];
   }
 
   private function getReservationCapacity(): array {
@@ -621,14 +654,58 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     ];
   }
 
+  private function reservationSlotIsAvailable(string $slot, int $seats): bool {
+    if (!class_exists('Drupal\webform_booking\Controller\WebformBookingController')) {
+      throw new \RuntimeException('The Webform Booking availability controller is unavailable.');
+    }
+
+    [$date, $time] = explode(' ', $slot, 2);
+    $controller = new \Drupal\webform_booking\Controller\WebformBookingController();
+    $days_response = $controller->getAvailableDays(
+      'cours_particuliers_reservation',
+      'reservation',
+      substr($date, 0, 8) . '01'
+    );
+    $days = json_decode((string) $days_response->getContent(), TRUE);
+    $day_is_available = FALSE;
+    foreach (is_array($days) ? $days : [] as $day) {
+      if (($day['date'] ?? '') === $date && !empty($day['hasSlots'])) {
+        $day_is_available = TRUE;
+        break;
+      }
+    }
+    if (!$day_is_available) {
+      return FALSE;
+    }
+
+    $slots_response = $controller->getAvailableSlots(
+      'cours_particuliers_reservation',
+      'reservation',
+      $date
+    );
+    $slots = json_decode((string) $slots_response->getContent(), TRUE);
+    foreach (is_array($slots) ? $slots : [] as $available_slot) {
+      $slot_start = explode('-', (string) ($available_slot['time'] ?? ''), 2)[0];
+      if ($slot_start === $time
+        && ($available_slot['status'] ?? '') === 'available'
+        && (int) ($available_slot['availableSeats'] ?? 0) >= $seats) {
+        return TRUE;
+      }
+    }
+
+    return FALSE;
+  }
+
   private function getWebformReservationElement(): array {
     try {
       if (!$this->entityTypeManager->hasDefinition('webform')) {
         return [];
       }
       $webform = $this->entityTypeManager->getStorage('webform')->load('cours_particuliers_reservation');
-      if ($webform && method_exists($webform, 'getElementDecoded')) {
-        $element = $webform->getElementDecoded('reservation');
+      if ($webform && method_exists($webform, 'getElement')) {
+        // Unlike getElementDecoded(), getElement() includes the Webform runtime
+        // metadata required by webform_booking (#webform and #webform_key).
+        $element = $webform->getElement('reservation');
         return is_array($element) ? $element : [];
       }
     }
@@ -848,8 +925,9 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     return $data;
   }
 
-  private function getCourseOptions(): array {
+  private function getCourseOptions(?bool &$product_options_loaded = NULL): array {
     $options = [];
+    $product_options_loaded = FALSE;
     try {
       if ($this->entityTypeManager->hasDefinition('commerce_product')) {
         $storage = $this->entityTypeManager->getStorage('commerce_product');
@@ -859,6 +937,7 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
           ->condition('status', 1)
           ->sort('title', 'ASC');
         $ids = $query->execute();
+        $product_options_loaded = TRUE;
         if ($ids) {
           foreach ($storage->loadMultiple($ids) as $product) {
             if (method_exists($product, 'label') && method_exists($product, 'id')) {
@@ -870,6 +949,7 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     }
     catch (\Throwable $e) {
       $options = [];
+      $product_options_loaded = FALSE;
     }
 
     return $options ?: [
@@ -877,6 +957,45 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       'bundle:cours_deb_inter' => $this->t('Cours débutant / intermédiaire'),
       'bundle:cours_avance' => $this->t('Cours avancé'),
     ];
+  }
+
+  private function ensureStoredCourseIsAvailable(array $stored, FormStateInterface $form_state): array {
+    $course = (string) ($stored['course'] ?? '');
+    $step = (string) ($form_state->get('step') ?: ($stored['step'] ?? 'course'));
+    if ($course === '' || $step === 'confirmed') {
+      return $stored;
+    }
+
+    $options = $this->getCourseOptions($product_options_loaded);
+    if (array_key_exists($course, $options)) {
+      return $stored;
+    }
+    if (strpos($course, 'product:') === 0 && !$product_options_loaded) {
+      // Do not discard a valid selection because Commerce was temporarily
+      // unavailable. A successful query that omits the product is authoritative.
+      return $stored;
+    }
+
+    unset($stored['course'], $stored['course_label']);
+    $this->invalidateCourseDependentSelection($stored);
+    $stored['step'] = 'course';
+    $this->setStoredSelection($stored);
+    $form_state->set('step', 'course');
+    $this->messenger()->addWarning($this->t('Le cours précédemment choisi n’est plus disponible. Choisissez un autre cours.'));
+
+    return $stored;
+  }
+
+  private function invalidateCourseDependentSelection(array &$stored): void {
+    unset(
+      $stored['reservation_value'],
+      $stored['slot_label'],
+      $stored['details'],
+      $stored['payment_choice'],
+      $stored['submission_id'],
+      $stored['order_id'],
+      $stored['payment_label']
+    );
   }
 
   private function getCourseLabel(string $course): string {
@@ -1185,36 +1304,52 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     }
   }
 
+  private function prepareStepRebuild(FormStateInterface $form_state, string $step): void {
+    $keys = array_merge(
+      ['course', 'reservation', 'payment_choice', 'op', '_triggering_element_name', '_triggering_element_value'],
+      self::DETAIL_FIELDS
+    );
+
+    $user_input = $form_state->getUserInput();
+    foreach ($keys as $key) {
+      $form_state->unsetValue($key);
+      unset($user_input[$key]);
+    }
+    $form_state->setUserInput($user_input);
+
+    $storage = $form_state->getStorage();
+    unset($storage['reservation_value'], $storage['course_details']);
+    $form_state->setStorage($storage);
+    $form_state->set('step', $step);
+    $form_state->setRebuild(TRUE);
+  }
+
   public function submitBackToCourse(array &$form, FormStateInterface $form_state): void {
     $stored = $this->getStoredSelection();
     $stored['step'] = 'course';
     $this->setStoredSelection($stored);
-    $form_state->set('step', 'course');
-    $form_state->setRebuild(TRUE);
+    $this->prepareStepRebuild($form_state, 'course');
   }
 
   public function submitBackToSlot(array &$form, FormStateInterface $form_state): void {
     $stored = $this->getStoredSelection();
     $stored['step'] = 'slot';
     $this->setStoredSelection($stored);
-    $form_state->set('step', 'slot');
-    $form_state->setRebuild(TRUE);
+    $this->prepareStepRebuild($form_state, 'slot');
   }
 
   public function submitBackToDetails(array &$form, FormStateInterface $form_state): void {
     $stored = $this->getStoredSelection();
     $stored['step'] = 'details';
     $this->setStoredSelection($stored);
-    $form_state->set('step', 'details');
-    $form_state->setRebuild(TRUE);
+    $this->prepareStepRebuild($form_state, 'details');
   }
 
   public function submitBackToPayment(array &$form, FormStateInterface $form_state): void {
     $stored = $this->getStoredSelection();
     $stored['step'] = 'payment';
     $this->setStoredSelection($stored);
-    $form_state->set('step', 'payment');
-    $form_state->setRebuild(TRUE);
+    $this->prepareStepRebuild($form_state, 'payment');
   }
 
   public function submitRestart(array &$form, FormStateInterface $form_state): void {
@@ -1222,10 +1357,12 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       $this->tempStoreFactory->get('unisonges_structure')->delete(self::TEMPSTORE_KEY);
     }
     catch (\Throwable $e) {
-      // Ignore tempstore cleanup failures; rebuilding the first step is enough.
+      $this->logger('unisonges_structure')->error('Unable to clear the reservation tunnel tempstore: @message', [
+        '@message' => $e->getMessage(),
+      ]);
+      $this->messenger()->addWarning($this->t('La sélection n’a pas pu être effacée complètement. Rechargez la page avant de recommencer.'));
     }
-    $form_state->set('step', 'course');
-    $form_state->setRebuild(TRUE);
+    $this->prepareStepRebuild($form_state, 'course');
   }
 
   /**
