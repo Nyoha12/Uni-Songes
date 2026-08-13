@@ -5,7 +5,150 @@
  * Theme hooks and preprocess functions for UniSonges Theme.
  */
 
+use Drupal\Core\Cache\CacheableMetadata;
+use Drupal\Core\Language\LanguageInterface;
 use Drupal\Core\Menu\MenuTreeParameters;
+use Drupal\commerce_product\Entity\ProductInterface;
+use Drupal\commerce_product\Entity\ProductVariationInterface;
+use Drupal\node\NodeInterface;
+
+/**
+ * Implements hook_preprocess_node().
+ */
+function unisonges_theme_preprocess_node(array &$variables): void {
+  $node = $variables['node'] ?? NULL;
+  $view_mode = $variables['view_mode']
+    ?? ($variables['elements']['#view_mode'] ?? NULL);
+
+  if (!$node instanceof NodeInterface
+    || $node->bundle() !== 'stage'
+    || $view_mode !== 'full'
+    || !$node->isPublished()) {
+    return;
+  }
+
+  $cacheability = (new CacheableMetadata())
+    ->addCacheableDependency($node)
+    ->addCacheContexts(['languages:' . LanguageInterface::TYPE_INTERFACE]);
+
+  $ticket_cta = [
+    '#type' => 'container',
+    '#attributes' => ['class' => ['unisonges-detail-section']],
+    '#weight' => 20,
+    'title' => [
+      '#type' => 'html_tag',
+      '#tag' => 'h2',
+      '#value' => t('Billetterie'),
+    ],
+  ];
+
+  $product = NULL;
+  if ($node->hasField('field_linked_ticket')
+    && !$node->get('field_linked_ticket')->isEmpty()) {
+    $product = $node->get('field_linked_ticket')->entity;
+  }
+
+  $canonical_url = NULL;
+  $eligible_variations = [];
+  if ($product instanceof ProductInterface
+    && $product->bundle() === 'ticket_stage') {
+    $cacheability->addCacheableDependency($product);
+
+    if ($product->isPublished()) {
+      $product_access = $product->access('view', NULL, TRUE);
+      $cacheability->addCacheableDependency($product_access);
+
+      $canonical_url = $product->toUrl('canonical');
+      $url_access = $canonical_url->access(NULL, TRUE);
+      $cacheability->addCacheableDependency($url_access);
+
+      if ($product_access->isAllowed() && $url_access->isAllowed()) {
+        foreach ($product->getVariations() as $variation) {
+          if (!$variation instanceof ProductVariationInterface) {
+            continue;
+          }
+
+          $cacheability->addCacheableDependency($variation);
+          if (!$variation->isPublished()) {
+            continue;
+          }
+
+          $variation_access = $variation->access('view', NULL, TRUE);
+          $cacheability->addCacheableDependency($variation_access);
+          if ($variation_access->isAllowed()) {
+            $eligible_variations[] = $variation;
+          }
+        }
+      }
+    }
+  }
+
+  if ($canonical_url && $eligible_variations) {
+    $has_stage_price = $node->hasField('field_ticket_price')
+      && !$node->get('field_ticket_price')->isEmpty();
+
+    if (!$has_stage_price) {
+      $known_price = NULL;
+      $price_is_unambiguous = TRUE;
+      foreach ($eligible_variations as $variation) {
+        $variation_price = $variation->getPrice();
+        if (!$variation_price) {
+          $price_is_unambiguous = FALSE;
+          break;
+        }
+        if ($known_price === NULL) {
+          $known_price = $variation_price;
+        }
+        elseif ($known_price->getCurrencyCode() !== $variation_price->getCurrencyCode()
+          || !$known_price->equals($variation_price)) {
+          $price_is_unambiguous = FALSE;
+          break;
+        }
+      }
+
+      if ($known_price && $price_is_unambiguous) {
+        try {
+          $currency_formatter = \Drupal::service(
+            'commerce_price.currency_formatter',
+          );
+          $formatted_price = $currency_formatter->format(
+            $known_price->getNumber(),
+            $known_price->getCurrencyCode(),
+            ['currency_display' => 'symbol'],
+          );
+          $cacheability->addCacheContexts(['country']);
+          $ticket_cta['price'] = [
+            '#type' => 'html_tag',
+            '#tag' => 'p',
+            '#attributes' => ['class' => ['unisonges-price-note']],
+            '#value' => t('Tarif : @price', ['@price' => $formatted_price]),
+          ];
+        }
+        catch (\Throwable) {
+          // Keep the CTA usable if an unexpected currency cannot be formatted.
+        }
+      }
+    }
+
+    $ticket_cta['link'] = [
+      '#type' => 'link',
+      '#title' => t('Réserver ce stage'),
+      '#url' => $canonical_url,
+      '#attributes' => ['class' => ['unisonges-offer-card__cta']],
+    ];
+  }
+  else {
+    $ticket_cta['status'] = [
+      '#type' => 'html_tag',
+      '#tag' => 'p',
+      '#attributes' => ['class' => ['unisonges-price-note']],
+      '#value' => t('Billetterie bientôt disponible'),
+    ];
+  }
+
+  $cacheability->applyTo($ticket_cta);
+  $variables['content']['unisonges_stage_ticket_cta'] = $ticket_cta;
+}
 
 /**
  * Implements hook_preprocess_page().
@@ -64,4 +207,3 @@ function unisonges_theme_preprocess_html(array &$variables) {
     $variables['attributes']['class'][] = 'section-' . $segment;
   }
 }
-
