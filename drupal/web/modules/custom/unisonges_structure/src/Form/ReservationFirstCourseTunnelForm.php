@@ -27,7 +27,6 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
   private const COURSE_BUNDLES = [
     'cours_essai',
     'cours_deb_inter',
-    'cours_avance',
   ];
 
   private const DETAIL_FIELDS = [
@@ -205,14 +204,32 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       'title' => [
         '#markup' => '<h3>' . $this->t('1. Choix du cours') . '</h3>',
       ],
-      'course' => [
-        '#type' => 'radios',
-        '#title' => $this->t('Cours'),
-        '#parents' => ['course'],
-        '#options' => $options,
-        '#default_value' => array_key_exists($stored_course, $options) ? $stored_course : NULL,
-        '#required' => TRUE,
-      ],
+    ];
+
+    $selection_invalidated = !empty($stored['_course_selection_invalidated']);
+    if (!$options) {
+      $message = $selection_invalidated
+        ? $this->t('L’offre précédemment choisie n’est plus disponible et aucun cours n’est actuellement proposé à la réservation.')
+        : $this->t('Aucun cours n’est disponible à la réservation pour le moment.');
+      $form['step']['unavailable'] = [
+        '#markup' => '<p class="messages messages--warning">' . $message . '</p>',
+      ];
+      return;
+    }
+
+    if ($selection_invalidated) {
+      $form['step']['selection_unavailable'] = [
+        '#markup' => '<p class="messages messages--warning">' . $this->t('L’offre précédemment choisie n’est plus disponible. Choisissez un autre cours.') . '</p>',
+      ];
+    }
+
+    $form['step']['course'] = [
+      '#type' => 'radios',
+      '#title' => $this->t('Cours'),
+      '#parents' => ['course'],
+      '#options' => $options,
+      '#default_value' => array_key_exists($stored_course, $options) ? $stored_course : NULL,
+      '#required' => TRUE,
     ];
 
     $form['actions'] = [
@@ -993,25 +1010,26 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       $product_options_loaded = FALSE;
     }
 
-    return $options ?: [
-      'bundle:cours_essai' => $this->t('Cours d’essai'),
-      'bundle:cours_deb_inter' => $this->t('Cours débutant / intermédiaire'),
-      'bundle:cours_avance' => $this->t('Cours avancé'),
-    ];
+    return $options;
   }
 
   private function ensureStoredCourseIsAvailable(array $stored, FormStateInterface $form_state): array {
     $course = (string) ($stored['course'] ?? '');
+    if ($course === '') {
+      return $stored;
+    }
+
     $step = (string) ($form_state->get('step') ?: ($stored['step'] ?? 'course'));
-    if ($course === '' || $step === 'confirmed') {
+    $unsupported_course = $this->storedCourseUsesUnsupportedBundle($course);
+    if ($step === 'confirmed' && !$unsupported_course) {
       return $stored;
     }
 
     $options = $this->getCourseOptions($product_options_loaded);
-    if (array_key_exists($course, $options)) {
+    if (!$unsupported_course && array_key_exists($course, $options)) {
       return $stored;
     }
-    if (strpos($course, 'product:') === 0 && !$product_options_loaded) {
+    if (!$unsupported_course && strpos($course, 'product:') === 0 && !$product_options_loaded) {
       // Do not discard a valid selection because Commerce was temporarily
       // unavailable. A successful query that omits the product is authoritative.
       return $stored;
@@ -1022,9 +1040,31 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     $stored['step'] = 'course';
     $this->setStoredSelection($stored);
     $form_state->set('step', 'course');
-    $this->messenger()->addWarning($this->t('Le cours précédemment choisi n’est plus disponible. Choisissez un autre cours.'));
+    // This transient flag is returned only for the current build and is not
+    // persisted by setStoredSelection() above.
+    $stored['_course_selection_invalidated'] = TRUE;
 
     return $stored;
+  }
+
+  private function storedCourseUsesUnsupportedBundle(string $course): bool {
+    if ($course === 'bundle:cours_avance') {
+      return TRUE;
+    }
+    if (preg_match('/^product:(\d+)$/', $course, $matches) !== 1) {
+      return FALSE;
+    }
+
+    try {
+      $product = $this->entityTypeManager->getStorage('commerce_product')->load((int) $matches[1]);
+      if (!$product || !method_exists($product, 'bundle')) {
+        return TRUE;
+      }
+      return !in_array($product->bundle(), self::COURSE_BUNDLES, TRUE);
+    }
+    catch (\Throwable $e) {
+      return FALSE;
+    }
   }
 
   private function invalidateCourseDependentSelection(array &$stored): void {

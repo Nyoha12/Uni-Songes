@@ -78,6 +78,8 @@ Regles fonctionnelles :
 - Tous les cours particuliers sont ouverts a tous les niveaux. Le niveau ne doit
   modifier ni le cours, ni le creneau, ni le prix, ni la navigation, ni le
   paiement, ni la confirmation.
+- Le type historique `cours_avance` est obsolete pour ce tunnel : aucun cours
+  particulier avance separe n'est propose.
 - Le choix du paiement doit etre explicite apres la selection cours + creneau +
   details.
 - Paiement sur place : reutiliser le modele PR #62 et marquer la reservation
@@ -103,6 +105,11 @@ Regles fonctionnelles :
   - les anonymes voient les actions connexion/creation de compte avec
     `destination=/reservation-cours` ;
   - les utilisateurs connectes choisissent d'abord le cours ;
+  - le selecteur ne liste que les produits Commerce publies et accessibles de
+    types `cours_essai` et `cours_deb_inter`, dont les offres actuelles
+    didgeridoo, guimbarde et meditation / improvisation ; les packs et
+    `cours_avance` sont exclus, et aucune option bundle de repli n'est inventee
+    si la liste est vide ;
   - ils choisissent ensuite le creneau via l'element `webform_booking`
     configure sur le Webform existant ;
   - cette validation de creneau verifie le format, la capacite et les conflits
@@ -210,6 +217,14 @@ produit stocke n'est plus une cle des cours publies accessibles, le tunnel
 revient au choix du cours avec un message controle. `Recommencer` supprime le
 private tempstore et applique le meme nettoyage FormState.
 
+Une ancienne selection issue d'un produit `cours_avance` est traitee comme une
+offre obsolete, y compris si le tunnel etait deja sur sa confirmation. Seuls le
+cours et ses dependances creneau, details, paiement et affichage de confirmation
+sont retires du private tempstore ; les entites deja persistees ne sont pas
+supprimees. Le tunnel revient au choix avec un message controle. Si aucun produit
+publie des types autorises n'est disponible, il affiche un seul message public
+et ne propose aucune option codee en dur.
+
 ## Correction du cycle de vie des dependances
 
 Le core Drupal installe a ete inspecte avant correction. `FormBase` utilise
@@ -310,22 +325,39 @@ etaient desactives uniquement en memoire ; la transaction a ete annulee et une
 verification dans un second processus a confirme l'absence de submission,
 commande, ligne de commande, droit ou entree de queue residuelle. Aucun mail ni
 appel Google reel n'a ete produit. Les auto-increments peuvent avoir avance
-malgre le rollback. Aucun test navigateur de la navigation complete, du clic ou
-de la soumission par la touche Entree n'a ete execute dans cette session.
+malgre le rollback.
+
+Un test navigateur de persistance execute ensuite a confirme la creation de la
+submission Webform, de la commande Commerce manuelle non payee et du droit
+consomme `COURS À PAYER`, ainsi que la queue Google dry-run `pending_create`
+avec `payment_status=to_pay` et l'absence de `niveau_cours`. Ce test a aussi mis
+en evidence qu'un produit fixture de type `cours_avance` restait selectable ; le
+filtre de cours a donc ete resserre aux deux types actuels. Aucun test navigateur
+de la soumission implicite par la touche Entree n'a ete execute par Codex.
+
+Une sonde DDEV chargeant la classe exacte modifiee a ensuite confirme que le
+selecteur retourne les produits publies fixtures `cours_essai` et
+`cours_deb_inter`, et exclut le produit `cours_avance`, le pack et toute option
+bundle de repli. Une selection `cours_avance` conservee sur l'etape confirmee a
+ete nettoyee dans un tempstore de test : retour au choix, un seul avertissement,
+dependances supprimees et valeur sentinelle non liee preservee. Enfin, la mise
+hors publication transactionnelle des deux offres autorisees a produit la liste
+vide attendue, sans radios ni action et avec un seul message controle. Le
+rollback a restaure les quatre produits fixtures publies et le tempstore de
+test ; le tempstore du compte utilise pour le test navigateur n'a pas ete
+modifie.
 
 ## Ce qui n'est pas encore complet
 
 - Le paiement en ligne ne rattache pas encore le creneau au panier ou a la
   commande Commerce.
-- Le parcours paiement sur place n'a pas ete teste de bout en bout dans un
-  navigateur dans cette PR ; la PR doit rester draft tant que ce test runtime
-  n'est pas fait.
+- Le parcours paiement sur place a ete teste en navigateur pour sa persistance,
+  mais la PR reste draft pendant les derniers controles fonctionnels du tunnel.
 
 ## Prochaine PR requise
 
-- Tester en navigateur/DDEV le parcours paiement sur place complet : cours,
-  creneau, paiement sur place, commande manuelle, droit `COURS À PAYER`,
-  submission Webform, mails et queue Google dry-run.
+- Completer les controles navigateur des retours entre etapes, des erreurs de
+  validation et de la soumission implicite par la touche Entree.
 - Ajouter le handoff paiement en ligne : creer le panier/commande Commerce avec
   le contexte creneau, rediriger checkout, puis finaliser la Webform submission
   sans redemander le creneau.
