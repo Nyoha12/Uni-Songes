@@ -147,6 +147,9 @@ Regles fonctionnelles :
   parcours choisi sont presents et valides avant creation. `niveau_cours` est
   volontairement absent, sans valeur artificielle `debutant`, `intermediaire`
   ou `avance`.
+- La presentation client est distincte du statut interne : la confirmation
+  affiche « À régler sur place », tandis que `COURS À PAYER` reste inchange dans
+  les notifications administrateur, les logs et la queue Google dry-run.
 - Aucun changement `config/sync`, Composer, DDEV, script de deploiement ou prix
   Commerce n'est ajoute.
 - Aucun appel Google reel n'est ajoute.
@@ -302,6 +305,51 @@ premier submit dans l'ordre du formulaire : une soumission implicite au clavier
 pouvait donc le choisir comme action par defaut. L'action primaire « Choisir le
 paiement » est maintenant rendue en premier ; revenir au creneau reste une
 action explicite.
+
+## Nettoyage editorial de la confirmation
+
+La route fournit deja le titre principal « Réserver un cours ». Le formulaire
+n'ajoute donc plus un second titre identique. Pendant les etapes actives, une
+seule introduction concise precede la progression « Cours / Créneau / Détails /
+Paiement / Confirmation ». L'introduction et la progression disparaissent apres
+la confirmation pour mettre le resultat en avant. Les titres internes du
+formulaire sont des `h2` sous le `h1` de la page et l'etape courante utilise
+`aria-current="step"`.
+
+La confirmation paiement sur place presente uniquement :
+
+- le titre « Réservation confirmée » ;
+- le statut client « À régler sur place » ;
+- le message « Votre créneau est réservé. Le règlement sera effectué sur place
+  le jour du cours. » ;
+- un resume non vide avec cours, creneau, mode et instrument quand ces donnees
+  sont reconnues ;
+- les actions « Réserver un autre cours » et « Retour à mon compte ».
+
+L'action de nouvelle reservation supprime seulement le private tempstore du
+tunnel et revient au choix du cours. Le lien de compte utilise la route Drupal
+existante `user.page`. Aucun identifiant de commande, droit, statut machine ou
+nouvelle action de choix de creneau n'est expose sur la confirmation.
+
+Les titres Commerce restent inchanges dans les produits, commandes, submissions
+et donnees d'audit. Un formateur d'affichage strict retire seulement le prefixe
+exact `[Local Fixture] ` dans le tunnel et traduit les deux libelles fixtures
+connus : le cours debutant/intermediaire devient « Cours particulier — tous
+niveaux » et le cours essai devient « Cours d’essai ». Tout titre de production
+sans ce prefixe, notamment didgeridoo, guimbarde, méditation / improvisation et
+les variantes tarifaires, est conserve tel quel. Le creneau est affiche sous la
+forme `14/08/2026 à 15:00`, sans modifier la valeur canonique stockee
+`YYYY-MM-DD HH:MM|N`.
+
+Une sonde du rendu Drupal dans DDEV a confirme que le formulaire actif ne
+contient plus le titre duplique, que la confirmation n'affiche ni introduction
+ni progression, et que le HTML et son texte extrait ne contiennent aucun
+marqueur Markdown litteral `##` ou `**`. Ces marqueurs signales provenaient donc
+du copier-coller et non du DOM rendu. La meme sonde a confirme les libelles
+fixtures nettoyes, le lien `/user`, l'absence de ligne vide et le nettoyage du
+tempstore par « Réserver un autre cours », avec des compteurs commandes,
+soumissions, droits et queue identiques avant/apres. Il s'agit d'une sonde
+FormBuilder/renderer, pas d'un nouveau test dans un navigateur reel.
 
 Le code de `webform_booking` a ete inspecte dans le projet DDEV principal sans
 le modifier. PHP 8.3 dans DDEV a valide la syntaxe du formulaire. Une sonde a

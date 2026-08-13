@@ -2201,8 +2201,7 @@ form[id*="webform-submission-cours-particuliers-reservation"] .alert a,
   padding: 1rem 1.15rem;
 }
 
-.reservation-first-course__intro h2,
-.reservation-first-course__panel h3{
+.reservation-first-course__panel h2{
   margin: 0 0 .55rem;
   font-size: 1.3rem;
 }

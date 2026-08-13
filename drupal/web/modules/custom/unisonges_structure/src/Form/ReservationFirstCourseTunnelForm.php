@@ -126,18 +126,18 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     $step = $this->resolveStep($form_state, $stored);
 
     $form['#attributes']['class'][] = 'reservation-first-course';
-    $form['intro'] = [
-      '#type' => 'container',
-      '#attributes' => ['class' => ['reservation-first-course__intro']],
-      'title' => [
-        '#markup' => '<h2>' . $this->t('Réserver un cours') . '</h2>',
-      ],
-      'copy' => [
-        '#markup' => '<p>' . $this->t('Choisissez le cours et le créneau avant le paiement. La réservation est confirmée uniquement après validation du paiement choisi.') . '</p>',
-      ],
-    ];
-
-    $form['progress'] = $this->buildProgress($step);
+    if ($step !== 'confirmed') {
+      $form['intro'] = [
+        '#type' => 'container',
+        '#attributes' => ['class' => ['reservation-first-course__intro']],
+        'copy' => [
+          '#type' => 'html_tag',
+          '#tag' => 'p',
+          '#value' => $this->t('Choisissez votre cours, puis un créneau. Vous pourrez ensuite sélectionner votre mode de paiement.'),
+        ],
+      ];
+      $form['progress'] = $this->buildProgress($step);
+    }
 
     if ($this->currentAccount->isAnonymous()) {
       $form['anonymous'] = $this->buildAnonymousNotice();
@@ -174,7 +174,16 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       '#type' => 'container',
       '#attributes' => ['class' => ['reservation-first-course__panel']],
       'message' => [
-        '#markup' => '<h3>' . $this->t('Compte / identification') . '</h3><p>' . $this->t('Connectez-vous pour choisir un cours, un créneau, puis le paiement. La réservation ne peut pas être confirmée sans compte.') . '</p>',
+        'title' => [
+          '#type' => 'html_tag',
+          '#tag' => 'h2',
+          '#value' => $this->t('Compte / identification'),
+        ],
+        'copy' => [
+          '#type' => 'html_tag',
+          '#tag' => 'p',
+          '#value' => $this->t('Connectez-vous pour choisir un cours, un créneau, puis le paiement. La réservation ne peut pas être confirmée sans compte.'),
+        ],
       ],
       'actions' => [
         '#type' => 'container',
@@ -202,7 +211,9 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       '#type' => 'container',
       '#attributes' => ['class' => ['reservation-first-course__panel']],
       'title' => [
-        '#markup' => '<h3>' . $this->t('1. Choix du cours') . '</h3>',
+        '#type' => 'html_tag',
+        '#tag' => 'h2',
+        '#value' => $this->t('1. Choix du cours'),
       ],
     ];
 
@@ -278,7 +289,9 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       '#type' => 'container',
       '#attributes' => ['class' => ['reservation-first-course__panel']],
       'title' => [
-        '#markup' => '<h3>' . $this->t('2. Choix du créneau') . '</h3>',
+        '#type' => 'html_tag',
+        '#tag' => 'h2',
+        '#value' => $this->t('2. Choix du créneau'),
       ],
       'reservation' => $reservation_element,
     ];
@@ -372,7 +385,9 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       '#type' => 'container',
       '#attributes' => ['class' => ['reservation-first-course__panel']],
       'title' => [
-        '#markup' => '<h3>' . $this->t('3. Détails du cours') . '</h3>',
+        '#type' => 'html_tag',
+        '#tag' => 'h2',
+        '#value' => $this->t('3. Détails du cours'),
       ],
       'all_levels' => [
         '#markup' => '<p class="reservation-first-course__note">' . $this->t('Les cours particuliers sont ouverts à tous les niveaux.') . '</p>',
@@ -446,7 +461,9 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       '#type' => 'container',
       '#attributes' => ['class' => ['reservation-first-course__panel']],
       'title' => [
-        '#markup' => '<h3>' . $this->t('4. Choix du paiement') . '</h3>',
+        '#type' => 'html_tag',
+        '#tag' => 'h2',
+        '#value' => $this->t('4. Choix du paiement'),
       ],
       'notice' => [
         '#markup' => '<p>' . $this->t('Le créneau n’est pas encore confirmé. Choisissez le mode de paiement pour continuer.') . '</p>',
@@ -462,7 +479,18 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
         '#required' => TRUE,
       ],
       'payment_notes' => [
-        '#markup' => '<p class="reservation-first-course__note">' . $this->t('Paiement sur place : le créneau est confirmé après validation et marqué COURS À PAYER.') . '</p><p class="reservation-first-course__note">' . $this->t('Paiement en ligne : vous continuez vers le parcours d’achat classique ; le créneau sélectionné n’est pas réservé.') . '</p>',
+        'pay_on_site' => [
+          '#type' => 'html_tag',
+          '#tag' => 'p',
+          '#attributes' => ['class' => ['reservation-first-course__note']],
+          '#value' => $this->t('Paiement sur place : votre créneau sera réservé et le règlement aura lieu le jour du cours.'),
+        ],
+        'online' => [
+          '#type' => 'html_tag',
+          '#tag' => 'p',
+          '#attributes' => ['class' => ['reservation-first-course__note']],
+          '#value' => $this->t('Paiement en ligne : vous continuez vers le parcours d’achat classique ; le créneau sélectionné n’est pas réservé.'),
+        ],
       ],
     ];
 
@@ -528,22 +556,53 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
   }
 
   private function buildConfirmedStep(array &$form, array $stored): void {
-    $form['summary'] = $this->buildSummary($stored);
     $form['step'] = [
       '#type' => 'container',
       '#attributes' => ['class' => ['reservation-first-course__panel', 'reservation-first-course__panel--success']],
       'title' => [
-        '#markup' => '<h3>' . $this->t('Réservation confirmée') . '</h3>',
+        '#type' => 'html_tag',
+        '#tag' => 'h2',
+        '#value' => $this->t('Réservation confirmée'),
+      ],
+      'status' => [
+        '#type' => 'html_tag',
+        '#tag' => 'p',
+        '#attributes' => [
+          'class' => ['reservation-portal__status'],
+          'role' => 'status',
+        ],
+        '#value' => $this->t('À régler sur place'),
       ],
       'message' => [
-        '#markup' => '<p><strong>' . $this->t('COURS À PAYER') . '</strong> — ' . $this->t('votre créneau est confirmé avec paiement sur place.') . '</p>',
+        '#type' => 'html_tag',
+        '#tag' => 'p',
+        '#value' => $this->t('Votre créneau est réservé. Le règlement sera effectué sur place le jour du cours.'),
+      ],
+      'summary' => $this->buildSummary($stored, TRUE),
+      'actions' => [
+        '#type' => 'actions',
+        '#attributes' => ['class' => ['reservation-portal__actions']],
+        'restart' => [
+          '#type' => 'submit',
+          '#value' => $this->t('Réserver un autre cours'),
+          '#submit' => ['::submitRestart'],
+          '#limit_validation_errors' => [],
+          '#button_type' => 'primary',
+          '#attributes' => ['class' => ['btn', 'btn--cta']],
+        ],
+        'account' => [
+          '#type' => 'link',
+          '#title' => $this->t('Retour à mon compte'),
+          '#url' => Url::fromRoute('user.page'),
+          '#attributes' => ['class' => ['btn']],
+        ],
       ],
     ];
   }
 
   private function buildProgress(string $step): array {
     $steps = [
-      'course' => $this->t('Compte / cours'),
+      'course' => $this->t('Cours'),
       'slot' => $this->t('Créneau'),
       'details' => $this->t('Détails'),
       'payment' => $this->t('Paiement'),
@@ -557,7 +616,8 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     $items = [];
     foreach (array_values($steps) as $index => $label) {
       $class = $index < $current_index ? 'is-complete' : ($index === $current_index ? 'is-current' : 'is-upcoming');
-      $items[] = '<li class="' . $class . '">' . Html::escape((string) $label) . '</li>';
+      $aria_current = $index === $current_index ? ' aria-current="step"' : '';
+      $items[] = '<li class="' . $class . '"' . $aria_current . '>' . Html::escape((string) $label) . '</li>';
     }
 
     return [
@@ -565,18 +625,67 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     ];
   }
 
-  private function buildSummary(array $stored): array {
+  private function buildSummary(array $stored, bool $include_details = FALSE): array {
     $rows = [];
-    if (!empty($stored['course_label'])) {
-      $rows[] = '<div><dt>' . $this->t('Cours') . '</dt><dd>' . Html::escape((string) $stored['course_label']) . '</dd></div>';
+    $course_label = $this->formatCourseDisplayLabel((string) ($stored['course_label'] ?? ''));
+    if ($course_label !== '') {
+      $rows['course'] = $this->buildSummaryRow($this->t('Cours'), $course_label);
     }
-    if (!empty($stored['slot_label'])) {
-      $rows[] = '<div><dt>' . $this->t('Créneau') . '</dt><dd>' . Html::escape((string) $stored['slot_label']) . '</dd></div>';
+    $slot_label = $this->getStoredSlotDisplayLabel($stored);
+    if ($slot_label !== '') {
+      $rows['slot'] = $this->buildSummaryRow($this->t('Créneau'), $slot_label);
+    }
+
+    if ($include_details) {
+      $details = is_array($stored['details'] ?? NULL) ? $stored['details'] : [];
+      $mode = $this->confirmationDetailLabel('mode_cours', (string) ($details['mode_cours'] ?? ''));
+      if ($mode !== '') {
+        $rows['mode'] = $this->buildSummaryRow($this->t('Mode'), $mode);
+      }
+      $instrument = $this->confirmationDetailLabel('instrument', (string) ($details['instrument'] ?? ''));
+      if ($instrument !== '') {
+        $rows['instrument'] = $this->buildSummaryRow($this->t('Instrument'), $instrument);
+      }
     }
 
     return [
-      '#markup' => '<dl class="reservation-first-course__summary">' . implode('', $rows) . '</dl>',
+      '#type' => 'html_tag',
+      '#tag' => 'dl',
+      '#attributes' => ['class' => ['reservation-first-course__summary']],
+      '#access' => (bool) $rows,
+    ] + $rows;
+  }
+
+  private function buildSummaryRow($label, string $value): array {
+    return [
+      '#type' => 'container',
+      'label' => [
+        '#type' => 'html_tag',
+        '#tag' => 'dt',
+        '#value' => $label,
+      ],
+      'value' => [
+        '#type' => 'html_tag',
+        '#tag' => 'dd',
+        '#value' => Html::escape($value),
+      ],
     ];
+  }
+
+  private function confirmationDetailLabel(string $key, string $value): string {
+    $labels = [
+      'mode_cours' => [
+        'studio' => $this->t('Studio'),
+        'visio' => $this->t('Visio'),
+        'domicile' => $this->t('À domicile'),
+      ],
+      'instrument' => [
+        'didgeridoo' => $this->t('Didgeridoo'),
+        'guimbarde' => $this->t('Guimbarde'),
+      ],
+    ];
+
+    return isset($labels[$key][$value]) ? (string) $labels[$key][$value] : '';
   }
 
   private function buildResetNotice($message): array {
@@ -800,17 +909,17 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
 
   private function detailFieldFallbackTitle(string $key): string {
     $titles = [
-      'mode_cours' => 'Mode du cours',
-      'plateforme_visio' => 'Plateforme de visio',
-      'adresse_domicile' => 'Adresse complète',
-      'code_postal_domicile' => 'Code postal',
-      'telephone' => 'Téléphone',
-      'instrument' => 'Instrument',
-      'didgeridoo_pret' => 'Le professeur doit-il fournir un didgeridoo ?',
-      'notes_supplementaires' => 'Notes supplémentaires',
+      'mode_cours' => $this->t('Mode du cours'),
+      'plateforme_visio' => $this->t('Plateforme de visio'),
+      'adresse_domicile' => $this->t('Adresse complète'),
+      'code_postal_domicile' => $this->t('Code postal'),
+      'telephone' => $this->t('Téléphone'),
+      'instrument' => $this->t('Instrument'),
+      'didgeridoo_pret' => $this->t('Le professeur doit-il fournir un didgeridoo ?'),
+      'notes_supplementaires' => $this->t('Notes supplémentaires'),
     ];
 
-    return $titles[$key] ?? $key;
+    return isset($titles[$key]) ? (string) $titles[$key] : (string) $this->t('Détail du cours');
   }
 
   private function detailFieldIsConditionallyRequired(string $key): bool {
@@ -983,7 +1092,7 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     return $data;
   }
 
-  private function getCourseOptions(?bool &$product_options_loaded = NULL): array {
+  private function getCourseOptions(?bool &$product_options_loaded = NULL, bool $format_for_display = TRUE): array {
     $options = [];
     $product_options_loaded = FALSE;
     try {
@@ -999,7 +1108,10 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
         if ($ids) {
           foreach ($storage->loadMultiple($ids) as $product) {
             if (method_exists($product, 'label') && method_exists($product, 'id')) {
-              $options['product:' . $product->id()] = $product->label();
+              $label = (string) $product->label();
+              $options['product:' . $product->id()] = $format_for_display
+                ? $this->formatCourseDisplayLabel($label)
+                : $label;
             }
           }
         }
@@ -1011,6 +1123,24 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     }
 
     return $options;
+  }
+
+  private function formatCourseDisplayLabel(string $label): string {
+    $label = trim($label);
+    $fixture_prefix = '[Local Fixture] ';
+    if (strpos($label, $fixture_prefix) !== 0) {
+      return $label;
+    }
+
+    $fixture_label = trim(substr($label, strlen($fixture_prefix)));
+    if (in_array($fixture_label, ['Cours debutant/intermediaire', 'Cours débutant/intermédiaire'], TRUE)) {
+      return (string) $this->t('Cours particulier — tous niveaux');
+    }
+    if (in_array($fixture_label, ['Cours essai', "Cours d'essai", 'Cours d’essai'], TRUE)) {
+      return (string) $this->t('Cours d’essai');
+    }
+
+    return $fixture_label;
   }
 
   private function ensureStoredCourseIsAvailable(array $stored, FormStateInterface $form_state): array {
@@ -1080,7 +1210,8 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
   }
 
   private function getCourseLabel(string $course): string {
-    $options = $this->getCourseOptions();
+    $product_options_loaded = NULL;
+    $options = $this->getCourseOptions($product_options_loaded, FALSE);
     return isset($options[$course]) ? (string) $options[$course] : $course;
   }
 
@@ -1108,10 +1239,33 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
   private function formatReservationValue(string $value): string {
     $parsed = unisonges_structure_parse_booking_reservation_value($value);
     if ($parsed === NULL) {
-      return $value;
+      return '';
     }
 
-    return $parsed['start']->format('d/m/Y H:i');
+    return (string) $this->t('@date à @time', [
+      '@date' => $parsed['start']->format('d/m/Y'),
+      '@time' => $parsed['start']->format('H:i'),
+    ]);
+  }
+
+  private function getStoredSlotDisplayLabel(array $stored): string {
+    $reservation_value = (string) ($stored['reservation_value'] ?? '');
+    if ($reservation_value !== '') {
+      $formatted = $this->formatReservationValue($reservation_value);
+      if ($formatted !== '') {
+        return $formatted;
+      }
+    }
+
+    $stored_label = trim((string) ($stored['slot_label'] ?? ''));
+    if (preg_match('/^(\d{2}\/\d{2}\/\d{4})(?:\s+à)?\s+(\d{2}:\d{2})$/u', $stored_label, $matches) === 1) {
+      return (string) $this->t('@date à @time', [
+        '@date' => $matches[1],
+        '@time' => $matches[2],
+      ]);
+    }
+
+    return '';
   }
 
   private function getOnlinePaymentUrl(array $stored): Url {
