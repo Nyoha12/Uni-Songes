@@ -9,10 +9,10 @@ artistiques. La mise en place est portée par
 
 | Page | Alias | Rôle |
 | --- | --- | --- |
-| Cours | `/cours` | Hub des cours particuliers avec trois entrées : didgeridoo, guimbarde, méditation / improvisation, et mention du cours d'essai à 10 EUR. |
-| Cours de didgeridoo | `/cours/didgeridoo` | Page détaillée du cours particulier de didgeridoo, avec cours d'essai à 10 EUR et cours 1h à 25 EUR / 15 EUR étudiant. |
-| Cours de guimbarde | `/cours/guimbarde` | Page dédiée guimbarde, avec tarifs confirmés 25 EUR / heure et 15 EUR / heure étudiant, sans URL produit tant qu'elle n'est pas connue. |
-| Méditation / improvisation | `/cours/meditation-improvisation` | Page dédiée à l'accompagnement individuel autour de l'écoute, de la présence et de l'improvisation, avec tarifs confirmés 25 EUR / heure et 15 EUR / heure étudiant, sans URL produit tant qu'elle n'est pas connue. |
+| Cours | `/cours` | Hub avec trois cartes de discipline et un CTA principal « Réserver un cours » vers `/reservation-cours`. |
+| Cours de didgeridoo | `/cours/didgeridoo` | Page détaillée avec cours d'essai à 10 EUR, cours à 25 EUR / heure ou 15 EUR / heure étudiant, CTA principal « Réserver un cours de didgeridoo » et CTA essai séparé vers le tunnel. |
+| Cours de guimbarde | `/cours/guimbarde` | Page dédiée avec tarifs confirmés 25 EUR / heure et 15 EUR / heure étudiant, puis réservation guimbarde dans le tunnel. |
+| Méditation / improvisation | `/cours/meditation-improvisation` | Page dédiée avec tarifs confirmés 25 EUR / heure et 15 EUR / heure étudiant, puis réservation méditation / improvisation dans le tunnel. |
 | Stages | `/stages` | Hub des stages avec trois entrées : didgeridoo, musique improvisée / méditation, stages spéciaux, et routage vers les pages Stage publiées. |
 | Stages didgeridoo | `/stages/didgeridoo` | Page des stages mensuels débutant et intermédiaire, tarif 20 EUR, réservation via les pages Stage publiées. |
 | Musique improvisée / méditation | `/stages/musique-improvisee-meditation` | Page des stages musique improvisée / méditation, tarif 20 EUR, réservation via les pages Stage publiées. |
@@ -24,11 +24,10 @@ artistiques. La mise en place est portée par
 
 - Les pages de cours particuliers ne structurent plus l'offre avec un cadrage
   générique débutant / intermédiaire / avancé. Elles décrivent plutôt ce que le
-  cours permet de travailler et renvoient vers l'achat ou le contact.
-- Le didgeridoo conserve un cours d'essai à 10 EUR et des liens d'achat directs
-  vers les produits confirmés. Les cours de guimbarde et de méditation /
-  improvisation restent orientés contact tant qu'aucun produit Commerce dédié
-  n'est confirmé.
+  cours permet de travailler et renvoient vers le tunnel de réservation.
+- Le didgeridoo conserve un cours d'essai à 10 EUR avec un CTA séparé. Les CTA
+  d'achat direct et les CTA contact concurrents sont retirés des pages Cours.
+  Les produits Commerce existants restent hors du périmètre de ce script.
 - Les tarifs sont formulés de façon homogène : `25 EUR / heure`, `15 EUR /
   heure étudiant`, `20 EUR par stage`.
 - Les stages didgeridoo gardent deux repères collectifs mensuels, débutant et
@@ -38,6 +37,23 @@ artistiques. La mise en place est portée par
 - Le corps des pages Drupal est la source de vérité pour les contenus Cours et
   Stages 2026. Les templates de thème ne doivent pas injecter de sections
   éditoriales hardcodées qui réintroduisent l'ancienne structure.
+
+## Parcours de réservation des cours
+
+Le parcours public est : `/cours` → page de discipline ou CTA direct →
+`/reservation-cours` → choisir la discipline → choisir le créneau → choisir le
+paiement → confirmation.
+
+| Choix | Destination |
+| --- | --- |
+| CTA général de `/cours` | `/reservation-cours` |
+| Cours d'essai | `/reservation-cours?discipline=essai` |
+| Didgeridoo | `/reservation-cours?discipline=didgeridoo` |
+| Guimbarde | `/reservation-cours?discipline=guimbarde` |
+| Méditation / improvisation | `/reservation-cours?discipline=meditation-improvisation` |
+
+Cette évolution de contenu consomme le contrat du tunnel sans en modifier
+l'implémentation ni la route.
 
 ## Menu principal
 
@@ -80,21 +96,22 @@ parallèle :
 - `unisonges-detail-section`
 - `unisonges-price-note`
 
-Le script ne crée pas de produits Commerce, ne crée pas de termes de taxonomie,
-ne lance pas `drush config:import`, ne modifie pas `config/sync` et ne supprime
-aucun contenu.
+Le script ne crée, ne modifie ni ne supprime de produit Commerce, ne crée pas de
+termes de taxonomie, ne lance pas `drush config:import`, ne modifie pas
+`config/sync` et ne supprime aucun contenu.
 
 ## Décisions de contenu confirmées
 
-- Cours d'essai : 10 EUR, lien `/product/4`.
-- Cours de didgeridoo : 25 EUR / heure, lien `/product/5`.
-- Cours de didgeridoo étudiant : 15 EUR / heure, lien `/product/6`.
-- Cours de guimbarde : 25 EUR / heure, 15 EUR / heure étudiant. Aucun produit
-  Commerce dédié n'est connu dans les documents de suivi ; la page utilise donc
-  un CTA contact.
-- Méditation / improvisation : 25 EUR / heure, 15 EUR / heure étudiant. Aucun
-  produit Commerce dédié n'est connu dans les documents de suivi ; la page
-  utilise donc un CTA contact.
+- Cours d'essai : 10 EUR, réservation via
+  `/reservation-cours?discipline=essai`.
+- Cours de didgeridoo : 25 EUR / heure, 15 EUR / heure étudiant, réservation
+  via `/reservation-cours?discipline=didgeridoo`.
+- Cours de guimbarde : 25 EUR / heure, 15 EUR / heure étudiant, réservation via
+  `/reservation-cours?discipline=guimbarde`.
+- Méditation / improvisation : 25 EUR / heure, 15 EUR / heure étudiant,
+  réservation via `/reservation-cours?discipline=meditation-improvisation`.
+- Les pages produit existantes ne sont pas supprimées, mais ne sont plus les
+  CTA d'achat des pages publiques Cours.
 - Stages didgeridoo : 20 EUR, avec réservation sur les pages Stage publiées.
 - Stages musique improvisée / méditation : 20 EUR, avec réservation sur les
   pages Stage publiées.
@@ -111,7 +128,7 @@ pour :
 - expliquer rapidement ce que propose chaque page ;
 - afficher les prix confirmés avec les mêmes conventions ;
 - éviter les textes trop génériques ou trop longs ;
-- orienter vers achat, réservation, date publiée ou contact selon l'offre ;
+- orienter les pages Cours vers le tunnel de réservation ;
 - conserver le système existant de publication Stage et de billetterie.
 
 Le CSS associé reste limité aux classes `unisonges-page-intro`,
@@ -122,12 +139,16 @@ CTA et la cohérence des panneaux de contenu.
 
 ## Checklist visuelle manuelle
 
-- Vérifier `/cours` : les trois cartes ont une hauteur cohérente, les prix sont
-  lisibles et les CTA renvoient aux pages attendues.
-- Vérifier `/cours/didgeridoo` : les trois liens produits confirmés restent
-  visibles, puis le lien contact.
-- Vérifier `/cours/guimbarde` et `/cours/meditation-improvisation` : aucun lien
-  produit non confirmé n'est affiché, le CTA contact reste clair.
+- Vérifier `/cours` : les trois cartes restent visibles, le CTA principal
+  « Réserver un cours » mène à `/reservation-cours` et les cartes mènent aux
+  pages de discipline.
+- Vérifier `/cours/didgeridoo` : les tarifs 25 EUR / 15 EUR étudiant restent
+  visibles, le CTA principal mène au deep-link didgeridoo et le CTA essai séparé
+  mène au deep-link essai.
+- Vérifier `/cours/guimbarde` et `/cours/meditation-improvisation` : les tarifs
+  25 EUR / 15 EUR étudiant restent visibles et chaque CTA mène au bon deep-link.
+- Vérifier qu'aucun CTA d'achat produit direct ne concurrence le tunnel sur les
+  quatre pages Cours.
 - Vérifier `/stages` : les trois familles de stages sont lisibles et la zone de
   publication automatique des contenus Stage reste présente.
 - Vérifier `/stages/didgeridoo` : les repères débutant et intermédiaire
@@ -143,8 +164,6 @@ CTA et la cohérence des panneaux de contenu.
 - Publier les dates réelles des stages comme contenus `Stage`.
 - Relier les prochaines dates depuis les pages de catégories si l'équipe veut
   des liens explicites en plus de la liste automatique.
-- Créer ou ajuster les produits Commerce hors de ce script si des ventes en
-  ligne sont souhaitées pour la guimbarde ou méditation / improvisation.
 - Compléter les biographies, photos, liens et prestations des artistes.
 - Finaliser les textes commerciaux et les contraintes techniques des prestations.
 

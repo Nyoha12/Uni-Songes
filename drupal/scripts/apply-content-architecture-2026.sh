@@ -170,7 +170,8 @@ $pages = [
     'body' => <<<'HTML'
 <section class="unisonges-page-intro">
   <p>Les cours particuliers Uni-Songes accompagnent une pratique instrumentale ou sonore avec un cadre individuel, adaptable à votre point de départ et à votre objectif.</p>
-  <p>Trois parcours sont ouverts : didgeridoo, guimbarde et méditation / improvisation. Le cours d'essai est à 10 EUR ; les cours sont à 25 EUR / heure, ou 15 EUR / heure au tarif étudiant.</p>
+  <p>Choisissez une discipline, un créneau, puis votre mode de paiement. Vous recevez ensuite une confirmation.</p>
+  <p class="unisonges-offer-card__cta"><a href="/reservation-cours">Réserver un cours</a></p>
 </section>
 
 <div class="unisonges-card-grid">
@@ -178,19 +179,19 @@ $pages = [
     <h2 class="unisonges-offer-card__title">Cours de didgeridoo</h2>
     <p class="unisonges-offer-card__text">Souffle continu, vibration, rythmes, voix et construction d'un jeu personnel en séance individuelle.</p>
     <p class="unisonges-offer-card__meta">Essai 10 EUR. Puis 25 EUR / heure, 15 EUR / heure étudiant.</p>
-    <p class="unisonges-offer-card__cta"><a href="/cours/didgeridoo">Voir les tarifs et acheter</a></p>
+    <p class="unisonges-offer-card__cta"><a href="/cours/didgeridoo">Voir le cours de didgeridoo</a></p>
   </article>
   <article class="unisonges-offer-card">
     <h2 class="unisonges-offer-card__title">Cours de guimbarde</h2>
     <p class="unisonges-offer-card__text">Placement, attaques, respiration, rythmes et couleurs de bouche pour développer un jeu vivant.</p>
     <p class="unisonges-offer-card__meta">25 EUR / heure. Tarif étudiant : 15 EUR / heure.</p>
-    <p class="unisonges-offer-card__cta"><a href="/cours/guimbarde">Réserver un cours</a></p>
+    <p class="unisonges-offer-card__cta"><a href="/cours/guimbarde">Voir le cours de guimbarde</a></p>
   </article>
   <article class="unisonges-offer-card">
     <h2 class="unisonges-offer-card__title">Méditation / improvisation</h2>
     <p class="unisonges-offer-card__text">Écoute, présence, improvisation musicale et exploration sonore dans un accompagnement individuel.</p>
     <p class="unisonges-offer-card__meta">25 EUR / heure. Tarif étudiant : 15 EUR / heure.</p>
-    <p class="unisonges-offer-card__cta"><a href="/cours/meditation-improvisation">Construire le format</a></p>
+    <p class="unisonges-offer-card__cta"><a href="/cours/meditation-improvisation">Voir le cours de méditation / improvisation</a></p>
   </article>
 </div>
 HTML,
@@ -211,11 +212,10 @@ HTML,
 </section>
 
 <section class="unisonges-detail-section">
-  <h2>Réservation et achat</h2>
-  <p><a href="/product/4">Acheter un cours d'essai - 10 EUR</a></p>
-  <p><a href="/product/5">Acheter un cours didgeridoo 1h - plein tarif - 25 EUR</a></p>
-  <p><a href="/product/6">Acheter un cours didgeridoo 1h - tarif étudiant - 15 EUR</a></p>
-  <p><a href="/contact">Contacter l'association pour choisir un créneau ou confirmer le tarif étudiant</a></p>
+  <h2>Réserver</h2>
+  <p>Choisissez un créneau, puis votre mode de paiement. Vous recevez ensuite une confirmation.</p>
+  <p class="unisonges-offer-card__cta"><a href="/reservation-cours?discipline=didgeridoo">Réserver un cours de didgeridoo</a></p>
+  <p><a href="/reservation-cours?discipline=essai">Réserver un cours d'essai</a></p>
 </section>
 HTML,
   ],
@@ -234,9 +234,9 @@ HTML,
 </section>
 
 <section class="unisonges-detail-section">
-  <h2>Réservation</h2>
-  <p>La réservation se fait pour l'instant par échange direct afin de choisir le créneau et le contenu du cours.</p>
-  <p><a href="/contact">Contacter l'association pour réserver un cours de guimbarde</a></p>
+  <h2>Réserver</h2>
+  <p>Choisissez un créneau, puis votre mode de paiement. Vous recevez ensuite une confirmation.</p>
+  <p class="unisonges-offer-card__cta"><a href="/reservation-cours?discipline=guimbarde">Réserver un cours de guimbarde</a></p>
 </section>
 HTML,
   ],
@@ -255,9 +255,9 @@ HTML,
 </section>
 
 <section class="unisonges-detail-section">
-  <h2>Réservation</h2>
-  <p>La réservation se construit par échange direct pour ajuster le cadre, la durée et l'intention de la séance.</p>
-  <p><a href="/contact">Contacter l'association pour construire le format</a></p>
+  <h2>Réserver</h2>
+  <p>Choisissez un créneau, puis votre mode de paiement. Vous recevez ensuite une confirmation.</p>
+  <p class="unisonges-offer-card__cta"><a href="/reservation-cours?discipline=meditation-improvisation">Réserver un cours de méditation / improvisation</a></p>
 </section>
 HTML,
   ],
