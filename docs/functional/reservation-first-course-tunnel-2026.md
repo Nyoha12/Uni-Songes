@@ -1,8 +1,9 @@
 # Tunnel reservation-first cours 2026
 
-Audit statique du parcours cours apres le revert de la PR #63 par la PR #64.
-Aucun navigateur, DDEV, paiement reel, appel Google ou environnement distant n'a
-ete utilise pour ce document.
+Audit statique du parcours cours apres le revert de la PR #63 par la PR #64,
+complete par des sondes PHP dans l'environnement DDEV local. Aucun paiement
+reel, appel Google ou environnement distant n'a ete utilise. Les scenarios
+navigateur de bout en bout n'ont pas ete executes.
 
 ## Routes et formulaires actuels
 
@@ -113,9 +114,10 @@ Regles fonctionnelles :
   - les cles Webform verifiees dans `cours_particuliers_reservation` sont :
     `mode_cours=visio|studio|domicile`, `instrument=guimbarde|didgeridoo`,
     `plateforme_visio=zoom|google_meet|skype|whatsapp|autre`,
-    `didgeridoo_pret=oui|non`; `adresse_domicile` est un textarea conditionnel
-    au mode `domicile`, et `code_postal_domicile` est conditionnel au mode
-    `domicile` avec le pattern `^\d{5}$` ;
+    `didgeridoo_pret=oui|non` et
+    `niveau_cours=debutant|intermediaire|avance`; `adresse_domicile` est un
+    textarea conditionnel au mode `domicile`, et `code_postal_domicile` est
+    conditionnel au mode `domicile` avec le pattern `^\d{5}$` ;
   - l'etape suivante presente explicitement `Payer en ligne` et
     `Payer sur place`.
 - Pour `Payer en ligne`, le tunnel redirige seulement apres selection cours +
@@ -198,17 +200,72 @@ produit stocke n'est plus une cle des cours publies accessibles, le tunnel
 revient au choix du cours avec un message controle. `Recommencer` supprime le
 private tempstore et applique le meme nettoyage FormState.
 
+## Correction du cycle de vie des dependances
+
+Le core Drupal installe a ete inspecte avant correction. `FormBase` utilise
+`DependencySerializationTrait` et l'objet formulaire est conserve dans le
+`build_info` du FormState mis en cache entre les requetes et les rebuilds.
+`DependencySerializationTrait::__sleep()` appelle `get_object_vars($this)`
+depuis la portee de `FormBase`, puis remplace les services visibles par leurs
+identifiants dans `_serviceIds`. Les proprietes `private` declarees uniquement
+par la classe enfant ne sont pas visibles dans cette portee : elles etaient donc
+omises de la liste serialisee, sans identifiant de service, puis valaient `null`
+apres deserialisation puisque le constructeur n'est pas rejoue.
+
+Cela explique la meme cause racine pour les trois symptomes runtime :
+
+- `currentAccount` nul provoquait le fatal sur `isAnonymous()` et `id()` ;
+- `tempStoreFactory` nul faisait echouer la lecture/ecriture de la selection et
+  affichait l'avertissement de memorisation ;
+- `entityTypeManager` nul etait masque par le `catch` de
+  `getWebformElement()`, qui renvoyait alors `[]` et transformait cinq options
+  pourtant valides en cinq erreurs trompeuses ;
+- `moduleHandler` et `webformElementManager` auraient subi la meme perte au
+  prochain acces pendant un rebuild.
+
+Le correctif utilise le mecanisme Drupal supporte : les cinq proprietes
+injectees (`current_user`, `tempstore.private`, `entity_type.manager`,
+`module_handler` et `plugin.manager.webform.element`) sont maintenant
+`protected`. Le constructeur et `create()` restent la source unique de
+l'injection. Le trait peut ainsi enregistrer leurs identifiants, puis
+`__wakeup()` les recharge depuis le conteneur. Aucun `__sleep()`/`__wakeup()`
+personnalise et aucun acces generalise a `\Drupal::service()` n'ont ete ajoutes.
+
+La validation serveur charge les vraies options brutes du Webform avec
+`getElementDecoded()` pour les seuls champs applicables. `plateforme_visio`
+n'est controle et requis que pour `mode_cours=visio`, l'adresse et le code
+postal que pour `mode_cours=domicile`, et `didgeridoo_pret` que pour
+`instrument=didgeridoo`. Une erreur de pattern du telephone reste donc
+independante des options non applicables. Si les metadonnees `#options` sont
+reellement indisponibles, la cause technique et les cles concernees sont
+journalisees dans un seul message et la validation affiche une seule erreur
+globale controlee, sans produire une erreur « valeur invalide » pour chaque
+option.
+
+Les handlers avant/arriere et de redemarrage continuent tous a passer par le
+meme nettoyage cible de FormState avant rebuild. Les valeurs metier validees
+restent dans le private tempstore, les saisies restent dans FormState lors d'une
+erreur de validation, et les anciens inputs soumis ne peuvent pas ecraser les
+`#default_value` lors du retour a une etape precedente.
+
 Le code de `webform_booking` a ete inspecte dans le projet DDEV principal sans
-le modifier. L'acces au socket Docker etait refuse dans cet environnement :
-aucun runtime DDEV ni test navigateur des scenarios d'acceptation n'a donc ete
-execute pour cette correction.
+le modifier. PHP 8.3 dans DDEV a valide la syntaxe du formulaire. Une sonde a
+charge la classe modifiee, l'a serialisee puis deserialisee, et a confirme que
+les cinq proprietes retrouvent exactement les services du conteneur. La meme
+sonde a confirme les cinq listes d'options ci-dessus, l'erreur telephone seule,
+la reussite apres correction du telephone, Studio + Guimbarde sans champ
+conditionnel, Domicile avec adresse et code postal requis, et Didgeridoo avec
+le choix de pret requis. Cette sonde ne construit aucune commande ni submission
+et n'appelle aucun service Google. Aucun test navigateur de la navigation
+complete et de ses rebuilds n'a ete execute dans cette session.
 
 ## Ce qui n'est pas encore complet
 
 - Le paiement en ligne ne rattache pas encore le creneau au panier ou a la
   commande Commerce.
-- Le parcours paiement sur place n'a pas ete teste en navigateur/DDEV dans cette
-  PR ; la PR doit rester draft tant que ce test runtime n'est pas fait.
+- Le parcours paiement sur place n'a pas ete teste de bout en bout dans un
+  navigateur dans cette PR ; la PR doit rester draft tant que ce test runtime
+  n'est pas fait.
 
 ## Prochaine PR requise
 

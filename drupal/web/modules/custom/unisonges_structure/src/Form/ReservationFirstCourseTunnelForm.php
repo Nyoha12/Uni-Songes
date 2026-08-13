@@ -14,6 +14,9 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Small reservation-first course tunnel.
+ *
+ * Injected services stay protected so FormBase can serialize their service IDs
+ * and rehydrate them during Form API rebuilds.
  */
 final class ReservationFirstCourseTunnelForm extends FormBase {
 
@@ -57,35 +60,35 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
    *
    * @var \Drupal\Core\Session\AccountProxyInterface
    */
-  private $currentAccount;
+  protected $currentAccount;
 
   /**
    * Private tempstore factory.
    *
    * @var \Drupal\Core\TempStore\PrivateTempStoreFactory
    */
-  private $tempStoreFactory;
+  protected $tempStoreFactory;
 
   /**
    * Entity type manager.
    *
    * @var \Drupal\Core\Entity\EntityTypeManagerInterface
    */
-  private $entityTypeManager;
+  protected $entityTypeManager;
 
   /**
    * Module handler.
    *
    * @var \Drupal\Core\Extension\ModuleHandlerInterface
    */
-  private $moduleHandler;
+  protected $moduleHandler;
 
   /**
    * The Webform element plugin manager, when Webform is available.
    *
    * @var \Drupal\webform\Plugin\WebformElementManagerInterface|null
    */
-  private $webformElementManager;
+  protected $webformElementManager;
 
   public function __construct(AccountProxyInterface $current_account, PrivateTempStoreFactory $temp_store_factory, EntityTypeManagerInterface $entity_type_manager, ModuleHandlerInterface $module_handler, $webform_element_manager = NULL) {
     $this->currentAccount = $current_account;
@@ -744,19 +747,33 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     return $element;
   }
 
-  private function getWebformElement(string $key): array {
+  private function getWebformElement(string $key, ?string &$failure_reason = NULL): array {
+    $failure_reason = NULL;
     try {
       if (!$this->entityTypeManager->hasDefinition('webform')) {
+        $failure_reason = 'The webform entity type definition is unavailable.';
         return [];
       }
       $webform = $this->entityTypeManager->getStorage('webform')->load('cours_particuliers_reservation');
-      if ($webform && method_exists($webform, 'getElementDecoded')) {
-        $element = $webform->getElementDecoded($key);
-        return is_array($element) ? $element : [];
+      if (!$webform) {
+        $failure_reason = 'The cours_particuliers_reservation Webform could not be loaded.';
+        return [];
       }
+      if (!method_exists($webform, 'getElementDecoded')) {
+        $failure_reason = 'The Webform does not expose getElementDecoded().';
+        return [];
+      }
+
+      $element = $webform->getElementDecoded($key);
+      if (!is_array($element)) {
+        $failure_reason = 'The Webform element is missing or is not an array.';
+        return [];
+      }
+
+      return $element;
     }
     catch (\Throwable $e) {
-      return [];
+      $failure_reason = get_class($e) . ': ' . $e->getMessage();
     }
 
     return [];
@@ -796,6 +813,31 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
   }
 
   private function validateDetailsValues(array $details): array {
+    $option_sources = [];
+    $metadata_errors = [];
+    foreach ($this->applicableOptionFields($details) as $key) {
+      $source = $this->getWebformElement($key, $failure_reason);
+      $options = $source['#options'] ?? NULL;
+      if (!is_array($options) || $options === []) {
+        $metadata_errors[$key] = $failure_reason ?: 'The #options property is missing or empty.';
+        continue;
+      }
+      $option_sources[$key] = $options;
+    }
+
+    if ($metadata_errors) {
+      $causes = [];
+      foreach ($metadata_errors as $key => $reason) {
+        $causes[] = $key . ': ' . $reason;
+      }
+      $this->logger('unisonges_structure')->error('Unable to validate reservation course details because Webform option metadata is unavailable: @causes', [
+        '@causes' => implode('; ', $causes),
+      ]);
+      return [
+        'course_details' => $this->t('Les options du formulaire sont temporairement indisponibles. Rechargez la page et réessayez.'),
+      ];
+    }
+
     $errors = [];
     foreach ($this->requiredDetailFields($details) as $key) {
       if (($details[$key] ?? '') === '') {
@@ -810,7 +852,7 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       if ($value === '') {
         continue;
       }
-      if (!$this->detailValueIsAllowedOption($key, $value)) {
+      if (isset($option_sources[$key]) && !array_key_exists($value, $option_sources[$key])) {
         $errors[$key] = $this->t('Choisissez une valeur valide pour @field.', [
           '@field' => mb_strtolower($this->detailFieldLabel($key)),
         ]);
@@ -832,6 +874,13 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     )));
   }
 
+  private function applicableOptionFields(array $details): array {
+    return array_values(array_intersect(
+      self::OPTION_DETAIL_FIELDS,
+      $this->detailFieldsToValidate($details)
+    ));
+  }
+
   private function requiredDetailFields(array $details): array {
     $required = self::ALWAYS_REQUIRED_DETAIL_FIELDS;
     if (($details['mode_cours'] ?? '') === 'visio') {
@@ -846,16 +895,6 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     }
 
     return $required;
-  }
-
-  private function detailValueIsAllowedOption(string $key, string $value): bool {
-    $source = $this->getWebformElement($key);
-    $options = $source['#options'] ?? NULL;
-    if (!is_array($options) || $options === []) {
-      return !in_array($key, self::OPTION_DETAIL_FIELDS, TRUE);
-    }
-
-    return array_key_exists($value, $options);
   }
 
   private function validateDetailPattern(string $key, string $value): string {
