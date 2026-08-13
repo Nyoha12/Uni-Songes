@@ -24,9 +24,76 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
 
   private const LEGACY_LEVEL_FIELD = 'niveau_cours';
 
-  private const COURSE_BUNDLES = [
-    'cours_essai',
-    'cours_deb_inter',
+  private const PRODUCTION_COURSE_SELECTIONS = [
+    'essai' => [
+      'sku' => 'COURS-ESSAI-10',
+      'bundle' => 'cours_essai',
+    ],
+    'didgeridoo:normal' => [
+      'sku' => 'COURS-DIDGERIDOO-1H-25',
+      'bundle' => 'cours_deb_inter',
+    ],
+    'didgeridoo:etudiant' => [
+      'sku' => 'COURS-DIDGERIDOO-1H-ETUDIANT-15',
+      'bundle' => 'cours_deb_inter',
+    ],
+    'guimbarde:normal' => [
+      'sku' => 'COURS-GUIMBARDE-1H-25',
+      'bundle' => 'cours_deb_inter',
+    ],
+    'guimbarde:etudiant' => [
+      'sku' => 'COURS-GUIMBARDE-1H-ETUDIANT-15',
+      'bundle' => 'cours_deb_inter',
+    ],
+    'meditation-improvisation:normal' => [
+      'sku' => 'COURS-MEDITATION-IMPRO-1H-25',
+      'bundle' => 'cours_deb_inter',
+    ],
+    'meditation-improvisation:etudiant' => [
+      'sku' => 'COURS-MEDITATION-IMPRO-1H-ETUDIANT-15',
+      'bundle' => 'cours_deb_inter',
+    ],
+  ];
+
+  /**
+   * Local-only fixture fallback, enabled only without a production SKU match.
+   */
+  private const LOCAL_FIXTURE_COURSE_SELECTIONS = [
+    'essai' => [
+      'sku' => 'LOCAL-FIXTURE-COURS-ESSAI',
+      'bundle' => 'cours_essai',
+    ],
+    'didgeridoo:normal' => [
+      'sku' => 'LOCAL-FIXTURE-COURS-DEB-INTER',
+      'bundle' => 'cours_deb_inter',
+    ],
+    'didgeridoo:etudiant' => [
+      'sku' => 'LOCAL-FIXTURE-COURS-DEB-INTER',
+      'bundle' => 'cours_deb_inter',
+    ],
+    'guimbarde:normal' => [
+      'sku' => 'LOCAL-FIXTURE-COURS-DEB-INTER',
+      'bundle' => 'cours_deb_inter',
+    ],
+    'guimbarde:etudiant' => [
+      'sku' => 'LOCAL-FIXTURE-COURS-DEB-INTER',
+      'bundle' => 'cours_deb_inter',
+    ],
+    'meditation-improvisation:normal' => [
+      'sku' => 'LOCAL-FIXTURE-COURS-DEB-INTER',
+      'bundle' => 'cours_deb_inter',
+    ],
+    'meditation-improvisation:etudiant' => [
+      'sku' => 'LOCAL-FIXTURE-COURS-DEB-INTER',
+      'bundle' => 'cours_deb_inter',
+    ],
+  ];
+
+  private const DISCIPLINE_QUERY_VALUES = [
+    'essai',
+    'didgeridoo',
+    'guimbarde',
+    'meditation-improvisation',
   ];
 
   private const DETAIL_FIELDS = [
@@ -122,10 +189,16 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
   public function buildForm(array $form, FormStateInterface $form_state): array {
     $this->discardLegacyLevelFormState($form_state);
     $stored = $this->getStoredSelection();
+    $stored = $this->migrateLegacyStoredCourseSelection($stored);
     $stored = $this->ensureStoredCourseIsAvailable($stored, $form_state);
+    $deep_link_discipline = $this->getDeepLinkDiscipline();
+    if (!$this->currentAccount->isAnonymous()) {
+      $stored = $this->applyDisciplineDeepLink($stored, $form_state, $deep_link_discipline);
+    }
     $step = $this->resolveStep($form_state, $stored);
 
     $form['#attributes']['class'][] = 'reservation-first-course';
+    $form['#attached']['library'][] = 'unisonges_structure/reservation-first-tunnel';
     if ($step !== 'confirmed') {
       $form['intro'] = [
         '#type' => 'container',
@@ -140,7 +213,7 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     }
 
     if ($this->currentAccount->isAnonymous()) {
-      $form['anonymous'] = $this->buildAnonymousNotice();
+      $form['anonymous'] = $this->buildAnonymousNotice($deep_link_discipline);
       return $form;
     }
 
@@ -168,8 +241,9 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     return $form;
   }
 
-  private function buildAnonymousNotice(): array {
-    $destination = '/reservation-cours';
+  private function buildAnonymousNotice(string $discipline): array {
+    $destination_options = $discipline === '' ? [] : ['query' => ['discipline' => $discipline]];
+    $destination = Url::fromRoute('unisonges_structure.reservation_course_tunnel', [], $destination_options)->toString();
     return [
       '#type' => 'container',
       '#attributes' => ['class' => ['reservation-first-course__panel']],
@@ -205,8 +279,10 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
   }
 
   private function buildCourseStep(array &$form, array $stored): void {
-    $options = $this->getCourseOptions();
-    $stored_course = (string) ($stored['course'] ?? '');
+    $selections = $this->getCourseSelections();
+    $discipline_options = $this->getDisciplineOptions($selections);
+    $stored_discipline = (string) ($stored['discipline'] ?? '');
+    $stored_tariff = (string) ($stored['tariff'] ?? '');
     $form['step'] = [
       '#type' => 'container',
       '#attributes' => ['class' => ['reservation-first-course__panel']],
@@ -218,7 +294,7 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     ];
 
     $selection_invalidated = !empty($stored['_course_selection_invalidated']);
-    if (!$options) {
+    if (!$discipline_options) {
       $message = $selection_invalidated
         ? $this->t('L’offre précédemment choisie n’est plus disponible et aucun cours n’est actuellement proposé à la réservation.')
         : $this->t('Aucun cours n’est disponible à la réservation pour le moment.');
@@ -234,21 +310,66 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       ];
     }
 
-    $form['step']['course'] = [
-      '#type' => 'radios',
-      '#title' => $this->t('Cours'),
-      '#parents' => ['course'],
-      '#options' => $options,
-      '#default_value' => array_key_exists($stored_course, $options) ? $stored_course : NULL,
-      '#required' => TRUE,
+    $form['step']['discipline'] = [
+      '#type' => 'container',
+      '#attributes' => ['class' => ['reservation-first-course__choices', 'reservation-first-course__discipline']],
+      'choices' => [
+        '#type' => 'radios',
+        '#title' => $this->t('Discipline'),
+        '#parents' => ['discipline'],
+        '#options' => $discipline_options,
+        '#default_value' => array_key_exists($stored_discipline, $discipline_options) ? $stored_discipline : NULL,
+        '#required' => TRUE,
+      ],
+    ];
+
+    $form['step']['trial_price'] = [
+      '#type' => 'container',
+      '#attributes' => ['class' => ['reservation-first-course__trial-price']],
+      '#states' => [
+        'visible' => [
+          ':input[name="discipline"]' => ['value' => 'essai'],
+        ],
+      ],
+      'copy' => [
+        '#markup' => '<p>' . $this->t('Tarif unique — 10 EUR') . '</p>',
+      ],
+    ];
+
+    $tariff_states = [
+      [':input[name="discipline"]' => ['value' => 'didgeridoo']],
+      'or',
+      [':input[name="discipline"]' => ['value' => 'guimbarde']],
+      'or',
+      [':input[name="discipline"]' => ['value' => 'meditation-improvisation']],
+    ];
+    $form['step']['tariff'] = [
+      '#type' => 'container',
+      '#attributes' => ['class' => ['reservation-first-course__choices', 'reservation-first-course__tariff']],
+      '#states' => [
+        'visible' => $tariff_states,
+      ],
+      'choices' => [
+        '#type' => 'radios',
+        '#title' => $this->t('Tarif'),
+        '#parents' => ['tariff'],
+        '#options' => $this->getTariffOptions(),
+        '#default_value' => in_array($stored_tariff, ['normal', 'etudiant'], TRUE) ? $stored_tariff : NULL,
+        '#states' => [
+          'required' => $tariff_states,
+        ],
+      ],
     ];
 
     $form['actions'] = [
       '#type' => 'actions',
+      '#attributes' => ['class' => ['reservation-first-course__actions']],
       'next' => [
         '#type' => 'submit',
-        '#value' => $this->t('Choisir le créneau'),
+        '#value' => $this->t('Continuer vers les créneaux'),
         '#button_type' => 'primary',
+        '#weight' => -10,
+        '#attributes' => ['class' => ['reservation-first-course__action--next']],
         '#validate' => ['::validateCourseStep'],
         '#submit' => ['::submitCourseStep'],
       ],
@@ -256,20 +377,49 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
   }
 
   public function validateCourseStep(array &$form, FormStateInterface $form_state): void {
-    $course = (string) $form_state->getValue('course');
-    if (!array_key_exists($course, $this->getCourseOptions())) {
-      $form_state->setErrorByName('course', $this->t('Choisissez un cours.'));
+    $discipline = (string) $form_state->getValue('discipline');
+    $selections = $this->getCourseSelections();
+    if (!array_key_exists($discipline, $this->getDisciplineOptions($selections))) {
+      $form_state->setErrorByName('discipline', $this->t('Choisissez une discipline.'));
+      return;
     }
+
+    $tariff = $discipline === 'essai' ? '' : (string) $form_state->getValue('tariff');
+    if ($discipline !== 'essai' && !array_key_exists($tariff, $this->getTariffOptions())) {
+      $form_state->setErrorByName('tariff', $this->t('Choisissez un tarif.'));
+      return;
+    }
+
+    $selection = $this->getCourseSelection($discipline, $tariff, $selections);
+    if (!$selection) {
+      $form_state->setErrorByName($discipline === 'essai' ? 'discipline' : 'tariff', $this->t('Cette offre n’est plus disponible. Choisissez une autre option.'));
+      return;
+    }
+
+    $form_state->set('course_selection', $selection);
   }
 
   public function submitCourseStep(array &$form, FormStateInterface $form_state): void {
-    $course = (string) $form_state->getValue('course');
+    $selection = $form_state->get('course_selection');
+    if (!is_array($selection)) {
+      return;
+    }
     $stored = $this->getStoredSelection();
-    if (($stored['course'] ?? '') !== $course) {
+    if (($stored['discipline'] ?? '') !== $selection['discipline']
+      || ($stored['tariff'] ?? '') !== $selection['tariff']
+      || ($stored['course'] ?? '') !== $selection['course']) {
       $this->invalidateCourseDependentSelection($stored);
     }
-    $stored['course'] = $course;
-    $stored['course_label'] = $this->getCourseLabel($course);
+    $stored['discipline'] = $selection['discipline'];
+    if ($selection['tariff'] === '') {
+      unset($stored['tariff']);
+    }
+    else {
+      $stored['tariff'] = $selection['tariff'];
+    }
+    $stored['course'] = $selection['course'];
+    $stored['course_label'] = $selection['course_label'];
+    $stored['course_display_label'] = $selection['course_display_label'];
     $stored['step'] = 'slot';
     $this->setStoredSelection($stored);
 
@@ -298,19 +448,24 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
 
     $form['actions'] = [
       '#type' => 'actions',
-      'previous' => [
-        '#type' => 'submit',
-        '#value' => $this->t('Modifier le cours'),
-        '#submit' => ['::submitBackToCourse'],
-        '#limit_validation_errors' => [],
-      ],
+      '#attributes' => ['class' => ['reservation-first-course__actions']],
       'next' => [
         '#type' => 'submit',
-        '#value' => $this->t('Renseigner les détails'),
+        '#value' => $this->t('Continuer vers les détails'),
         '#button_type' => 'primary',
+        '#weight' => -10,
+        '#attributes' => ['class' => ['reservation-first-course__action--next']],
         '#disabled' => !$reservation_available,
         '#validate' => ['::validateSlotStep'],
         '#submit' => ['::submitSlotStep'],
+      ],
+      'previous' => [
+        '#type' => 'submit',
+        '#value' => $this->t('Retour au cours'),
+        '#weight' => 10,
+        '#attributes' => ['class' => ['reservation-first-course__action--previous']],
+        '#submit' => ['::submitBackToCourse'],
+        '#limit_validation_errors' => [],
       ],
     ];
   }
@@ -404,16 +559,21 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
 
     $form['actions'] = [
       '#type' => 'actions',
+      '#attributes' => ['class' => ['reservation-first-course__actions']],
       'next' => [
         '#type' => 'submit',
-        '#value' => $this->t('Choisir le paiement'),
+        '#value' => $this->t('Continuer vers le paiement'),
         '#button_type' => 'primary',
+        '#weight' => -10,
+        '#attributes' => ['class' => ['reservation-first-course__action--next']],
         '#validate' => ['::validateDetailsStep'],
         '#submit' => ['::submitDetailsStep'],
       ],
       'previous' => [
         '#type' => 'submit',
-        '#value' => $this->t('Modifier le créneau'),
+        '#value' => $this->t('Retour au créneau'),
+        '#weight' => 10,
+        '#attributes' => ['class' => ['reservation-first-course__action--previous']],
         '#submit' => ['::submitBackToSlot'],
         '#limit_validation_errors' => [],
       ],
@@ -450,7 +610,7 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     if (!$this->storedDetailsAreComplete($stored)) {
       $form['empty'] = $this->buildStepNotice(
         $this->t('Renseignez les détails du cours avant le paiement.'),
-        $this->t('Renseigner les détails'),
+        $this->t('Retour aux détails'),
         '::submitBackToDetails'
       );
       return;
@@ -496,18 +656,23 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
 
     $form['actions'] = [
       '#type' => 'actions',
-      'previous' => [
-        '#type' => 'submit',
-        '#value' => $this->t('Modifier les détails'),
-        '#submit' => ['::submitBackToDetails'],
-        '#limit_validation_errors' => [],
-      ],
+      '#attributes' => ['class' => ['reservation-first-course__actions']],
       'next' => [
         '#type' => 'submit',
-        '#value' => $this->t('Continuer'),
+        '#value' => $this->t('Confirmer la réservation'),
         '#button_type' => 'primary',
+        '#weight' => -10,
+        '#attributes' => ['class' => ['reservation-first-course__action--next']],
         '#validate' => ['::validatePaymentStep'],
         '#submit' => ['::submitPaymentStep'],
+      ],
+      'previous' => [
+        '#type' => 'submit',
+        '#value' => $this->t('Retour aux détails'),
+        '#weight' => 10,
+        '#attributes' => ['class' => ['reservation-first-course__action--previous']],
+        '#submit' => ['::submitBackToDetails'],
+        '#limit_validation_errors' => [],
       ],
     ];
   }
@@ -627,7 +792,7 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
 
   private function buildSummary(array $stored, bool $include_details = FALSE): array {
     $rows = [];
-    $course_label = $this->formatCourseDisplayLabel((string) ($stored['course_label'] ?? ''));
+    $course_label = trim((string) ($stored['course_display_label'] ?? ''));
     if ($course_label !== '') {
       $rows['course'] = $this->buildSummaryRow($this->t('Cours'), $course_label);
     }
@@ -716,9 +881,12 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       ],
       'actions' => [
         '#type' => 'actions',
-        'next' => [
+        '#attributes' => ['class' => ['reservation-first-course__actions']],
+        'previous' => [
           '#type' => 'submit',
           '#value' => $button_label,
+          '#weight' => 10,
+          '#attributes' => ['class' => ['reservation-first-course__action--previous']],
           '#submit' => [$submit_handler],
           '#limit_validation_errors' => [],
         ],
@@ -1092,55 +1260,261 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     return $data;
   }
 
-  private function getCourseOptions(?bool &$product_options_loaded = NULL, bool $format_for_display = TRUE): array {
-    $options = [];
-    $product_options_loaded = FALSE;
+  private function getCourseSelections(?bool &$catalog_loaded = NULL): array {
+    $contexts = $this->loadPublishedCourseContexts(array_keys($this->getAllowedCourseSkuBundles()), $catalog_loaded);
+    if (!$catalog_loaded) {
+      return [];
+    }
+
+    $production_skus = array_column(self::PRODUCTION_COURSE_SELECTIONS, 'sku');
+    $has_production_selection = (bool) array_intersect($production_skus, array_keys($contexts));
+    if ($has_production_selection) {
+      $definitions = self::PRODUCTION_COURSE_SELECTIONS;
+    }
+    else {
+      if (!$this->localFixtureProductsAreAllowed()) {
+        return [];
+      }
+      $fixture_skus = array_values(array_unique(array_column(self::LOCAL_FIXTURE_COURSE_SELECTIONS, 'sku')));
+      if (array_diff($fixture_skus, array_keys($contexts))) {
+        return [];
+      }
+      $definitions = self::LOCAL_FIXTURE_COURSE_SELECTIONS;
+    }
+
+    $selections = [];
+    foreach ($definitions as $key => $definition) {
+      $sku = $definition['sku'];
+      if (!isset($contexts[$sku])) {
+        continue;
+      }
+      [$discipline, $tariff] = $this->parseCourseSelectionKey($key);
+      $selections[$key] = [
+        'discipline' => $discipline,
+        'tariff' => $tariff,
+        'course' => 'sku:' . $sku,
+        'course_label' => method_exists($contexts[$sku]['product'], 'label') ? (string) $contexts[$sku]['product']->label() : '',
+        'course_display_label' => $this->getCourseSelectionLabel($discipline, $tariff),
+      ];
+    }
+
+    return $selections;
+  }
+
+  private function localFixtureProductsAreAllowed(): bool {
+    return getenv('IS_DDEV_PROJECT') === 'true';
+  }
+
+  private function getAllowedCourseSkuBundles(): array {
+    $bundles = [];
+    foreach ([self::PRODUCTION_COURSE_SELECTIONS, self::LOCAL_FIXTURE_COURSE_SELECTIONS] as $definitions) {
+      foreach ($definitions as $definition) {
+        $bundles[$definition['sku']] = $definition['bundle'];
+      }
+    }
+    return $bundles;
+  }
+
+  private function loadPublishedCourseContexts(array $skus, ?bool &$catalog_loaded = NULL): array {
+    $catalog_loaded = FALSE;
+    $contexts = [];
     try {
-      if ($this->entityTypeManager->hasDefinition('commerce_product')) {
-        $storage = $this->entityTypeManager->getStorage('commerce_product');
-        $query = $storage->getQuery()
-          ->accessCheck(TRUE)
-          ->condition('type', self::COURSE_BUNDLES, 'IN')
-          ->condition('status', 1)
-          ->sort('title', 'ASC');
-        $ids = $query->execute();
-        $product_options_loaded = TRUE;
-        if ($ids) {
-          foreach ($storage->loadMultiple($ids) as $product) {
-            if (method_exists($product, 'label') && method_exists($product, 'id')) {
-              $label = (string) $product->label();
-              $options['product:' . $product->id()] = $format_for_display
-                ? $this->formatCourseDisplayLabel($label)
-                : $label;
-            }
-          }
+      if (!$this->entityTypeManager->hasDefinition('commerce_product_variation')) {
+        return [];
+      }
+
+      $storage = $this->entityTypeManager->getStorage('commerce_product_variation');
+      $ids = $storage->getQuery()
+        ->accessCheck(TRUE)
+        ->addTag('commerce_product_variation_access')
+        ->condition('sku', $skus, 'IN')
+        ->condition('status', 1)
+        ->execute();
+      $catalog_loaded = TRUE;
+      $allowed_bundles = $this->getAllowedCourseSkuBundles();
+      foreach ($storage->loadMultiple($ids) as $variation) {
+        if (!method_exists($variation, 'getSku') || !method_exists($variation, 'getProduct')) {
+          continue;
         }
+        $sku = (string) $variation->getSku();
+        $expected_bundle = $allowed_bundles[$sku] ?? '';
+        $product = $variation->getProduct();
+        if ($expected_bundle === '' || !$product || !method_exists($product, 'bundle') || !method_exists($product, 'label')) {
+          continue;
+        }
+        if ((string) $product->bundle() !== $expected_bundle
+          || (method_exists($variation, 'bundle') && (string) $variation->bundle() !== $expected_bundle)
+          || (method_exists($product, 'isPublished') && !$product->isPublished())
+          || (method_exists($variation, 'isPublished') && !$variation->isPublished())
+          || (method_exists($product, 'access') && !$product->access('view'))) {
+          continue;
+        }
+        $contexts[$sku] = [
+          'product' => $product,
+          'variation' => $variation,
+          'bundle' => $expected_bundle,
+        ];
       }
     }
     catch (\Throwable $e) {
-      $options = [];
-      $product_options_loaded = FALSE;
+      $catalog_loaded = FALSE;
+      return [];
+    }
+
+    return $contexts;
+  }
+
+  private function getDisciplineOptions(array $selections): array {
+    if (!$selections) {
+      return [];
+    }
+
+    $labels = [
+      'essai' => $this->t('Cours d’essai'),
+      'didgeridoo' => $this->t('Didgeridoo'),
+      'guimbarde' => $this->t('Guimbarde'),
+      'meditation-improvisation' => $this->t('Méditation / improvisation'),
+    ];
+    $options = [];
+    foreach (array_keys($labels) as $discipline) {
+      if ($discipline === 'essai') {
+        if (isset($selections['essai'])) {
+          $options[$discipline] = $labels[$discipline];
+        }
+        continue;
+      }
+      if (isset($selections[$discipline . ':normal'], $selections[$discipline . ':etudiant'])) {
+        $options[$discipline] = $labels[$discipline];
+      }
     }
 
     return $options;
   }
 
-  private function formatCourseDisplayLabel(string $label): string {
-    $label = trim($label);
-    $fixture_prefix = '[Local Fixture] ';
-    if (strpos($label, $fixture_prefix) !== 0) {
-      return $label;
+  private function getTariffOptions(): array {
+    return [
+      'normal' => $this->t('Tarif normal — 25 EUR'),
+      'etudiant' => $this->t('Tarif étudiant — 15 EUR'),
+    ];
+  }
+
+  private function getCourseSelection(string $discipline, string $tariff, array $selections): array {
+    $key = $this->getCourseSelectionKey($discipline, $tariff);
+    return is_array($selections[$key] ?? NULL) ? $selections[$key] : [];
+  }
+
+  private function getCourseSelectionKey(string $discipline, string $tariff): string {
+    return $discipline === 'essai' ? 'essai' : $discipline . ':' . $tariff;
+  }
+
+  private function parseCourseSelectionKey(string $key): array {
+    if ($key === 'essai') {
+      return ['essai', ''];
+    }
+    $parts = explode(':', $key, 2);
+    return [$parts[0] ?? '', $parts[1] ?? ''];
+  }
+
+  private function getCourseSelectionLabel(string $discipline, string $tariff): string {
+    if ($discipline === 'essai') {
+      return (string) $this->t('Cours d’essai — 10 EUR');
     }
 
-    $fixture_label = trim(substr($label, strlen($fixture_prefix)));
-    if (in_array($fixture_label, ['Cours debutant/intermediaire', 'Cours débutant/intermédiaire'], TRUE)) {
-      return (string) $this->t('Cours particulier — tous niveaux');
-    }
-    if (in_array($fixture_label, ['Cours essai', "Cours d'essai", 'Cours d’essai'], TRUE)) {
-      return (string) $this->t('Cours d’essai');
+    $disciplines = [
+      'didgeridoo' => $this->t('Didgeridoo'),
+      'guimbarde' => $this->t('Guimbarde'),
+      'meditation-improvisation' => $this->t('Méditation / improvisation'),
+    ];
+    $tariffs = $this->getTariffOptions();
+    if (!isset($disciplines[$discipline], $tariffs[$tariff])) {
+      return '';
     }
 
-    return $fixture_label;
+    return (string) $this->t('@discipline — @tariff', [
+      '@discipline' => $disciplines[$discipline],
+      '@tariff' => $tariffs[$tariff],
+    ]);
+  }
+
+  private function getDeepLinkDiscipline(): string {
+    if (!$this->getRequest()->isMethod('GET')) {
+      return '';
+    }
+
+    $query = $this->getRequest()->query->all();
+    $discipline = $query['discipline'] ?? NULL;
+    return is_string($discipline) && in_array($discipline, self::DISCIPLINE_QUERY_VALUES, TRUE)
+      ? $discipline
+      : '';
+  }
+
+  private function applyDisciplineDeepLink(array $stored, FormStateInterface $form_state, string $discipline): array {
+    if ($discipline === '') {
+      return $stored;
+    }
+
+    unset($stored['_course_selection_invalidated'], $stored['tariff'], $stored['course'], $stored['course_label'], $stored['course_display_label']);
+    $this->invalidateCourseDependentSelection($stored);
+    $stored['discipline'] = $discipline;
+    $stored['step'] = 'course';
+    $this->setStoredSelection($stored);
+    $form_state->set('step', 'course');
+
+    return $stored;
+  }
+
+  private function migrateLegacyStoredCourseSelection(array $stored): array {
+    $course = (string) ($stored['course'] ?? '');
+    if (preg_match('/^product:(\d+)$/', $course, $matches) !== 1) {
+      return $stored;
+    }
+
+    try {
+      $product = $this->entityTypeManager->getStorage('commerce_product')->load((int) $matches[1]);
+      if (!$product || !method_exists($product, 'getVariations') || !method_exists($product, 'label')) {
+        return $stored;
+      }
+
+      $selections_by_course = [];
+      foreach ($this->getCourseSelections($catalog_loaded) as $selection) {
+        $selections_by_course[$selection['course']][] = $selection;
+      }
+      if (!$catalog_loaded) {
+        return $stored;
+      }
+
+      $matches = [];
+      foreach ($product->getVariations() as $variation) {
+        if (!$variation || !method_exists($variation, 'getSku')) {
+          continue;
+        }
+        $selection_course = 'sku:' . $variation->getSku();
+        foreach ($selections_by_course[$selection_course] ?? [] as $selection) {
+          $matches[$selection['discipline'] . ':' . $selection['tariff']] = $selection;
+        }
+      }
+      if (count($matches) !== 1) {
+        return $stored;
+      }
+
+      $selection = reset($matches);
+      $stored['discipline'] = $selection['discipline'];
+      if ($selection['tariff'] === '') {
+        unset($stored['tariff']);
+      }
+      else {
+        $stored['tariff'] = $selection['tariff'];
+      }
+      $stored['course'] = $selection['course'];
+      $stored['course_label'] = (string) $product->label();
+      $stored['course_display_label'] = $selection['course_display_label'];
+      $this->setStoredSelection($stored);
+    }
+    catch (\Throwable $e) {
+      // The normal availability guard will safely invalidate this selection.
+    }
+
+    return $stored;
   }
 
   private function ensureStoredCourseIsAvailable(array $stored, FormStateInterface $form_state): array {
@@ -1150,22 +1524,27 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     }
 
     $step = (string) ($form_state->get('step') ?: ($stored['step'] ?? 'course'));
-    $unsupported_course = $this->storedCourseUsesUnsupportedBundle($course);
-    if ($step === 'confirmed' && !$unsupported_course) {
+    $discipline = (string) ($stored['discipline'] ?? '');
+    $tariff = $discipline === 'essai' ? '' : (string) ($stored['tariff'] ?? '');
+    $supported_selection = $this->storedCourseMatchesKnownSelection($discipline, $tariff, $course);
+    if ($step === 'confirmed' && $supported_selection) {
       return $stored;
     }
 
-    $options = $this->getCourseOptions($product_options_loaded);
-    if (!$unsupported_course && array_key_exists($course, $options)) {
+    $selections = $this->getCourseSelections($catalog_loaded);
+    $selection = $this->getCourseSelection($discipline, $tariff, $selections);
+    if ($supported_selection && ($selection['course'] ?? '') === $course) {
       return $stored;
     }
-    if (!$unsupported_course && strpos($course, 'product:') === 0 && !$product_options_loaded) {
+    $is_legacy_selection = preg_match('/^product:\\d+$/', $course) === 1;
+    if (($supported_selection || $is_legacy_selection) && !$catalog_loaded) {
       // Do not discard a valid selection because Commerce was temporarily
-      // unavailable. A successful query that omits the product is authoritative.
+      // unavailable. A successful SKU query that omits it is authoritative;
+      // legacy product IDs will be migrated after the catalog recovers.
       return $stored;
     }
 
-    unset($stored['course'], $stored['course_label']);
+    unset($stored['discipline'], $stored['tariff'], $stored['course'], $stored['course_label'], $stored['course_display_label']);
     $this->invalidateCourseDependentSelection($stored);
     $stored['step'] = 'course';
     $this->setStoredSelection($stored);
@@ -1177,24 +1556,14 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     return $stored;
   }
 
-  private function storedCourseUsesUnsupportedBundle(string $course): bool {
-    if ($course === 'bundle:cours_avance') {
-      return TRUE;
-    }
-    if (preg_match('/^product:(\d+)$/', $course, $matches) !== 1) {
-      return FALSE;
-    }
-
-    try {
-      $product = $this->entityTypeManager->getStorage('commerce_product')->load((int) $matches[1]);
-      if (!$product || !method_exists($product, 'bundle')) {
+  private function storedCourseMatchesKnownSelection(string $discipline, string $tariff, string $course): bool {
+    $key = $this->getCourseSelectionKey($discipline, $tariff);
+    foreach ([self::PRODUCTION_COURSE_SELECTIONS, self::LOCAL_FIXTURE_COURSE_SELECTIONS] as $definitions) {
+      if (isset($definitions[$key]) && $course === 'sku:' . $definitions[$key]['sku']) {
         return TRUE;
       }
-      return !in_array($product->bundle(), self::COURSE_BUNDLES, TRUE);
     }
-    catch (\Throwable $e) {
-      return FALSE;
-    }
+    return FALSE;
   }
 
   private function invalidateCourseDependentSelection(array &$stored): void {
@@ -1207,12 +1576,6 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       $stored['order_id'],
       $stored['payment_label']
     );
-  }
-
-  private function getCourseLabel(string $course): string {
-    $product_options_loaded = NULL;
-    $options = $this->getCourseOptions($product_options_loaded, FALSE);
-    return isset($options[$course]) ? (string) $options[$course] : $course;
   }
 
   private function normalizeReservationValue($value): string {
@@ -1269,18 +1632,15 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
   }
 
   private function getOnlinePaymentUrl(array $stored): Url {
-    $course = (string) ($stored['course'] ?? '');
-    if (strpos($course, 'product:') === 0) {
-      $product_id = (int) substr($course, strlen('product:'));
-      try {
-        $product = $this->entityTypeManager->getStorage('commerce_product')->load($product_id);
-        if ($product && method_exists($product, 'toUrl')) {
-          return $product->toUrl('canonical', ['query' => ['reservation-first' => '1']]);
-        }
+    try {
+      $context = $this->getSelectedCourseCommerceContext((string) ($stored['course'] ?? ''));
+      $product = $context['product'];
+      if (method_exists($product, 'toUrl')) {
+        return $product->toUrl('canonical', ['query' => ['reservation-first' => '1']]);
       }
-      catch (\Throwable $e) {
-        // Fall back to the public course listing.
-      }
+    }
+    catch (\Throwable $e) {
+      // Fall back to the public course listing.
     }
 
     return Url::fromUserInput('/cours', ['query' => ['reservation-first' => '1']]);
@@ -1402,42 +1762,24 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
   }
 
   private function getSelectedCourseCommerceContext(string $course): array {
-    if (!$this->entityTypeManager->hasDefinition('commerce_product')) {
-      throw new \RuntimeException('Commerce product storage is unavailable.');
+    if (strpos($course, 'sku:') !== 0) {
+      throw new \RuntimeException('Selected course SKU is invalid.');
     }
 
-    $product_storage = $this->entityTypeManager->getStorage('commerce_product');
-    $product = NULL;
-    if (strpos($course, 'product:') === 0) {
-      $product = $product_storage->load((int) substr($course, strlen('product:')));
-    }
-    elseif (strpos($course, 'bundle:') === 0) {
-      $bundle = substr($course, strlen('bundle:'));
-      $ids = $product_storage->getQuery()
-        ->accessCheck(FALSE)
-        ->condition('type', $bundle)
-        ->condition('status', 1)
-        ->range(0, 1)
-        ->execute();
-      $product = $ids ? $product_storage->load((int) reset($ids)) : NULL;
+    $active_courses = array_column($this->getCourseSelections($catalog_loaded), 'course');
+    if (!$catalog_loaded || !in_array($course, $active_courses, TRUE)) {
+      throw new \RuntimeException('Selected course SKU is unavailable.');
     }
 
-    if (!$product || !method_exists($product, 'getVariations') || !method_exists($product, 'bundle')) {
-      throw new \RuntimeException('Selected course product could not be resolved.');
+    $sku = substr($course, strlen('sku:'));
+    $contexts = $this->loadPublishedCourseContexts([$sku], $context_loaded);
+    if (!$context_loaded || !isset($contexts[$sku])) {
+      throw new \RuntimeException('Selected course product could not be resolved by SKU.');
     }
 
-    foreach ($product->getVariations() as $variation) {
-      if ($variation && (!method_exists($variation, 'isPublished') || $variation->isPublished())) {
-        return [
-          'product' => $product,
-          'variation' => $variation,
-          'store_id' => $this->getProductStoreId($product),
-          'bundle' => (string) $product->bundle(),
-        ];
-      }
-    }
-
-    throw new \RuntimeException('Selected course product has no purchasable variation.');
+    $context = $contexts[$sku];
+    $context['store_id'] = $this->getProductStoreId($context['product']);
+    return $context;
   }
 
   private function getProductStoreId($product): int {
@@ -1491,7 +1833,14 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       throw new \RuntimeException('Webform submission storage is unavailable.');
     }
 
-    $course_label = (string) ($stored['course_label'] ?? $this->getCourseLabel((string) ($stored['course'] ?? '')));
+    $course_label = trim((string) ($stored['course_label'] ?? ''));
+    if ($course_label === '') {
+      $context = $this->getSelectedCourseCommerceContext((string) ($stored['course'] ?? ''));
+      $course_label = method_exists($context['product'], 'label') ? trim((string) $context['product']->label()) : '';
+    }
+    if ($course_label === '') {
+      throw new \RuntimeException('Stored course label is unavailable.');
+    }
     $details = $this->validateStoredDetails($stored);
     $data = $this->filterSubmissionDetails($details) + [
       'reservation' => (string) $stored['reservation_value'],
@@ -1565,7 +1914,7 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
 
   private function prepareStepRebuild(FormStateInterface $form_state, string $step): void {
     $keys = array_merge(
-      ['course', 'reservation', 'payment_choice', self::LEGACY_LEVEL_FIELD, 'op', '_triggering_element_name', '_triggering_element_value'],
+      ['discipline', 'tariff', 'course', 'reservation', 'payment_choice', self::LEGACY_LEVEL_FIELD, 'op', '_triggering_element_name', '_triggering_element_value'],
       self::DETAIL_FIELDS
     );
 
@@ -1577,7 +1926,7 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     $form_state->setUserInput($user_input);
 
     $storage = $form_state->getStorage();
-    unset($storage['reservation_value'], $storage['course_details']);
+    unset($storage['course_selection'], $storage['reservation_value'], $storage['course_details']);
     $form_state->setStorage($storage);
     $form_state->set('step', $step);
     $form_state->setRebuild(TRUE);
