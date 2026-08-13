@@ -41,18 +41,33 @@ artistiques. La mise en place est portée par
 
 ## Menu principal
 
-Le script crée ou met à jour uniquement ces liens du menu principal :
+Les titres de pages restent ceux de la carte ci-dessus. Le menu principal
+utilise des libellés plus courts pour éviter la surcharge visuelle.
 
-- `Les Artistes de l’asso` -> `/les-artistes-de-l-asso`
-- `Services et prestations artistiques` -> `/services-prestations-artistiques`
+L'ordre canonique est le suivant :
 
-Il ne réordonne pas le menu principal et ne supprime aucun lien existant.
+| Poids | Libellé | Destination |
+| ---: | --- | --- |
+| 0 | Cours | `/cours` |
+| 10 | Stages | `/stages` |
+| 20 | Concerts | `/concerts` |
+| 30 | Association | `/association` |
+| 40 | Artistes | `/les-artistes-de-l-asso` |
+| 50 | Prestations | `/services-prestations-artistiques` |
+| 60 | D’Jam | `/djam` |
+| 70 | Orchestre | `/orchestre-des-reveurs` |
+| 80 | Contact | `/contact` |
+
+Le script retrouve ces liens par destination, impose leur libellé et leur poids
+et les maintient au premier niveau. Il crée uniquement une destination absente,
+refuse les correspondances ambiguës pour ne pas créer de doublon, ne supprime
+aucun lien et préserve tous les liens non concernés.
 
 ## Contenu créé par le script
 
 Le script crée ou met à jour les dix nœuds Drupal de type `page` listés dans la
-carte des pages, leurs alias et les deux liens de menu ci-dessus. Les corps de
-page utilisent les classes CSS contractuelles suivantes pour la PR CSS
+carte des pages, leurs alias et les liens de l'ordre canonique ci-dessus. Les
+corps de page utilisent les classes CSS contractuelles suivantes pour la PR CSS
 parallèle :
 
 - `unisonges-page-intro`
@@ -132,7 +147,6 @@ CTA et la cohérence des panneaux de contenu.
   ligne sont souhaitées pour la guimbarde ou méditation / improvisation.
 - Compléter les biographies, photos, liens et prestations des artistes.
 - Finaliser les textes commerciaux et les contraintes techniques des prestations.
-- Ajuster les poids du menu manuellement si un ordre précis est voulu.
 
 ## Préservation des hubs existants
 

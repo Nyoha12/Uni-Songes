@@ -128,9 +128,16 @@ Pages:
 - /les-artistes-de-l-asso
 - /services-prestations-artistiques
 
-Main menu links:
-- Les Artistes de l’asso -> /les-artistes-de-l-asso
-- Services et prestations artistiques -> /services-prestations-artistiques
+Main menu links (weight, label -> destination):
+- 0 Cours -> /cours
+- 10 Stages -> /stages
+- 20 Concerts -> /concerts
+- 30 Association -> /association
+- 40 Artistes -> /les-artistes-de-l-asso
+- 50 Prestations -> /services-prestations-artistiques
+- 60 D’Jam -> /djam
+- 70 Orchestre -> /orchestre-des-reveurs
+- 80 Contact -> /contact
 
 Guards:
 - dry-run by default; writes require --apply
@@ -403,14 +410,51 @@ HTML,
   ],
 ];
 
-$menu_links = [
+$main_menu_links = [
   [
-    'title' => 'Les Artistes de l’asso',
-    'page_key' => 'artistes',
+    'title' => 'Cours',
+    'path' => '/cours',
+    'weight' => 0,
   ],
   [
-    'title' => 'Services et prestations artistiques',
-    'page_key' => 'services',
+    'title' => 'Stages',
+    'path' => '/stages',
+    'weight' => 10,
+  ],
+  [
+    'title' => 'Concerts',
+    'path' => '/concerts',
+    'weight' => 20,
+  ],
+  [
+    'title' => 'Association',
+    'path' => '/association',
+    'weight' => 30,
+  ],
+  [
+    'title' => 'Artistes',
+    'path' => '/les-artistes-de-l-asso',
+    'weight' => 40,
+  ],
+  [
+    'title' => 'Prestations',
+    'path' => '/services-prestations-artistiques',
+    'weight' => 50,
+  ],
+  [
+    'title' => 'D’Jam',
+    'path' => '/djam',
+    'weight' => 60,
+  ],
+  [
+    'title' => 'Orchestre',
+    'path' => '/orchestre-des-reveurs',
+    'weight' => 70,
+  ],
+  [
+    'title' => 'Contact',
+    'path' => '/contact',
+    'weight' => 80,
   ],
 ];
 
@@ -445,10 +489,8 @@ if ($failed) {
   exit(1);
 }
 
-$resolved_nodes = [];
-
 section($is_apply ? 'Page apply' : 'Page dry-run');
-foreach ($pages as $key => $page) {
+foreach ($pages as $page) {
   try {
     $node = resolve_page_node($page['title'], $page['alias']);
     if (!$node && $is_apply) {
@@ -488,7 +530,6 @@ foreach ($pages as $key => $page) {
     $target_node = $node ?: resolve_page_node($page['title'], $page['alias']);
     if ($target_node) {
       ensure_alias($target_node, $page['alias'], $is_apply);
-      $resolved_nodes[$key] = $target_node;
     }
     elseif (!$is_apply) {
       echo 'WOULD_CREATE alias ' . $page['alias'] . ' after node creation' . PHP_EOL;
@@ -505,19 +546,14 @@ if ($failed) {
 }
 
 section($is_apply ? 'Menu apply' : 'Menu dry-run');
-foreach ($menu_links as $menu_link) {
+foreach ($main_menu_links as $menu_link) {
   try {
-    $page = $pages[$menu_link['page_key']];
-    $node = $resolved_nodes[$menu_link['page_key']] ?? resolve_page_node($page['title'], $page['alias']);
-    if (!$node) {
-      if ($is_apply) {
-        throw new RuntimeException('Expected page node was not available for menu link.');
-      }
-      echo 'WOULD_CREATE main menu link "' . $menu_link['title'] . '" after page creation' . PHP_EOL;
-      continue;
-    }
-
-    ensure_menu_link($menu_link['title'], $node, $page['alias'], $is_apply);
+    ensure_main_menu_link(
+      $menu_link['title'],
+      $menu_link['path'],
+      $menu_link['weight'],
+      $is_apply
+    );
   }
   catch (Throwable $throwable) {
     check(FALSE, $menu_link['title'] . ': ' . $throwable->getMessage());
@@ -671,73 +707,125 @@ function ensure_alias(NodeInterface $node, string $alias, bool $is_apply): void 
   }
 }
 
-function ensure_menu_link(string $title, NodeInterface $node, string $alias, bool $is_apply): void {
+function ensure_main_menu_link(string $title, string $path, int $weight, bool $is_apply): void {
   $storage = \Drupal::entityTypeManager()->getStorage('menu_link_content');
-  $expected_uri = 'entity:node/' . $node->id();
-  $alias_uri = 'internal:' . $alias;
-
-  $link = NULL;
   $links = $storage->loadByProperties(['menu_name' => 'main']);
+  $alias_manager = \Drupal::service('path_alias.manager');
+  $langcode = \Drupal::languageManager()->getDefaultLanguage()->getId();
+  $expected_system_path = $alias_manager->getPathByAlias($path, $langcode);
+  $matching_links = [];
+
   foreach ($links as $candidate) {
-    if ($candidate->label() === $title) {
-      $link = $candidate;
-      break;
+    if (menu_link_system_path($candidate, $langcode) === $expected_system_path) {
+      $matching_links[] = $candidate;
     }
   }
+
+  if (count($matching_links) > 1) {
+    throw new RuntimeException('Multiple main menu links target ' . $path . '; refusing to choose one or create another.');
+  }
+
+  $link = $matching_links ? reset($matching_links) : NULL;
   if (!$link) {
     foreach ($links as $candidate) {
-      $uri = menu_link_uri($candidate);
-      if ($uri === $expected_uri || $uri === $alias_uri) {
-        $link = $candidate;
-        break;
+      if ($candidate->label() === $title) {
+        throw new RuntimeException(
+          'No link targets ' . $path . ', but another main menu link is titled "' . $title . '"; refusing to create a duplicate label.'
+        );
       }
     }
-  }
 
-  if (!$link) {
     if ($is_apply) {
       $link = MenuLinkContent::create([
         'title' => $title,
         'menu_name' => 'main',
-        'link' => ['uri' => $expected_uri],
+        'link' => ['uri' => 'internal:' . $path],
         'enabled' => TRUE,
         'expanded' => FALSE,
+        'weight' => $weight,
+        'parent' => '',
       ]);
       $link->save();
-      echo 'CREATED main menu link "' . $title . '" -> ' . $alias . PHP_EOL;
+      echo 'CREATED main menu link "' . $title . '" -> ' . $path . ' with weight ' . $weight . PHP_EOL;
     }
     else {
-      echo 'WOULD_CREATE main menu link "' . $title . '" -> ' . $alias . PHP_EOL;
+      echo 'WOULD_CREATE main menu link "' . $title . '" -> ' . $path . ' with weight ' . $weight . PHP_EOL;
     }
     return;
+  }
+
+  $uri = menu_link_uri($link);
+  if (strpos($uri, 'internal:') === 0) {
+    $stored_path = substr($uri, strlen('internal:'));
+    $stores_alias = !preg_match('/^\/node\/\d+$/', $stored_path);
+    if ($stores_alias && $stored_path !== $path) {
+      throw new RuntimeException(
+        'A main menu link reaches ' . $path . ' through non-canonical URL ' . $stored_path . '; refusing to rewrite its destination.'
+      );
+    }
+  }
+  if (preg_match('/^(?:entity:node\/|internal:\/node\/)(\d+)$/', $uri, $matches)) {
+    $system_path = '/node/' . $matches[1];
+    $outbound_path = $alias_manager->getAliasByPath($system_path, $langcode);
+    if ($outbound_path !== $path) {
+      throw new RuntimeException(
+        'A main menu link reaches ' . $path . ' through outbound URL ' . $outbound_path . '; refusing to rewrite its destination.'
+      );
+    }
   }
 
   $changes = [];
   if ($link->label() !== $title) {
-    $changes[] = 'title';
+    $changes['title'] = 'title "' . $link->label() . '" -> "' . $title . '"';
   }
-  if (menu_link_uri($link) !== $expected_uri) {
-    $changes[] = 'link';
+  $current_weight = (int) $link->get('weight')->value;
+  if ($current_weight !== $weight) {
+    $changes['weight'] = 'weight ' . $current_weight . ' -> ' . $weight;
   }
-  if (!(bool) $link->get('enabled')->value) {
-    $changes[] = 'enabled';
+  $current_parent = (string) $link->get('parent')->value;
+  if ($current_parent !== '') {
+    $changes['parent'] = 'parent "' . $current_parent . '" -> top-level';
   }
 
   if (!$changes) {
-    echo 'OK main menu link "' . $title . '" already matches' . PHP_EOL;
+    echo 'OK main menu link "' . $title . '" -> ' . $path . ': weight ' . $weight . ', top-level' . PHP_EOL;
     return;
   }
 
   if ($is_apply) {
-    $link->set('title', $title);
-    $link->set('link', ['uri' => $expected_uri]);
-    $link->set('enabled', TRUE);
+    if (isset($changes['title'])) {
+      $link->set('title', $title);
+    }
+    if (isset($changes['weight'])) {
+      $link->set('weight', $weight);
+    }
+    if (isset($changes['parent'])) {
+      $link->set('parent', '');
+    }
     $link->save();
-    echo 'UPDATED main menu link "' . $title . '": ' . implode(', ', $changes) . PHP_EOL;
+    echo 'UPDATED main menu link ' . $path . ': ' . implode(', ', $changes) . PHP_EOL;
   }
   else {
-    echo 'WOULD_UPDATE main menu link "' . $title . '": ' . implode(', ', $changes) . PHP_EOL;
+    echo 'WOULD_UPDATE main menu link ' . $path . ': ' . implode(', ', $changes) . PHP_EOL;
   }
+}
+
+function menu_link_system_path(MenuLinkContent $link, string $langcode): string {
+  $uri = menu_link_uri($link);
+
+  if (strpos($uri, 'internal:') === 0) {
+    $path = substr($uri, strlen('internal:'));
+    if (strpos($path, '/') !== 0) {
+      return '';
+    }
+    return \Drupal::service('path_alias.manager')->getPathByAlias($path, $langcode);
+  }
+
+  if (preg_match('/^entity:node\/(\d+)$/', $uri, $matches)) {
+    return '/node/' . $matches[1];
+  }
+
+  return '';
 }
 
 function menu_link_uri(MenuLinkContent $link): string {
