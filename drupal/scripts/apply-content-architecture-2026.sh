@@ -117,6 +117,7 @@ print_plan() {
   section "Content plan"
   cat <<'EOF'
 Pages:
+- /accueil
 - /cours
 - /cours/didgeridoo
 - /cours/guimbarde
@@ -125,6 +126,7 @@ Pages:
 - /stages/didgeridoo
 - /stages/musique-improvisee-meditation
 - /stages/speciaux
+- /association
 - /les-artistes-de-l-asso
 - /services-prestations-artistiques
 
@@ -141,6 +143,8 @@ Main menu links (weight, label -> destination):
 
 Guards:
 - dry-run by default; writes require --apply
+- /accueil and /association are resolved strictly by alias
+- dry-run prints exact current and planned bodies when a body would change
 - no drush config:import
 - no config/sync edits
 - no raw SQL
@@ -164,6 +168,50 @@ $failed = FALSE;
 $body_format = 'full_html';
 
 $pages = [
+  'accueil' => [
+    'title' => 'Accueil',
+    'alias' => '/accueil',
+    'alias_only' => TRUE,
+    'body' => <<<'HTML'
+<section class="unisonges-page-intro">
+  <p>Uni-Songes rassemble des propositions pour apprendre, pratiquer, écouter et partager la musique. Retrouvez ici les cours, les stages, les concerts, les artistes et les activités de l'association.</p>
+  <p class="unisonges-offer-card__cta"><a href="/reservation-cours">Réserver un cours</a></p>
+</section>
+
+<div class="unisonges-card-grid">
+  <article class="unisonges-offer-card">
+    <h2 class="unisonges-offer-card__title">Cours</h2>
+    <p class="unisonges-offer-card__text">Choisir un accompagnement individuel autour du didgeridoo, de la guimbarde, de l'écoute ou de l'improvisation.</p>
+    <p class="unisonges-offer-card__cta"><a href="/cours">Découvrir les cours</a></p>
+  </article>
+  <article class="unisonges-offer-card">
+    <h2 class="unisonges-offer-card__title">Stages</h2>
+    <p class="unisonges-offer-card__text">Pratiquer en groupe lors des rendez-vous et formats collectifs publiés.</p>
+    <p class="unisonges-offer-card__cta"><a href="/stages">Découvrir les stages</a></p>
+  </article>
+  <article class="unisonges-offer-card">
+    <h2 class="unisonges-offer-card__title">Concerts</h2>
+    <p class="unisonges-offer-card__text">Consulter les rendez-vous musicaux proposés par Uni-Songes.</p>
+    <p class="unisonges-offer-card__cta"><a href="/concerts">Voir les concerts</a></p>
+  </article>
+  <article class="unisonges-offer-card">
+    <h2 class="unisonges-offer-card__title">Artistes</h2>
+    <p class="unisonges-offer-card__text">Découvrir les artistes liés à l'association et leurs univers.</p>
+    <p class="unisonges-offer-card__cta"><a href="/les-artistes-de-l-asso">Voir les artistes</a></p>
+  </article>
+  <article class="unisonges-offer-card">
+    <h2 class="unisonges-offer-card__title">Prestations</h2>
+    <p class="unisonges-offer-card__text">Explorer les interventions artistiques, pédagogiques et sonores proposées.</p>
+    <p class="unisonges-offer-card__cta"><a href="/services-prestations-artistiques">Voir les prestations</a></p>
+  </article>
+  <article class="unisonges-offer-card">
+    <h2 class="unisonges-offer-card__title">Association</h2>
+    <p class="unisonges-offer-card__text">Comprendre la mission et les activités portées collectivement par Uni-Songes.</p>
+    <p class="unisonges-offer-card__cta"><a href="/association">Découvrir l'association</a></p>
+  </article>
+</div>
+HTML,
+  ],
   'cours' => [
     'title' => 'Cours',
     'alias' => '/cours',
@@ -358,6 +406,52 @@ HTML,
 </section>
 HTML,
   ],
+  'association' => [
+    'title' => 'L’Association',
+    'alias' => '/association',
+    'alias_only' => TRUE,
+    'body' => <<<'HTML'
+<section class="unisonges-page-intro">
+  <p>L'association Uni-Songes a pour mission de favoriser la pratique, la transmission et la création musicales, ainsi que les rencontres qui les rendent collectives.</p>
+  <p>Ses activités musicales, pédagogiques et collectives se découvrent à travers les cours, les stages, les concerts, les artistes et les prestations.</p>
+</section>
+
+<div class="unisonges-card-grid">
+  <article class="unisonges-offer-card">
+    <h2 class="unisonges-offer-card__title">Cours</h2>
+    <p class="unisonges-offer-card__text">Découvrir les pratiques accompagnées en cours individuel.</p>
+    <p class="unisonges-offer-card__cta"><a href="/cours">Voir les cours</a></p>
+  </article>
+  <article class="unisonges-offer-card">
+    <h2 class="unisonges-offer-card__title">Stages</h2>
+    <p class="unisonges-offer-card__text">Retrouver les temps de pratique collective et les formats publiés.</p>
+    <p class="unisonges-offer-card__cta"><a href="/stages">Voir les stages</a></p>
+  </article>
+  <article class="unisonges-offer-card">
+    <h2 class="unisonges-offer-card__title">Concerts</h2>
+    <p class="unisonges-offer-card__text">Consulter les concerts et les dates publiées.</p>
+    <p class="unisonges-offer-card__cta"><a href="/concerts">Voir les concerts</a></p>
+  </article>
+  <article class="unisonges-offer-card">
+    <h2 class="unisonges-offer-card__title">Artistes de l'association</h2>
+    <p class="unisonges-offer-card__text">Découvrir les artistes présentés par Uni-Songes et leurs univers.</p>
+    <p class="unisonges-offer-card__cta"><a href="/les-artistes-de-l-asso">Voir les artistes</a></p>
+  </article>
+  <article class="unisonges-offer-card">
+    <h2 class="unisonges-offer-card__title">Prestations artistiques</h2>
+    <p class="unisonges-offer-card__text">Explorer les interventions artistiques, pédagogiques et sonores.</p>
+    <p class="unisonges-offer-card__cta"><a href="/services-prestations-artistiques">Voir les prestations</a></p>
+  </article>
+</div>
+
+<section class="unisonges-detail-section">
+  <h2>Projets de l'association</h2>
+  <p>D’Jam et l'Orchestre des Rêveurs sont des projets de l'association. Leurs pages dédiées présentent ces projets séparément.</p>
+  <p><a href="/djam">Découvrir D’Jam</a></p>
+  <p><a href="/orchestre-des-reveurs">Découvrir l'Orchestre des Rêveurs</a></p>
+</section>
+HTML,
+  ],
   'artistes' => [
     'title' => 'Les Artistes de l’asso',
     'alias' => '/les-artistes-de-l-asso',
@@ -476,7 +570,7 @@ if ($failed) {
 section('Content preflight');
 foreach ($pages as $page) {
   try {
-    resolve_page_node($page['title'], $page['alias']);
+    resolve_page_node($page['title'], $page['alias'], $page['alias_only'] ?? FALSE);
     echo 'OK inspected page target ' . $page['alias'] . PHP_EOL;
   }
   catch (Throwable $throwable) {
@@ -492,7 +586,7 @@ if ($failed) {
 section($is_apply ? 'Page apply' : 'Page dry-run');
 foreach ($pages as $page) {
   try {
-    $node = resolve_page_node($page['title'], $page['alias']);
+    $node = resolve_page_node($page['title'], $page['alias'], $page['alias_only'] ?? FALSE);
     if (!$node && $is_apply) {
       $node = Node::create([
         'type' => 'page',
@@ -509,6 +603,7 @@ foreach ($pages as $page) {
     }
     elseif (!$node) {
       echo 'WOULD_CREATE page ' . $page['alias'] . ' title "' . $page['title'] . '"' . PHP_EOL;
+      print_exact_body_change($page['alias'], NULL, $page['body'], $body_format);
     }
 
     if ($node) {
@@ -520,6 +615,9 @@ foreach ($pages as $page) {
         }
         else {
           echo 'WOULD_UPDATE page ' . $page['alias'] . ' node ' . $node->id() . ': ' . implode(', ', $changes) . PHP_EOL;
+          if (in_array('body', $changes, TRUE)) {
+            print_exact_body_change($page['alias'], $node, $page['body'], $body_format);
+          }
         }
       }
       else {
@@ -527,7 +625,7 @@ foreach ($pages as $page) {
       }
     }
 
-    $target_node = $node ?: resolve_page_node($page['title'], $page['alias']);
+    $target_node = $node ?: resolve_page_node($page['title'], $page['alias'], $page['alias_only'] ?? FALSE);
     if ($target_node) {
       ensure_alias($target_node, $page['alias'], $is_apply);
     }
@@ -583,10 +681,14 @@ function check(bool $ok, string $message): void {
   $failed = $failed || !$ok;
 }
 
-function resolve_page_node(string $title, string $alias): ?NodeInterface {
+function resolve_page_node(string $title, string $alias, bool $alias_only = FALSE): ?NodeInterface {
   $alias_node = page_node_by_alias($alias);
   if ($alias_node) {
     return $alias_node;
+  }
+
+  if ($alias_only) {
+    return NULL;
   }
 
   $node_ids = \Drupal::entityQuery('node')
@@ -635,7 +737,21 @@ function alias_entity(string $alias) {
     ->getStorage('path_alias')
     ->loadByProperties(['alias' => $alias]);
 
-  return $aliases ? reset($aliases) : NULL;
+  if (!$aliases) {
+    return NULL;
+  }
+
+  $paths = [];
+  foreach ($aliases as $candidate) {
+    $paths[(string) $candidate->getPath()] = TRUE;
+  }
+  if (count($paths) > 1) {
+    throw new RuntimeException(
+      'Alias ' . $alias . ' points to multiple paths: ' . implode(', ', array_keys($paths)) . '.'
+    );
+  }
+
+  return reset($aliases);
 }
 
 function page_changes(NodeInterface $node, string $title, string $body, string $format): array {
@@ -658,6 +774,39 @@ function page_changes(NodeInterface $node, string $title, string $body, string $
   }
 
   return $changes;
+}
+
+function print_exact_body_change(string $alias, ?NodeInterface $node, string $planned_body, string $planned_format): void {
+  echo 'BODY_CHANGE_EXACT alias=' . $alias;
+  echo $node ? ' node=' . $node->id() . PHP_EOL : ' node=NEW' . PHP_EOL;
+
+  if ($node) {
+    $current_body = $node->hasField('body') && !$node->get('body')->isEmpty()
+      ? (string) $node->get('body')->value
+      : '';
+    $current_format = $node->hasField('body') && !$node->get('body')->isEmpty()
+      ? (string) $node->get('body')->format
+      : '';
+    echo 'CURRENT_FORMAT ' . $current_format . PHP_EOL;
+    print_exact_body_block('CURRENT_BODY', $current_body);
+  }
+  else {
+    echo 'CURRENT_FORMAT <absent>' . PHP_EOL;
+    echo 'CURRENT_BODY <absent>' . PHP_EOL;
+  }
+
+  echo 'PLANNED_FORMAT ' . $planned_format . PHP_EOL;
+  print_exact_body_block('PLANNED_BODY', $planned_body);
+  echo 'END_BODY_CHANGE_EXACT alias=' . $alias . PHP_EOL;
+}
+
+function print_exact_body_block(string $label, string $body): void {
+  echo $label . '_BEGIN bytes=' . strlen($body) . ' sha256=' . hash('sha256', $body) . PHP_EOL;
+  echo $body;
+  if ($body === '' || substr($body, -1) !== "\n") {
+    echo PHP_EOL;
+  }
+  echo $label . '_END' . PHP_EOL;
 }
 
 function update_page_node(NodeInterface $node, string $title, string $body, string $format, array $changes): void {

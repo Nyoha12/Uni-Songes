@@ -1,14 +1,15 @@
 # Architecture de contenu 2026
 
 Ce document décrit la préparation de l'architecture de contenu Uni-Songes 2026
-pour les cours, les stages, les artistes partenaires et les prestations
-artistiques. La mise en place est portée par
+pour l'accueil, l'association, les cours, les stages, les artistes partenaires
+et les prestations artistiques. La mise en place est portée par
 `drupal/scripts/apply-content-architecture-2026.sh`.
 
 ## Carte des pages
 
 | Page | Alias | Rôle |
 | --- | --- | --- |
+| Accueil | `/accueil` | Introduction courte et orientation vers Cours, Stages, Concerts, Artistes, Prestations et Association, avec CTA principal « Réserver un cours » vers `/reservation-cours`. |
 | Cours | `/cours` | Hub avec trois cartes de discipline et un CTA principal « Réserver un cours » vers `/reservation-cours`. |
 | Cours de didgeridoo | `/cours/didgeridoo` | Page détaillée avec cours d'essai à 10 EUR, cours à 25 EUR / heure ou 15 EUR / heure étudiant, CTA principal « Réserver un cours de didgeridoo » et CTA essai séparé vers le tunnel. |
 | Cours de guimbarde | `/cours/guimbarde` | Page dédiée avec tarifs confirmés 25 EUR / heure et 15 EUR / heure étudiant, puis réservation guimbarde dans le tunnel. |
@@ -17,11 +18,23 @@ artistiques. La mise en place est portée par
 | Stages didgeridoo | `/stages/didgeridoo` | Page des stages mensuels débutant et intermédiaire, tarif 20 EUR, réservation via les pages Stage publiées. |
 | Musique improvisée / méditation | `/stages/musique-improvisee-meditation` | Page des stages musique improvisée / méditation, tarif 20 EUR, réservation via les pages Stage publiées. |
 | Stages spéciaux | `/stages/speciaux` | Page des stages gong, guimbarde, éveil musical, etc., publiés via le système existant de pages Stage et billets. |
+| L’Association | `/association` | Mission et activités musicales, pédagogiques et collectives, avec orientation vers les cours, stages, concerts, artistes, prestations et pages dédiées de D’Jam et de l'Orchestre des Rêveurs. |
 | Les Artistes de l'asso | `/les-artistes-de-l-asso` | Page de présentation des artistes partenaires, avec sections à compléter. |
 | Services et prestations artistiques | `/services-prestations-artistiques` | Page des services artistiques, pédagogiques et sonores avec CTA contact. |
 
 ## Conventions éditoriales 2026
 
+- L'accueil reste bref : une introduction, un CTA principal vers le tunnel de
+  réservation des cours et six cartes d'orientation. Il ne répète pas les
+  textes commerciaux détaillés des pages de destination.
+- La page Association décrit la mission et les activités sans ajouter de faits
+  juridiques, de noms d'équipe, de dates ni de statistiques. D’Jam et
+  l'Orchestre des Rêveurs y sont situés comme projets de l'association, tandis
+  que leurs pages dédiées restent les sources de détail.
+- Ces deux corps complètent le shell existant sans modifier le thème, les
+  templates, le CSS, la configuration, les routes publiques ni la définition
+  canonique du menu. Le script conserve sa réconciliation historique des liens
+  de menu déjà documentés ci-dessous.
 - Les pages de cours particuliers ne structurent plus l'offre avec un cadrage
   générique débutant / intermédiaire / avancé. Elles décrivent plutôt ce que le
   cours permet de travailler et renvoient vers le tunnel de réservation.
@@ -34,9 +47,10 @@ artistiques. La mise en place est portée par
   intermédiaire, sans développer longuement le fonctionnement mensuel.
 - Les stages spéciaux ne créent pas d'offre générique : le format, le tarif et
   les billets restent portés par chaque page Stage publiée.
-- Le corps des pages Drupal est la source de vérité pour les contenus Cours et
-  Stages 2026. Les templates de thème ne doivent pas injecter de sections
-  éditoriales hardcodées qui réintroduisent l'ancienne structure.
+- Le corps des pages Drupal est la source de vérité pour les contenus Accueil,
+  Association, Cours et Stages 2026. Les templates de thème ne doivent pas
+  injecter de sections éditoriales hardcodées qui réintroduisent l'ancienne
+  structure.
 
 ## Parcours de réservation des cours
 
@@ -81,7 +95,7 @@ aucun lien et préserve tous les liens non concernés.
 
 ## Contenu créé par le script
 
-Le script crée ou met à jour les dix nœuds Drupal de type `page` listés dans la
+Le script crée ou met à jour les douze nœuds Drupal de type `page` listés dans la
 carte des pages, leurs alias et les liens de l'ordre canonique ci-dessus. Les
 corps de page utilisent les classes CSS contractuelles suivantes pour la PR CSS
 parallèle :
@@ -99,6 +113,20 @@ parallèle :
 Le script ne crée, ne modifie ni ne supprime de produit Commerce, ne crée pas de
 termes de taxonomie, ne lance pas `drush config:import`, ne modifie pas
 `config/sync` et ne supprime aucun contenu.
+
+Pour `/accueil` et `/association`, l'alias est l'identifiant de résolution : si
+un alias existe déjà, le script met à jour le nœud `page` qu'il cible et conserve
+donc son identifiant. Si l'alias est absent, le script prévoit un nouveau nœud au
+lieu d'adopter une autre page portant seulement le même titre. Les dix autres
+pages conservent leur stratégie historique, alias prioritaire puis titre unique.
+Si un même alias pointe vers plusieurs chemins, le préflight bloque l'exécution
+au lieu de sélectionner arbitrairement un nœud.
+
+En dry-run, chaque corps qui différerait est affiché intégralement dans un bloc
+`BODY_CHANGE_EXACT`, avec le format de texte, le nombre d'octets et le SHA-256
+des valeurs actuelle et prévue. Une création affiche le corps prévu et marque la
+valeur actuelle comme absente. Cette sortie permet la revue exacte avant toute
+application ; le mode dry-run n'écrit ni contenu, ni alias, ni menu.
 
 ## Décisions de contenu confirmées
 
@@ -139,6 +167,11 @@ CTA et la cohérence des panneaux de contenu.
 
 ## Checklist visuelle manuelle
 
+- Vérifier `/accueil` : l'introduction reste courte, les six cartes mènent aux
+  bonnes pages et le CTA principal mène à `/reservation-cours`.
+- Vérifier `/association` : mission et activités restent concises, les cinq
+  destinations demandées sont présentes et D’Jam comme l'Orchestre renvoient à
+  leurs pages dédiées.
 - Vérifier `/cours` : les trois cartes restent visibles, le CTA principal
   « Réserver un cours » mène à `/reservation-cours` et les cartes mènent aux
   pages de discipline.
@@ -180,14 +213,14 @@ La page `/concerts` et son comportement existant ne sont pas touchés.
 Dry-run local, sans écriture :
 
 ```bash
-cd ~/Uni-Songes/worktrees/refine-cours-stages-editorial-visual/drupal
+cd ~/Uni-Songes/repo/drupal
 ./scripts/apply-content-architecture-2026.sh --dry-run
 ```
 
 Application locale :
 
 ```bash
-cd ~/Uni-Songes/worktrees/refine-cours-stages-editorial-visual/drupal
+cd ~/Uni-Songes/repo/drupal
 ./scripts/apply-content-architecture-2026.sh --apply
 ```
 
