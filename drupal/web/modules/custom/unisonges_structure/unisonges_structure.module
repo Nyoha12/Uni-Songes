@@ -285,20 +285,22 @@ function unisonges_structure_form_alter(array &$form, FormStateInterface $form_s
  * Builds the front reservation portal state for /reserver.
  */
 function _unisonges_structure_build_reservation_portal_context(): array {
+  $tunnel_url = _unisonges_structure_safe_route_url('unisonges_structure.reservation_course_tunnel', '/reservation-cours');
   $context = [
     'is_anonymous' => TRUE,
     'display_name' => '',
     'remaining' => NULL,
-    'remaining_label' => 'Connectez-vous pour voir vos séances disponibles.',
+    'remaining_label' => 'Connectez-vous pour préparer votre réservation.',
     'expiry_label' => '',
     'status' => 'anonymous',
-    'status_label' => 'Connexion requise pour confirmer une réservation.',
-    'message' => 'Vous pouvez consulter les disponibilités. La validation du créneau demande un compte connecté.',
+    'status_label' => 'Compte requis avant confirmation.',
+    'message' => 'Les disponibilités restent consultables. Le paiement se décide après le choix du cours, du créneau et des détails.',
     'can_book' => FALSE,
-    'login_url' => _unisonges_structure_safe_route_url('user.login', '/user/login', ['destination' => '/reserver']),
-    'register_url' => _unisonges_structure_safe_route_url('user.register', '/user/register', ['destination' => '/reserver']),
+    'login_url' => _unisonges_structure_safe_route_url('user.login', '/user/login', ['destination' => '/reservation-cours']),
+    'register_url' => _unisonges_structure_safe_route_url('user.register', '/user/register', ['destination' => '/reservation-cours']),
+    'tunnel_url' => $tunnel_url,
     'purchase_url' => '/cours',
-    'purchase_label' => 'Acheter une séance ou un pack',
+    'purchase_label' => 'Voir les cours',
   ];
 
   $current_user = \Drupal::currentUser();
@@ -311,7 +313,7 @@ function _unisonges_structure_build_reservation_portal_context(): array {
   if (!$account) {
     $context['status'] = 'error';
     $context['status_label'] = 'Compte introuvable.';
-    $context['message'] = 'Impossible de lire vos droits de cours pour le moment.';
+    $context['message'] = 'Impossible de lire votre compte pour le moment.';
     return $context;
   }
 
@@ -338,8 +340,8 @@ function _unisonges_structure_build_reservation_portal_context(): array {
   }
   else {
     $context['status'] = 'blocked';
-    $context['status_label'] = 'Aucune réservation possible pour le moment.';
-    $context['message'] = $message ?: 'Achetez une séance ou un pack avant de confirmer un créneau.';
+    $context['status_label'] = 'Paiement à choisir avant confirmation.';
+    $context['message'] = $message ?: 'Vous pouvez consulter les créneaux. La confirmation se finalise après les détails et le choix du paiement.';
   }
 
   return $context;
@@ -415,10 +417,10 @@ function _unisonges_structure_format_course_pack_expiry(string $value): string {
   $today = new \DateTimeImmutable('today');
   $label = $date->format('d/m/Y');
   if ($date < $today) {
-    return 'Pack expiré le ' . $label;
+    return 'Validité échue le ' . $label;
   }
 
-  return 'Pack valable jusqu’au ' . $label;
+  return 'Valable jusqu’au ' . $label;
 }
 
 /**
@@ -1042,7 +1044,7 @@ function _unisonges_structure_user_can_book(\Drupal\user\UserInterface $account,
     }
     if ($expiry < $today) {
       $paid_credit_available = FALSE;
-      $paid_credit_blocked_message = 'Votre pack a expiré. Merci d’acheter une nouvelle formule pour réserver.';
+      $paid_credit_blocked_message = 'Votre validité précédente est échue. Choisissez le cours, le créneau, les détails, puis le paiement pour confirmer.';
     }
   }
 
@@ -1050,7 +1052,7 @@ function _unisonges_structure_user_can_book(\Drupal\user\UserInterface $account,
     return TRUE;
   }
 
-  $message = $paid_credit_blocked_message ?: 'Aucune séance disponible. Achetez une séance, un pack, ou choisissez le paiement sur place.';
+  $message = $paid_credit_blocked_message ?: 'Choisissez le cours, le créneau, les détails, puis le paiement pour confirmer la réservation.';
   return FALSE;
 }
 
@@ -1903,11 +1905,24 @@ function _unisonges_structure_count_available_to_pay_course_rights(int $uid): in
 }
 
 function _unisonges_structure_consume_booking_right(\Drupal\user\UserInterface $account, \Drupal\webform\WebformSubmissionInterface $webform_submission): array {
+  $preferred_to_pay_order_id = _unisonges_structure_get_preferred_to_pay_order_id($webform_submission);
+  if ($preferred_to_pay_order_id > 0) {
+    return _unisonges_structure_consume_to_pay_booking_right($account, $webform_submission, $preferred_to_pay_order_id);
+  }
+
   if (_unisonges_structure_user_has_valid_paid_credit($account)) {
     return _unisonges_structure_consume_paid_booking_credit($account);
   }
 
   return _unisonges_structure_consume_to_pay_booking_right($account, $webform_submission);
+}
+
+function _unisonges_structure_get_preferred_to_pay_order_id(\Drupal\webform\WebformSubmissionInterface $webform_submission): int {
+  if (_unisonges_structure_get_submission_element_string($webform_submission, 'unisonges_payment_choice') !== 'pay_on_site') {
+    return 0;
+  }
+
+  return max(0, (int) _unisonges_structure_get_submission_element_string($webform_submission, 'unisonges_pay_on_site_order_id'));
 }
 
 function _unisonges_structure_user_has_valid_paid_credit(\Drupal\user\UserInterface $account): bool {
@@ -1951,7 +1966,7 @@ function _unisonges_structure_consume_paid_booking_credit(\Drupal\user\UserInter
   ];
 }
 
-function _unisonges_structure_consume_to_pay_booking_right(\Drupal\user\UserInterface $account, \Drupal\webform\WebformSubmissionInterface $webform_submission): array {
+function _unisonges_structure_consume_to_pay_booking_right(\Drupal\user\UserInterface $account, \Drupal\webform\WebformSubmissionInterface $webform_submission, int $preferred_order_id = 0): array {
   $uid = (int) $account->id();
   $sid = (int) $webform_submission->id();
   if ($uid <= 0 || $sid <= 0 || !_unisonges_structure_to_pay_rights_table_exists()) {
@@ -1959,11 +1974,15 @@ function _unisonges_structure_consume_to_pay_booking_right(\Drupal\user\UserInte
   }
 
   $table = _unisonges_structure_to_pay_rights_table_name();
-  $row = \Drupal::database()->select($table, 'r')
+  $query = \Drupal::database()->select($table, 'r')
     ->fields('r')
     ->condition('uid', $uid)
     ->condition('status', 'pending_payment')
-    ->condition('remaining_to_pay_credits', 0, '>')
+    ->condition('remaining_to_pay_credits', 0, '>');
+  if ($preferred_order_id > 0) {
+    $query->condition('order_id', $preferred_order_id);
+  }
+  $row = $query
     ->orderBy('created', 'ASC')
     ->orderBy('id', 'ASC')
     ->range(0, 1)
@@ -2107,6 +2126,11 @@ function _unisonges_structure_alter_reservation_to_pay_mail(array &$message): vo
     return;
   }
 
+  if (_unisonges_structure_get_submission_element_string($webform_submission, 'unisonges_payment_choice') === 'pay_on_site'
+    && _unisonges_structure_get_submission_element_string($webform_submission, 'niveau_cours') === '') {
+    _unisonges_structure_remove_empty_course_level_from_mail($message);
+  }
+
   $payment = _unisonges_structure_get_submission_payment_context($webform_submission);
   if ($payment['status'] !== 'to_pay') {
     $owner = $webform_submission->getOwner();
@@ -2130,6 +2154,31 @@ function _unisonges_structure_alter_reservation_to_pay_mail(array &$message): vo
     ? '<p><strong>COURS À PAYER</strong> - réservation issue d’une commande avec paiement sur place non confirmé.</p>'
     : '<p>Paiement : cours à payer sur place.</p>';
   _unisonges_structure_append_mail_body_once($message, $line);
+}
+
+/**
+ * Removes the obsolete empty course-level row from tunnel notification mails.
+ */
+function _unisonges_structure_remove_empty_course_level_from_mail(array &$message): void {
+  if (!isset($message['body']) || !is_array($message['body'])) {
+    return;
+  }
+
+  foreach ($message['body'] as $key => $body_part) {
+    if (!is_string($body_part) && !$body_part instanceof \Stringable) {
+      continue;
+    }
+
+    $body = (string) $body_part;
+    $cleaned = preg_replace('~<li\b[^>]*>\s*Niveau\s*:\s*.*?</li>\s*~isu', '', $body);
+    if (!is_string($cleaned) || $cleaned === $body) {
+      continue;
+    }
+
+    $message['body'][$key] = $body_part instanceof \Drupal\Component\Render\MarkupInterface
+      ? \Drupal\Core\Render\Markup::create($cleaned)
+      : $cleaned;
+  }
 }
 
 function _unisonges_structure_append_mail_body_once(array &$message, string $line): void {
@@ -2734,10 +2783,13 @@ function _unisonges_structure_build_booking_google_description(\Drupal\webform\W
     'payment_source: ' . $payment['source'],
     'telephone: ' . _unisonges_structure_get_submission_element_string($webform_submission, 'telephone'),
     'instrument: ' . _unisonges_structure_get_submission_option_label($webform_submission, 'instrument'),
-    'niveau_cours: ' . _unisonges_structure_get_submission_option_label($webform_submission, 'niveau_cours'),
-    'notes_supplementaires: ' . _unisonges_structure_get_submission_element_string($webform_submission, 'notes_supplementaires'),
-    'didgeridoo_pret: ' . _unisonges_structure_get_submission_option_label($webform_submission, 'didgeridoo_pret'),
   ];
+  $course_level = _unisonges_structure_get_submission_option_label($webform_submission, 'niveau_cours');
+  if ($course_level !== '') {
+    $lines[] = 'niveau_cours: ' . $course_level;
+  }
+  $lines[] = 'notes_supplementaires: ' . _unisonges_structure_get_submission_element_string($webform_submission, 'notes_supplementaires');
+  $lines[] = 'didgeridoo_pret: ' . _unisonges_structure_get_submission_option_label($webform_submission, 'didgeridoo_pret');
   if ($payment['order_id'] > 0) {
     $lines[] = 'commerce_order_id: ' . (string) $payment['order_id'];
   }

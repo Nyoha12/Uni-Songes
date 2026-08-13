@@ -5,3 +5,11 @@ unisonges_structure.google_calendar_settings:
     _title: 'Unisonges Google Calendar sync'
   requirements:
     _permission: 'administer site configuration'
+
+unisonges_structure.reservation_course_tunnel:
+  path: '/reservation-cours'
+  defaults:
+    _form: '\Drupal\unisonges_structure\Form\ReservationFirstCourseTunnelForm'
+    _title: 'Réserver un cours'
+  requirements:
+    _permission: 'access content'

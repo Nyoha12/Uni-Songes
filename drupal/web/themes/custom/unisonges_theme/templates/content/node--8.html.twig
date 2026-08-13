@@ -5,16 +5,19 @@
 <article class="unisonges-node-page reservation-portal">
   {% include '@unisonges_theme/includes/_hero.html.twig' with {
     title: 'Réserver un cours',
-    intro: 'Choisissez un créneau de cours particulier, puis complétez les informations utiles pour préparer la séance.'
+    intro: 'Identifiez-vous, choisissez le cours, le créneau, puis les détails. Le paiement se décide ensuite, en ligne ou sur place.'
   } only %}
 
   <section class="reservation-portal__intro">
-    <p>Les disponibilités sont consultables sans compte. Pour confirmer une réservation, connectez-vous avec un compte disposant d’une séance active.</p>
+    <p>Les disponibilités restent consultables avant confirmation. Le parcours cible suit l’ordre : compte, cours, créneau, détails, paiement, confirmation.</p>
+    <div class="reservation-portal__actions">
+      <a class="btn btn--cta" href="{{ portal.tunnel_url|default('/reservation-cours') }}">Démarrer le parcours guidé</a>
+    </div>
   </section>
 
   <section class="reservation-portal__summary reservation-portal__summary--{{ portal_status }}" aria-labelledby="reservation-access-title" aria-describedby="reservation-access-message">
     <div class="reservation-portal__account">
-      <h2 id="reservation-access-title">Votre accès réservation</h2>
+      <h2 id="reservation-access-title">Votre parcours</h2>
       <p class="reservation-portal__status">{{ portal.status_label }}</p>
       <p id="reservation-access-message">{{ portal.message }}</p>
 
@@ -24,26 +27,28 @@
           <a class="btn" href="{{ portal.register_url }}">Créer un compte</a>
         </div>
       {% else %}
-        <dl class="reservation-portal__rights">
-          <div>
-            <dt>Séances restantes</dt>
-            <dd>{{ portal.remaining_label }}</dd>
-          </div>
-          {% if portal.expiry_label %}
-            <div>
-              <dt>Validité</dt>
-              <dd>{{ portal.expiry_label }}</dd>
-            </div>
-          {% endif %}
-        </dl>
-
         {% if portal.can_book %}
+          <dl class="reservation-portal__rights">
+            <div>
+              <dt>Confirmations immédiates</dt>
+              <dd>{{ portal.remaining_label }}</dd>
+            </div>
+            {% if portal.expiry_label %}
+              <div>
+                <dt>Validité</dt>
+                <dd>{{ portal.expiry_label }}</dd>
+              </div>
+            {% endif %}
+          </dl>
+
           <div class="reservation-portal__actions">
             <a class="btn btn--cta" href="#reservation-form-title">Choisir un créneau</a>
+            <a class="btn" href="{{ portal.tunnel_url|default('/reservation-cours') }}">Parcours guidé</a>
           </div>
         {% else %}
           <div class="reservation-portal__actions">
-            <a class="btn btn--cta" href="{{ portal.purchase_url }}">{{ portal.purchase_label }}</a>
+            <a class="btn btn--cta" href="{{ portal.tunnel_url|default('/reservation-cours') }}">Choisir cours et créneau</a>
+            <a class="btn" href="{{ portal.purchase_url }}">{{ portal.purchase_label }}</a>
           </div>
         {% endif %}
       {% endif %}
@@ -52,9 +57,12 @@
     <div class="reservation-portal__steps" aria-label="Fonctionnement">
       <h2>Comment ça se passe</h2>
       <ol>
-        <li>Consultez les créneaux disponibles.</li>
-        <li>Connectez-vous ou vérifiez vos séances restantes.</li>
-        <li>Choisissez le mode du cours et validez la demande.</li>
+        <li>Compte ou identification.</li>
+        <li>Choix du cours.</li>
+        <li>Choix du créneau.</li>
+        <li>Détails du cours.</li>
+        <li>Paiement en ligne ou sur place.</li>
+        <li>Confirmation.</li>
       </ol>
     </div>
   </section>
@@ -64,7 +72,7 @@
   {% endif %}
 
   <section class="reservation-portal__form" aria-labelledby="reservation-form-title">
-    <h2 id="reservation-form-title">Choisir un créneau</h2>
+    <h2 id="reservation-form-title">Choix du créneau</h2>
     {{ unisonges_reservation_form }}
   </section>
 </article>
