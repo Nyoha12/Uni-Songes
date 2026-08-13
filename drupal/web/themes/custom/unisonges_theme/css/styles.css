@@ -2506,3 +2506,268 @@ form[id*="webform-submission-cours-particuliers-reservation"] .alert a,
   }
 }
 /* /UNISONGES_OFFER_CARD_COMPONENTS */
+
+/* UNISONGES_TYPOGRAPHY_READABILITY_2026 */
+:root{
+  --font-copy-readable: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-heading-readable: system-ui, "Segoe UI", Arial, sans-serif;
+  --font-heading-playful: "tagapagsalaysay_caps_narratBd", system-ui, "Segoe UI", Arial, sans-serif;
+  --font-navigation-readable: system-ui, "Segoe UI", Arial, sans-serif;
+}
+
+body{
+  font-family: var(--font-copy-readable);
+  font-weight: 400;
+  line-height: 1.6;
+  letter-spacing: .008em;
+}
+
+h1,
+h2,
+h3{
+  font-family: var(--font-heading-readable);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: .005em;
+}
+
+.hero-panel h1{
+  max-width: 28ch;
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  line-height: 1.16;
+  overflow-wrap: break-word;
+  text-wrap: balance;
+}
+
+.hero-panel .lead{
+  max-width: 62ch;
+  line-height: 1.65;
+}
+
+.node-body p,
+.node-body ul,
+.node-body ol,
+.unisonges-page-intro p,
+.unisonges-page-intro ul,
+.unisonges-page-intro ol,
+.unisonges-detail-section p,
+.unisonges-detail-section ul,
+.unisonges-detail-section ol,
+.unisonges-offer-card__text{
+  max-width: 68ch;
+}
+
+.unisonges-offer-card__title,
+.unisonges-detail-section h2{
+  font-family: var(--font-heading-readable);
+  font-weight: 700;
+}
+
+/* Keep the display face on selected headings that are currently short. */
+.home-card__title{
+  font-family: var(--font-heading-playful);
+  font-weight: 400;
+  line-height: 1.25;
+  letter-spacing: .02em;
+}
+
+.site-nav,
+.site-nav a,
+.navigation-submenus__toggle,
+.site-account,
+.site-account .btn--cta,
+.site-account .link,
+.mobile-drawer__nav,
+.mobile-drawer__nav a,
+.mobile-drawer__account,
+.mobile-drawer__account .btn--cta,
+.mobile-drawer__account .link,
+.nav-toggle,
+.nav-toggle__label{
+  font-family: var(--font-navigation-readable);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: .01em;
+  text-transform: none;
+}
+
+.site-account .btn--cta,
+.site-account .link{
+  font-size: .92rem;
+}
+
+.site-nav a{
+  padding: .5rem .25rem;
+}
+
+body:not(.compact-nav)
+  .navigation-submenus--desktop
+  .navigation-submenus__item--top
+  > a,
+body:not(.compact-nav)
+  .navigation-submenus--desktop
+  .navigation-submenus__item--top
+  > span,
+body:not(.compact-nav)
+  .navigation-submenus--desktop
+  .navigation-submenus__item--top
+  > .navigation-submenus__parent-row
+  > a,
+body:not(.compact-nav)
+  .navigation-submenus--desktop
+  .navigation-submenus__item--top
+  > .navigation-submenus__parent-row
+  > span{
+  font-size: .92rem;
+  line-height: 1.35;
+  padding: .5rem .25rem;
+  white-space: nowrap;
+}
+
+body:not(.compact-nav)
+  .navigation-submenus--desktop
+  .navigation-submenus__submenu
+  a,
+body:not(.compact-nav)
+  .navigation-submenus--desktop
+  .navigation-submenus__submenu
+  .navigation-submenus__parent-row
+  > span{
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+.mobile-drawer__nav a{
+  display: block;
+  font-size: 1rem;
+  padding: .35rem 0;
+}
+
+body.compact-nav
+  .navigation-submenus--mobile
+  .navigation-submenus__submenu
+  a,
+body.compact-nav
+  .navigation-submenus--mobile
+  .navigation-submenus__submenu
+  .navigation-submenus__parent-row
+  > span{
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+.brand{
+  display: inline-flex;
+  align-items: center;
+  gap: .375rem;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.brand__name,
+.brand__mark{
+  flex: 0 0 auto;
+}
+
+.brand__mark{
+  position: static;
+  inset: auto;
+  display: block;
+  align-self: center;
+  width: 3rem;
+  height: auto;
+  margin: 0;
+  z-index: auto;
+}
+
+.brand__name{
+  font-size: 1.45rem;
+}
+
+body.path-accueil .brand__name{
+  display: inline !important;
+}
+
+.mobile-drawer{
+  box-sizing: border-box;
+}
+
+@media (min-width: 641px){
+  .site-header__inner{
+    gap: .5rem;
+  }
+
+  body:not(.compact-nav)
+    .site-nav
+    .navigation-submenus--desktop
+    .navigation-submenus__list--root{
+    gap: clamp(.25rem, .55vw, .65rem);
+  }
+
+  .site-account{
+    gap: clamp(.45rem, .75vw, .75rem);
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1399px){
+  .site-header__inner{
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  .site-nav a{
+    padding-left: .25rem;
+    padding-right: .25rem;
+  }
+}
+
+@media (max-width: 640px){
+  .site-header__inner{
+    gap: .5rem;
+    padding-left: .75rem !important;
+    padding-right: .75rem !important;
+  }
+
+  .brand{
+    gap: .35rem;
+  }
+
+  .brand__name{
+    font-size: 1.2rem;
+  }
+
+  .brand__mark{
+    width: 2.75rem;
+  }
+}
+
+@media (max-width: 320px){
+  .site-header__inner{
+    gap: .25rem;
+    padding-left: .5rem !important;
+    padding-right: .5rem !important;
+  }
+
+  .brand{
+    gap: .25rem;
+  }
+
+  .brand__name{
+    font-size: 1rem;
+  }
+
+  .brand__mark{
+    width: 2rem;
+  }
+
+  .nav-toggle__label{
+    display: none;
+  }
+}
+/* /UNISONGES_TYPOGRAPHY_READABILITY_2026 */
