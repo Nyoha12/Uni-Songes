@@ -73,8 +73,11 @@ Regles fonctionnelles :
   condition prealable avant le choix du creneau.
 - Un utilisateur connecte doit pouvoir choisir le cours et le creneau avant que
   le site demande le paiement.
-- Les details metier requis par le Webform doivent etre collectes avant le choix
-  du paiement.
+- Les details metier reellement requis par le tunnel doivent etre collectes
+  avant le choix du paiement.
+- Tous les cours particuliers sont ouverts a tous les niveaux. Le niveau ne doit
+  modifier ni le cours, ni le creneau, ni le prix, ni la navigation, ni le
+  paiement, ni la confirmation.
 - Le choix du paiement doit etre explicite apres la selection cours + creneau +
   details.
 - Paiement sur place : reutiliser le modele PR #62 et marquer la reservation
@@ -107,17 +110,22 @@ Regles fonctionnelles :
     et donc sans exiger de droit paye avant le choix du creneau ;
   - ils renseignent ensuite les details du cours a partir des libelles, options,
     patterns et champs conditionnels lus sur le Webform existant :
-    `mode_cours`, `telephone`, `instrument`, `niveau_cours`,
-    `plateforme_visio` si le mode est `visio`, `adresse_domicile` et
-    `code_postal_domicile` si le mode est `domicile`, `didgeridoo_pret` si
-    l'instrument est `didgeridoo`, et `notes_supplementaires` si utile ;
-  - les cles Webform verifiees dans `cours_particuliers_reservation` sont :
+    `mode_cours`, `telephone`, `instrument`, `plateforme_visio` si le mode est
+    `visio`, `adresse_domicile` et `code_postal_domicile` si le mode est
+    `domicile`, `didgeridoo_pret` si l'instrument est `didgeridoo`, et
+    `notes_supplementaires` si utile ;
+  - l'etape indique que les cours particuliers sont ouverts a tous les niveaux
+    et ne rend aucun selecteur de niveau ;
+  - les cles d'options utilisees par le tunnel dans
+    `cours_particuliers_reservation` sont :
     `mode_cours=visio|studio|domicile`, `instrument=guimbarde|didgeridoo`,
     `plateforme_visio=zoom|google_meet|skype|whatsapp|autre`,
-    `didgeridoo_pret=oui|non` et
-    `niveau_cours=debutant|intermediaire|avance`; `adresse_domicile` est un
-    textarea conditionnel au mode `domicile`, et `code_postal_domicile` est
-    conditionnel au mode `domicile` avec le pattern `^\d{5}$` ;
+    `didgeridoo_pret=oui|non`; `adresse_domicile` est un textarea conditionnel
+    au mode `domicile`, et `code_postal_domicile` est conditionnel au mode
+    `domicile` avec le pattern `^\d{5}$` ;
+  - le Webform historique conserve `niveau_cours` avec les anciennes options
+    `debutant|intermediaire|avance` pour `/reserver`, sans que cette cle soit
+    rendue, validee ou alimentee par le nouveau tunnel ;
   - l'etape suivante presente explicitement `Payer en ligne` et
     `Payer sur place`.
 - Pour `Payer en ligne`, le tunnel redirige seulement apres selection cours +
@@ -128,8 +136,10 @@ Regles fonctionnelles :
   submission Webform, puis affiche une confirmation seulement si la reservation
   est marquee `COURS À PAYER`.
 - La submission Webform n'est plus creee avec seulement `reservation` et des
-  marqueurs internes : les champs metier requis et conditionnels du parcours
-  choisi sont presents et valides avant creation.
+  marqueurs internes : les champs metier reellement requis et conditionnels du
+  parcours choisi sont presents et valides avant creation. `niveau_cours` est
+  volontairement absent, sans valeur artificielle `debutant`, `intermediaire`
+  ou `avance`.
 - Aucun changement `config/sync`, Composer, DDEV, script de deploiement ou prix
   Commerce n'est ajoute.
 - Aucun appel Google reel n'est ajoute.
@@ -140,8 +150,8 @@ Regles fonctionnelles :
 - Parcours paiement sur place :
   - choix du cours ;
   - choix du creneau sans exigence de credit/paiement prealable ;
-  - collecte et validation serveur des details Webform obligatoires et
-    conditionnels ;
+  - collecte et validation serveur des details metier obligatoires et
+    conditionnels, sans collecte de niveau ;
   - revalidation du format, de la capacite et des conflits juste avant la
     confirmation ;
   - creation d'une commande Commerce manuelle non payee ;
@@ -248,16 +258,60 @@ restent dans le private tempstore, les saisies restent dans FormState lors d'une
 erreur de validation, et les anciens inputs soumis ne peuvent pas ecraser les
 `#default_value` lors du retour a une etape precedente.
 
+## Regle « tous niveaux » et compatibilite Webform
+
+Le nouveau tunnel ne contient plus `niveau_cours` dans ses champs de details,
+ses champs requis, ses listes d'options, sa normalisation, sa validation de
+completude ou les donnees envoyees a la submission. Aucune valeur de niveau
+fictive n'est creee. Au chargement et avant chaque rebuild, une ancienne valeur
+`niveau_cours` est supprimee des valeurs FormState, de l'input brut, du stockage
+transitoire `course_details` et du private tempstore. Ce nettoyage cible ne
+modifie ni le cours ni le creneau memorises.
+
+Le Webform historique de `/reserver` conserve son champ `niveau_cours` requis et
+ses trois options dans la configuration existante. Le tunnel cree toutefois ses
+submissions directement par l'API Entity Webform : la contrainte `#required` du
+formulaire Webform n'est pas rejouee lors de ce `create()->save()`, et une
+submission sans cette cle est acceptee. Les consommateurs du nouveau tunnel
+tolerent cette absence : la ligne de niveau est omise de la description Google
+dry-run, et la ligne HTML historique vide est retiree des mails des submissions
+marquees `pay_on_site`. Les submissions historiques qui possedent un niveau et
+le flux `/reserver` ne sont pas modifies.
+
+Le niveau n'intervient dans aucun choix de produit, calcul de disponibilite,
+prix, navigation, paiement ou confirmation. L'audit du formulaire a aussi
+confirme qu'il n'existait aucune branche « niveau incompatible » vers le
+creneau. Le seul handler qui ramene l'etape details au creneau est
+`submitBackToSlot`, associe au bouton « Modifier le creneau ». Ce bouton etait le
+premier submit dans l'ordre du formulaire : une soumission implicite au clavier
+pouvait donc le choisir comme action par defaut. L'action primaire « Choisir le
+paiement » est maintenant rendue en premier ; revenir au creneau reste une
+action explicite.
+
 Le code de `webform_booking` a ete inspecte dans le projet DDEV principal sans
 le modifier. PHP 8.3 dans DDEV a valide la syntaxe du formulaire. Une sonde a
 charge la classe modifiee, l'a serialisee puis deserialisee, et a confirme que
 les cinq proprietes retrouvent exactement les services du conteneur. La meme
-sonde a confirme les cinq listes d'options ci-dessus, l'erreur telephone seule,
-la reussite apres correction du telephone, Studio + Guimbarde sans champ
+sonde a confirme les options Webform du tunnel, l'erreur telephone seule, la
+reussite apres correction du telephone, Studio + Guimbarde sans champ
 conditionnel, Domicile avec adresse et code postal requis, et Didgeridoo avec
-le choix de pret requis. Cette sonde ne construit aucune commande ni submission
-et n'appelle aucun service Google. Aucun test navigateur de la navigation
-complete et de ses rebuilds n'a ete execute dans cette session.
+le choix de pret requis. Une seconde sonde a confirme l'absence du champ dans le
+rendu details, la purge d'un ancien niveau dans FormState, input brut et private
+tempstore, puis le passage direct de Studio + Guimbarde et Visio + Didgeridoo a
+l'etape paiement sans perdre le cours ou le creneau.
+
+Une confirmation paiement sur place locale a ensuite ete executee sous
+transaction externe avec un creneau disponible calcule dynamiquement. Dans la
+transaction, la submission Webform sauvegardee ne contenait ni cle ni ligne
+`niveau_cours`, conservait le produit et le creneau exacts, et la reservation
+avait le contexte `to_pay` / `COURS À PAYER`. La queue Google dry-run et les deux
+mails rendus omettaient le niveau. Le recu Commerce et les handlers mail Webform
+etaient desactives uniquement en memoire ; la transaction a ete annulee et une
+verification dans un second processus a confirme l'absence de submission,
+commande, ligne de commande, droit ou entree de queue residuelle. Aucun mail ni
+appel Google reel n'a ete produit. Les auto-increments peuvent avoir avance
+malgre le rollback. Aucun test navigateur de la navigation complete, du clic ou
+de la soumission par la touche Entree n'a ete execute dans cette session.
 
 ## Ce qui n'est pas encore complet
 

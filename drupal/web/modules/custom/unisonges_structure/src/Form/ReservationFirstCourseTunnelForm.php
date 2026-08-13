@@ -22,6 +22,8 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
 
   private const TEMPSTORE_KEY = 'course_reservation_first_tunnel';
 
+  private const LEGACY_LEVEL_FIELD = 'niveau_cours';
+
   private const COURSE_BUNDLES = [
     'cours_essai',
     'cours_deb_inter',
@@ -36,7 +38,6 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     'telephone',
     'instrument',
     'didgeridoo_pret',
-    'niveau_cours',
     'notes_supplementaires',
   ];
 
@@ -44,7 +45,6 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     'mode_cours',
     'telephone',
     'instrument',
-    'niveau_cours',
   ];
 
   private const OPTION_DETAIL_FIELDS = [
@@ -52,7 +52,6 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     'plateforme_visio',
     'instrument',
     'didgeridoo_pret',
-    'niveau_cours',
   ];
 
   /**
@@ -122,6 +121,7 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state): array {
+    $this->discardLegacyLevelFormState($form_state);
     $stored = $this->getStoredSelection();
     $stored = $this->ensureStoredCourseIsAvailable($stored, $form_state);
     $step = $this->resolveStep($form_state, $stored);
@@ -357,6 +357,9 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       'title' => [
         '#markup' => '<h3>' . $this->t('3. Détails du cours') . '</h3>',
       ],
+      'all_levels' => [
+        '#markup' => '<p class="reservation-first-course__note">' . $this->t('Les cours particuliers sont ouverts à tous les niveaux.') . '</p>',
+      ],
       'mode_cours' => $this->buildDetailElement('mode_cours', $details),
       'plateforme_visio' => $this->buildDetailElement('plateforme_visio', $details),
       'adresse_domicile' => $this->buildDetailElement('adresse_domicile', $details),
@@ -364,24 +367,23 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       'telephone' => $this->buildDetailElement('telephone', $details),
       'instrument' => $this->buildDetailElement('instrument', $details),
       'didgeridoo_pret' => $this->buildDetailElement('didgeridoo_pret', $details),
-      'niveau_cours' => $this->buildDetailElement('niveau_cours', $details),
       'notes_supplementaires' => $this->buildDetailElement('notes_supplementaires', $details),
     ];
 
     $form['actions'] = [
       '#type' => 'actions',
-      'previous' => [
-        '#type' => 'submit',
-        '#value' => $this->t('Modifier le créneau'),
-        '#submit' => ['::submitBackToSlot'],
-        '#limit_validation_errors' => [],
-      ],
       'next' => [
         '#type' => 'submit',
         '#value' => $this->t('Choisir le paiement'),
         '#button_type' => 'primary',
         '#validate' => ['::validateDetailsStep'],
         '#submit' => ['::submitDetailsStep'],
+      ],
+      'previous' => [
+        '#type' => 'submit',
+        '#value' => $this->t('Modifier le créneau'),
+        '#submit' => ['::submitBackToSlot'],
+        '#limit_validation_errors' => [],
       ],
     ];
   }
@@ -788,7 +790,6 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       'telephone' => 'Téléphone',
       'instrument' => 'Instrument',
       'didgeridoo_pret' => 'Le professeur doit-il fournir un didgeridoo ?',
-      'niveau_cours' => 'Niveau du cours',
       'notes_supplementaires' => 'Notes supplémentaires',
     ];
 
@@ -800,6 +801,7 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
   }
 
   private function normalizeDetailsValues(array $values): array {
+    unset($values[self::LEGACY_LEVEL_FIELD]);
     $details = [];
     foreach (self::DETAIL_FIELDS as $key) {
       $value = $values[$key] ?? '';
@@ -1326,12 +1328,36 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
 
   private function getStoredSelection(): array {
     try {
-      $stored = $this->tempStoreFactory->get('unisonges_structure')->get(self::TEMPSTORE_KEY);
-      return is_array($stored) ? $stored : [];
+      $temp_store = $this->tempStoreFactory->get('unisonges_structure');
+      $stored = $temp_store->get(self::TEMPSTORE_KEY);
     }
     catch (\Throwable $e) {
       return [];
     }
+
+    if (!is_array($stored)) {
+      return [];
+    }
+
+    $had_legacy_level = array_key_exists(self::LEGACY_LEVEL_FIELD, $stored);
+    unset($stored[self::LEGACY_LEVEL_FIELD]);
+    if (is_array($stored['details'] ?? NULL) && array_key_exists(self::LEGACY_LEVEL_FIELD, $stored['details'])) {
+      unset($stored['details'][self::LEGACY_LEVEL_FIELD]);
+      $had_legacy_level = TRUE;
+    }
+
+    if ($had_legacy_level) {
+      try {
+        $temp_store->set(self::TEMPSTORE_KEY, $stored);
+      }
+      catch (\Throwable $e) {
+        $this->logger('unisonges_structure')->error('Unable to remove the legacy course level from reservation tunnel tempstore: @message', [
+          '@message' => $e->getMessage(),
+        ]);
+      }
+    }
+
+    return $stored;
   }
 
   private function setStoredSelection(array $selection): void {
@@ -1345,7 +1371,7 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
 
   private function prepareStepRebuild(FormStateInterface $form_state, string $step): void {
     $keys = array_merge(
-      ['course', 'reservation', 'payment_choice', 'op', '_triggering_element_name', '_triggering_element_value'],
+      ['course', 'reservation', 'payment_choice', self::LEGACY_LEVEL_FIELD, 'op', '_triggering_element_name', '_triggering_element_value'],
       self::DETAIL_FIELDS
     );
 
@@ -1361,6 +1387,25 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     $form_state->setStorage($storage);
     $form_state->set('step', $step);
     $form_state->setRebuild(TRUE);
+  }
+
+  private function discardLegacyLevelFormState(FormStateInterface $form_state): void {
+    $form_state->unsetValue(self::LEGACY_LEVEL_FIELD);
+
+    $user_input = $form_state->getUserInput();
+    unset($user_input[self::LEGACY_LEVEL_FIELD]);
+    $form_state->setUserInput($user_input);
+
+    $storage = $form_state->getStorage();
+    $storage_changed = array_key_exists(self::LEGACY_LEVEL_FIELD, $storage);
+    unset($storage[self::LEGACY_LEVEL_FIELD]);
+    if (is_array($storage['course_details'] ?? NULL)) {
+      $storage_changed = $storage_changed || array_key_exists(self::LEGACY_LEVEL_FIELD, $storage['course_details']);
+      unset($storage['course_details'][self::LEGACY_LEVEL_FIELD]);
+    }
+    if ($storage_changed) {
+      $form_state->setStorage($storage);
+    }
   }
 
   public function submitBackToCourse(array &$form, FormStateInterface $form_state): void {
