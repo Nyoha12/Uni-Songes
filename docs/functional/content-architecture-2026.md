@@ -44,25 +44,29 @@ artistiques. La mise en place est portée par
 Les titres de pages restent ceux de la carte ci-dessus. Le menu principal
 utilise des libellés plus courts pour éviter la surcharge visuelle.
 
-Le script crée ou met à jour uniquement ces liens 2026 du menu principal :
+L'ordre canonique est le suivant :
 
-- `Artistes` -> `/les-artistes-de-l-asso`
-- `Prestations` -> `/services-prestations-artistiques`
+| Poids | Libellé | Destination |
+| ---: | --- | --- |
+| 0 | Cours | `/cours` |
+| 10 | Stages | `/stages` |
+| 20 | Concerts | `/concerts` |
+| 30 | Association | `/association` |
+| 40 | Artistes | `/les-artistes-de-l-asso` |
+| 50 | Prestations | `/services-prestations-artistiques` |
+| 60 | D’Jam | `/djam` |
+| 70 | Orchestre | `/orchestre-des-reveurs` |
+| 80 | Contact | `/contact` |
 
-Il peut aussi compacter les libellés de liens existants, sans modifier leur
-destination :
-
-- `Concerts` pour un lien existant vers `/concerts` ou `/concerts-dates`
-- `Orchestre` pour un lien existant vers `/orchestre-des-reveurs`
-
-Il ne réordonne pas le menu principal, ne supprime aucun lien existant et ne
-crée pas de nouveau lien pour les pages Concerts ou Orchestre si aucun lien
-correspondant n'existe déjà.
+Le script retrouve ces liens par destination, impose leur libellé et leur poids
+et les maintient au premier niveau. Il crée uniquement une destination absente,
+refuse les correspondances ambiguës pour ne pas créer de doublon, ne supprime
+aucun lien et préserve tous les liens non concernés.
 
 ## Contenu créé par le script
 
 Le script crée ou met à jour les dix nœuds Drupal de type `page` listés dans la
-carte des pages, leurs alias et les deux liens de menu 2026 ci-dessus. Les
+carte des pages, leurs alias et les liens de l'ordre canonique ci-dessus. Les
 corps de page utilisent les classes CSS contractuelles suivantes pour la PR CSS
 parallèle :
 
@@ -143,7 +147,6 @@ CTA et la cohérence des panneaux de contenu.
   ligne sont souhaitées pour la guimbarde ou méditation / improvisation.
 - Compléter les biographies, photos, liens et prestations des artistes.
 - Finaliser les textes commerciaux et les contraintes techniques des prestations.
-- Ajuster les poids du menu manuellement si un ordre précis est voulu.
 
 ## Préservation des hubs existants
 
