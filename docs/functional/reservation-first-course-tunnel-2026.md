@@ -103,13 +103,21 @@ Regles fonctionnelles :
     reservations sans droit rattache.
 - Ajout du route/form `/reservation-cours` :
   - les anonymes voient les actions connexion/creation de compte avec
-    `destination=/reservation-cours` ;
-  - les utilisateurs connectes choisissent d'abord le cours ;
-  - le selecteur ne liste que les produits Commerce publies et accessibles de
-    types `cours_essai` et `cours_deb_inter`, dont les offres actuelles
-    didgeridoo, guimbarde et meditation / improvisation ; les packs et
-    `cours_avance` sont exclus, et aucune option bundle de repli n'est inventee
-    si la liste est vide ;
+    `destination=/reservation-cours`, en conservant un deep-link discipline
+    valide ;
+  - les utilisateurs connectes choisissent d'abord une des quatre disciplines :
+    cours d'essai, didgeridoo, guimbarde ou meditation / improvisation ;
+  - le cours d'essai affiche son tarif unique de 10 EUR ; les trois autres
+    disciplines affichent ensuite seulement le tarif normal a 25 EUR ou le
+    tarif etudiant a 15 EUR ;
+  - les produits Commerce publies et accessibles sont resolus par leurs SKU
+    stables, sans identifiant numerique code en dur ; les packs, `cours_avance`,
+    les SKU inconnus et les offres incompletes sont exclus ;
+  - un fallback strict accepte seulement les deux SKU `LOCAL-FIXTURE-*` de cours
+    dans DDEV (`IS_DDEV_PROJECT=true`) et sans aucun SKU de production reconnu ;
+  - les deep-links `?discipline=essai`, `didgeridoo`, `guimbarde` et
+    `meditation-improvisation` preselectionnent la discipline sans sauter un
+    tarif requis ; toute autre valeur est ignoree ;
   - ils choisissent ensuite le creneau via l'element `webform_booking`
     configure sur le Webform existant ;
   - cette validation de creneau verifie le format, la capacite et les conflits
@@ -299,12 +307,13 @@ le flux `/reserver` ne sont pas modifies.
 Le niveau n'intervient dans aucun choix de produit, calcul de disponibilite,
 prix, navigation, paiement ou confirmation. L'audit du formulaire a aussi
 confirme qu'il n'existait aucune branche « niveau incompatible » vers le
-creneau. Le seul handler qui ramene l'etape details au creneau est
-`submitBackToSlot`, associe au bouton « Modifier le creneau ». Ce bouton etait le
-premier submit dans l'ordre du formulaire : une soumission implicite au clavier
-pouvait donc le choisir comme action par defaut. L'action primaire « Choisir le
-paiement » est maintenant rendue en premier ; revenir au creneau reste une
-action explicite.
+creneau. Dans chaque etape, le bouton primaire suivant est maintenant le premier
+submit dans le DOM : « Continuer vers les créneaux », « Continuer vers les
+détails », « Continuer vers le paiement » ou « Confirmer la réservation ». Une
+soumission implicite avec Entree prend donc toujours la direction suivante. Les
+retours « Retour au cours », « Retour au créneau » et « Retour aux détails »
+restent explicites ; la bibliotheque CSS du module les place visuellement a
+gauche et les actions primaires a droite.
 
 ## Nettoyage editorial de la confirmation
 
@@ -331,15 +340,61 @@ tunnel et revient au choix du cours. Le lien de compte utilise la route Drupal
 existante `user.page`. Aucun identifiant de commande, droit, statut machine ou
 nouvelle action de choix de creneau n'est expose sur la confirmation.
 
-Les titres Commerce restent inchanges dans les produits, commandes, submissions
-et donnees d'audit. Un formateur d'affichage strict retire seulement le prefixe
-exact `[Local Fixture] ` dans le tunnel et traduit les deux libelles fixtures
-connus : le cours debutant/intermediaire devient « Cours particulier — tous
-niveaux » et le cours essai devient « Cours d’essai ». Tout titre de production
-sans ce prefixe, notamment didgeridoo, guimbarde, méditation / improvisation et
-les variantes tarifaires, est conserve tel quel. Le creneau est affiche sous la
-forme `14/08/2026 à 15:00`, sans modifier la valeur canonique stockee
-`YYYY-MM-DD HH:MM|N`.
+Les titres et prix Commerce restent inchanges dans les produits, commandes,
+submissions et donnees d'audit. Le tunnel presente separement un libelle client
+derive de la discipline et du tarif valides, tandis que le produit et la
+variation restent resolus par leur SKU au moment de la commande. Le creneau est
+affiche sous la forme `14/08/2026 à 15:00`, sans modifier la valeur canonique
+stockee `YYYY-MM-DD HH:MM|N`.
+
+## Simplification progressive du choix de cours
+
+La premiere etape ne rend plus les sept produits Commerce simultanement. Elle
+rend quatre radios discipline sous forme de choix accessibles. Le groupe tarif
+est pilote par `#states` pour les trois disciplines concernees, avec validation
+serveur identique sans JavaScript. Le cours d'essai n'a aucun choix tarifaire a
+faire et affiche seulement « Tarif unique — 10 EUR ».
+
+La resolution utilise exclusivement les SKU suivants :
+
+- `COURS-ESSAI-10` ;
+- `COURS-DIDGERIDOO-1H-25` et
+  `COURS-DIDGERIDOO-1H-ETUDIANT-15` ;
+- `COURS-GUIMBARDE-1H-25` et `COURS-GUIMBARDE-1H-ETUDIANT-15` ;
+- `COURS-MEDITATION-IMPRO-1H-25` et
+  `COURS-MEDITATION-IMPRO-1H-ETUDIANT-15`.
+
+Chaque variation et son produit parent doivent etre publies, accessibles et du
+bundle attendu. Une discipline hors essai n'est affichee que si ses deux tarifs
+sont resolvables. La valeur temporaire `sku:<SKU>` remplace l'ancienne valeur
+`product:<id>` ; la commande paiement sur place recupere toujours l'entite
+Commerce reelle avant de creer la ligne de commande. Le fallback local est
+ferme aux SKU `LOCAL-FIXTURE-COURS-ESSAI` et
+`LOCAL-FIXTURE-COURS-DEB-INTER`, uniquement quand aucun SKU production reconnu
+n'est present et que DDEV expose `IS_DDEV_PROJECT=true`. Les fixtures avance et
+pack ne peuvent pas entrer dans la liste. Leurs prix techniques 20/40 EUR ne
+sont pas des donnees metier : ce fallback valide la resolution et le parcours
+local, pas les montants de commande. Les montants publics 10/25/15 restent
+portes par les SKU de production documentes, sans modifier les fixtures.
+
+Au premier chargement apres mise a jour, une selection temporaire de la version
+precedente au format `product:<id>` est migree seulement si le produit resolve
+exactement un SKU autorise. Discipline, tarif et libelles sont alors rehydrates
+sans perdre le creneau, les details ou l'etape. Toute selection ambigue ou
+obsolete suit le reset controle existant. Aucun identifiant numerique n'est
+code en dur : l'identifiant transitoire sert uniquement a charger l'entite puis
+le SKU redevient la cle stable.
+
+La feuille `unisonges_structure/reservation-first-tunnel` est attachee seulement
+au formulaire `/reservation-cours`. Elle habille les radios en petits choix
+lisibles et fixe l'ordre visuel gauche/droite des actions sans modifier
+`styles.css` du theme.
+
+## Validations historiques du tunnel initial
+
+Les sondes ci-dessous ont valide la version initiale avant cette simplification.
+Elles restent utiles pour le backend et les protections conservees, mais ne
+decrivent pas le nouveau selecteur progressif.
 
 Une sonde du rendu Drupal dans DDEV a confirme que le formulaire actif ne
 contient plus le titre duplique, que la confirmation n'affiche ni introduction
@@ -381,7 +436,7 @@ consomme `COURS À PAYER`, ainsi que la queue Google dry-run `pending_create`
 avec `payment_status=to_pay` et l'absence de `niveau_cours`. Ce test a aussi mis
 en evidence qu'un produit fixture de type `cours_avance` restait selectable ; le
 filtre de cours a donc ete resserre aux deux types actuels. Aucun test navigateur
-de la soumission implicite par la touche Entree n'a ete execute par Codex.
+de la soumission implicite par la touche Entree n'avait alors ete execute.
 
 Une sonde DDEV chargeant la classe exacte modifiee a ensuite confirme que le
 selecteur retourne les produits publies fixtures `cours_essai` et
@@ -395,17 +450,33 @@ rollback a restaure les quatre produits fixtures publies et le tempstore de
 test ; le tempstore du compte utilise pour le test navigateur n'a pas ete
 modifie.
 
+## Validations DDEV de la selection progressive
+
+Le fichier exact de ce worktree a ete charge dans le Drupal DDEV local sans le
+copier dans le depot principal. Trois sondes ont reussi 205 assertions :
+
+- 118 assertions sur les quatre disciplines, le tarif conditionnel, les SKU
+  fixtures controles, les deep-links valides/invalides, les migrations et
+  protections du tempstore, les retours et les libelles backend/client separes ;
+- 23 assertions avec de vrais POST Form API non programmes et sans champ `op`,
+  confirmant que le core choisit les quatre actions primaires suivantes et
+  jamais un retour ; il s'agit d'une soumission implicite Form API, pas d'une
+  frappe physique dans un navigateur ;
+- 64 assertions sur le paiement sur place sous transaction annulee : commande
+  et variation fixture attendues, droit consomme `COURS À PAYER`, submission,
+  queue Google dry-run `pending_create`, puis compteurs, auto-increments,
+  tempstore et donnees restaures.
+
+Google est reste desactive, les handlers de mail et le recu Commerce ont ete
+neutralises seulement en memoire, et aucun appel externe n'a ete effectue.
+
 ## Ce qui n'est pas encore complet
 
 - Le paiement en ligne ne rattache pas encore le creneau au panier ou a la
   commande Commerce.
-- Le parcours paiement sur place a ete teste en navigateur pour sa persistance,
-  mais la PR reste draft pendant les derniers controles fonctionnels du tunnel.
 
 ## Prochaine PR requise
 
-- Completer les controles navigateur des retours entre etapes, des erreurs de
-  validation et de la soumission implicite par la touche Entree.
 - Ajouter le handoff paiement en ligne : creer le panier/commande Commerce avec
   le contexte creneau, rediriger checkout, puis finaliser la Webform submission
   sans redemander le creneau.

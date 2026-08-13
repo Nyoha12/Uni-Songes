@@ -1,0 +1,5 @@
+reservation-first-tunnel:
+  version: 1.x
+  css:
+    component:
+      css/reservation-first-tunnel.css: {}
