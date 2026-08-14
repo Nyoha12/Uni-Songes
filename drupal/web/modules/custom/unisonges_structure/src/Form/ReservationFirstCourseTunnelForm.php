@@ -110,7 +110,6 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
   private const ALWAYS_REQUIRED_DETAIL_FIELDS = [
     'mode_cours',
     'telephone',
-    'instrument',
   ];
 
   private const OPTION_DETAIL_FIELDS = [
@@ -535,6 +534,7 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     }
 
     $details = is_array($stored['details'] ?? NULL) ? $stored['details'] : [];
+    $instrument = $this->getInstrumentForDiscipline((string) ($stored['discipline'] ?? ''));
     $form['summary'] = $this->buildSummary($stored);
     $form['step'] = [
       '#type' => 'container',
@@ -552,10 +552,13 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       'adresse_domicile' => $this->buildDetailElement('adresse_domicile', $details),
       'code_postal_domicile' => $this->buildDetailElement('code_postal_domicile', $details),
       'telephone' => $this->buildDetailElement('telephone', $details),
-      'instrument' => $this->buildDetailElement('instrument', $details),
-      'didgeridoo_pret' => $this->buildDetailElement('didgeridoo_pret', $details),
-      'notes_supplementaires' => $this->buildDetailElement('notes_supplementaires', $details),
     ];
+    if ($instrument === 'didgeridoo') {
+      $form['step']['didgeridoo_pret'] = $this->buildDetailElement('didgeridoo_pret', $details);
+      unset($form['step']['didgeridoo_pret']['#states']);
+      $form['step']['didgeridoo_pret']['#required'] = TRUE;
+    }
+    $form['step']['notes_supplementaires'] = $this->buildDetailElement('notes_supplementaires', $details);
 
     $form['actions'] = [
       '#type' => 'actions',
@@ -581,7 +584,11 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
   }
 
   public function validateDetailsStep(array &$form, FormStateInterface $form_state): void {
-    $details = $this->normalizeDetailsValues($form_state->getValues());
+    $stored = $this->getStoredSelection();
+    $details = $this->normalizeDetailsValues(
+      $form_state->getValues(),
+      (string) ($stored['discipline'] ?? '')
+    );
     $errors = $this->validateDetailsValues($details);
     foreach ($errors as $key => $message) {
       $form_state->setErrorByName($key, $message);
@@ -807,7 +814,10 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       if ($mode !== '') {
         $rows['mode'] = $this->buildSummaryRow($this->t('Mode'), $mode);
       }
-      $instrument = $this->confirmationDetailLabel('instrument', (string) ($details['instrument'] ?? ''));
+      $instrument = $this->confirmationDetailLabel(
+        'instrument',
+        $this->getInstrumentForDiscipline((string) ($stored['discipline'] ?? ''))
+      );
       if ($instrument !== '') {
         $rows['instrument'] = $this->buildSummaryRow($this->t('Instrument'), $instrument);
       }
@@ -1094,7 +1104,7 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     return in_array($key, ['plateforme_visio', 'adresse_domicile', 'code_postal_domicile', 'didgeridoo_pret'], TRUE);
   }
 
-  private function normalizeDetailsValues(array $values): array {
+  private function normalizeDetailsValues(array $values, string $discipline): array {
     unset($values[self::LEGACY_LEVEL_FIELD]);
     $details = [];
     foreach (self::DETAIL_FIELDS as $key) {
@@ -1103,6 +1113,17 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
         $value = implode(', ', array_filter(array_map('strval', $value), 'strlen'));
       }
       $details[$key] = trim((string) $value);
+    }
+
+    $instrument = $this->getInstrumentForDiscipline($discipline);
+    if ($instrument === '') {
+      unset($details['instrument']);
+    }
+    else {
+      $details['instrument'] = $instrument;
+    }
+    if ($instrument !== 'didgeridoo') {
+      unset($details['didgeridoo_pret']);
     }
 
     return $details;
@@ -1179,6 +1200,9 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
 
   private function requiredDetailFields(array $details): array {
     $required = self::ALWAYS_REQUIRED_DETAIL_FIELDS;
+    if (($details['instrument'] ?? '') !== '') {
+      $required[] = 'instrument';
+    }
     if (($details['mode_cours'] ?? '') === 'visio') {
       $required[] = 'plateforme_visio';
     }
@@ -1228,7 +1252,10 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
   }
 
   private function validateStoredDetails(array $stored): array {
-    $details = $this->normalizeDetailsValues(is_array($stored['details'] ?? NULL) ? $stored['details'] : []);
+    $details = $this->normalizeDetailsValues(
+      is_array($stored['details'] ?? NULL) ? $stored['details'] : [],
+      (string) ($stored['discipline'] ?? '')
+    );
     $errors = $this->validateDetailsValues($details);
     if ($errors) {
       throw new \RuntimeException('Stored course details are missing or invalid: ' . implode(', ', array_keys($errors)));
@@ -1243,6 +1270,9 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       $data[$key] = $details[$key];
     }
 
+    if (($details['instrument'] ?? '') !== '') {
+      $data['instrument'] = $details['instrument'];
+    }
     if (($details['mode_cours'] ?? '') === 'visio') {
       $data['plateforme_visio'] = $details['plateforme_visio'];
     }
@@ -1258,6 +1288,17 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
     }
 
     return $data;
+  }
+
+  private function getInstrumentForDiscipline(string $discipline): string {
+    if (in_array($discipline, ['essai', 'didgeridoo'], TRUE)) {
+      return 'didgeridoo';
+    }
+    if ($discipline === 'guimbarde') {
+      return 'guimbarde';
+    }
+
+    return '';
   }
 
   private function getCourseSelections(?bool &$catalog_loaded = NULL): array {
@@ -1882,19 +1923,34 @@ final class ReservationFirstCourseTunnelForm extends FormBase {
       return [];
     }
 
-    $had_legacy_level = array_key_exists(self::LEGACY_LEVEL_FIELD, $stored);
+    $stored_changed = array_key_exists(self::LEGACY_LEVEL_FIELD, $stored);
     unset($stored[self::LEGACY_LEVEL_FIELD]);
     if (is_array($stored['details'] ?? NULL) && array_key_exists(self::LEGACY_LEVEL_FIELD, $stored['details'])) {
       unset($stored['details'][self::LEGACY_LEVEL_FIELD]);
-      $had_legacy_level = TRUE;
+      $stored_changed = TRUE;
+    }
+    $discipline = (string) ($stored['discipline'] ?? '');
+    if (is_array($stored['details'] ?? NULL) && in_array($discipline, self::DISCIPLINE_QUERY_VALUES, TRUE)) {
+      $details = $stored['details'];
+      $instrument = $this->getInstrumentForDiscipline($discipline);
+      if ($instrument === '') {
+        unset($stored['details']['instrument']);
+      }
+      else {
+        $stored['details']['instrument'] = $instrument;
+      }
+      if ($instrument !== 'didgeridoo') {
+        unset($stored['details']['didgeridoo_pret']);
+      }
+      $stored_changed = $stored_changed || $details !== $stored['details'];
     }
 
-    if ($had_legacy_level) {
+    if ($stored_changed) {
       try {
         $temp_store->set(self::TEMPSTORE_KEY, $stored);
       }
       catch (\Throwable $e) {
-        $this->logger('unisonges_structure')->error('Unable to remove the legacy course level from reservation tunnel tempstore: @message', [
+        $this->logger('unisonges_structure')->error('Unable to normalize reservation tunnel tempstore details: @message', [
           '@message' => $e->getMessage(),
         ]);
       }

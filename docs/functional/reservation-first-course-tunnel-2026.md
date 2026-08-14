@@ -125,22 +125,29 @@ Regles fonctionnelles :
     et donc sans exiger de droit paye avant le choix du creneau ;
   - ils renseignent ensuite les details du cours a partir des libelles, options,
     patterns et champs conditionnels lus sur le Webform existant :
-    `mode_cours`, `telephone`, `instrument`, `plateforme_visio` si le mode est
-    `visio`, `adresse_domicile` et `code_postal_domicile` si le mode est
-    `domicile`, `didgeridoo_pret` si l'instrument est `didgeridoo`, et
+    `mode_cours`, `telephone`, `plateforme_visio` si le mode est `visio`,
+    `adresse_domicile` et `code_postal_domicile` si le mode est `domicile`,
+    `didgeridoo_pret` seulement pour `essai` et `didgeridoo`, et
     `notes_supplementaires` si utile ;
+  - l'etape details ne rend aucun selecteur `instrument`. La valeur destinee a
+    la submission Webform est derivee de la discipline validee : `essai` et
+    `didgeridoo` donnent `instrument=didgeridoo`, `guimbarde` donne
+    `instrument=guimbarde`, et `meditation-improvisation` omet entierement la
+    cle `instrument` ;
   - l'etape indique que les cours particuliers sont ouverts a tous les niveaux
     et ne rend aucun selecteur de niveau ;
-  - les cles d'options utilisees par le tunnel dans
+  - les cles d'options lues ou alimentees par le tunnel dans
     `cours_particuliers_reservation` sont :
     `mode_cours=visio|studio|domicile`, `instrument=guimbarde|didgeridoo`,
     `plateforme_visio=zoom|google_meet|skype|whatsapp|autre`,
     `didgeridoo_pret=oui|non`; `adresse_domicile` est un textarea conditionnel
     au mode `domicile`, et `code_postal_domicile` est conditionnel au mode
     `domicile` avec le pattern `^\d{5}$` ;
-  - le Webform historique conserve `niveau_cours` avec les anciennes options
-    `debutant|intermediaire|avance` pour `/reserver`, sans que cette cle soit
-    rendue, validee ou alimentee par le nouveau tunnel ;
+  - le Webform historique conserve ses selecteurs requis `instrument` et
+    `niveau_cours`, avec les anciennes options de niveau
+    `debutant|intermediaire|avance`, pour `/reserver`. Ces selecteurs ne sont pas
+    retires de sa configuration ; le nouveau tunnel ne rend ni `instrument` ni
+    `niveau_cours` ;
   - l'etape suivante presente explicitement `Payer en ligne` et
     `Payer sur place`.
 - Pour `Payer en ligne`, le tunnel redirige seulement apres selection cours +
@@ -154,7 +161,9 @@ Regles fonctionnelles :
   marqueurs internes : les champs metier reellement requis et conditionnels du
   parcours choisi sont presents et valides avant creation. `niveau_cours` est
   volontairement absent, sans valeur artificielle `debutant`, `intermediaire`
-  ou `avance`.
+  ou `avance`. `instrument` est derive de la discipline, ou absent pour
+  `meditation-improvisation`, et `didgeridoo_pret` n'est enregistre que pour
+  `essai` ou `didgeridoo`.
 - La presentation client est distincte du statut interne : la confirmation
   affiche « À régler sur place », tandis que `COURS À PAYER` reste inchange dans
   les notifications administrateur, les logs et la queue Google dry-run.
@@ -267,22 +276,34 @@ l'injection. Le trait peut ainsi enregistrer leurs identifiants, puis
 `__wakeup()` les recharge depuis le conteneur. Aucun `__sleep()`/`__wakeup()`
 personnalise et aucun acces generalise a `\Drupal::service()` n'ont ete ajoutes.
 
-La validation serveur charge les vraies options brutes du Webform avec
-`getElementDecoded()` pour les seuls champs applicables. `plateforme_visio`
-n'est controle et requis que pour `mode_cours=visio`, l'adresse et le code
-postal que pour `mode_cours=domicile`, et `didgeridoo_pret` que pour
-`instrument=didgeridoo`. Une erreur de pattern du telephone reste donc
-independante des options non applicables. Si les metadonnees `#options` sont
-reellement indisponibles, la cause technique et les cles concernees sont
-journalisees dans un seul message et la validation affiche une seule erreur
-globale controlee, sans produire une erreur « valeur invalide » pour chaque
-option.
+La validation serveur derive d'abord `instrument` depuis la discipline stockee
+et validee, puis charge les vraies options brutes du Webform avec
+`getElementDecoded()` pour les seuls champs applicables. Un POST forge ne peut
+donc ni contredire la discipline avec une autre valeur `instrument`, ni
+conserver un `didgeridoo_pret` hors `essai` ou `didgeridoo`.
+`plateforme_visio` n'est controle et requis que pour `mode_cours=visio`,
+l'adresse et le code postal que pour `mode_cours=domicile`, et
+`didgeridoo_pret` est requis et valide seulement pour `essai` et `didgeridoo`.
+Une erreur de pattern du telephone reste donc independante des options non
+applicables. Si les metadonnees `#options` sont reellement indisponibles, la
+cause technique et les cles concernees sont journalisees dans un seul message
+et la validation affiche une seule erreur globale controlee, sans produire une
+erreur « valeur invalide » pour chaque option.
 
 Les handlers avant/arriere et de redemarrage continuent tous a passer par le
 meme nettoyage cible de FormState avant rebuild. Les valeurs metier validees
 restent dans le private tempstore, les saisies restent dans FormState lors d'une
 erreur de validation, et les anciens inputs soumis ne peuvent pas ecraser les
 `#default_value` lors du retour a une etape precedente.
+
+A la lecture du private tempstore, les anciennes dependances sont aussi
+normalisees sans perdre les autres details compatibles : une valeur
+`instrument` obsolete est remplacee par `didgeridoo` ou `guimbarde` selon la
+discipline, retiree pour `meditation-improvisation`, et `didgeridoo_pret` est
+retire des qu'il ne s'applique plus. Un vrai changement de cours ou de
+discipline conserve la protection existante : creneau, details, paiement et
+confirmation, devenus dependants d'une autre offre, sont invalides ensemble ;
+les cles de tunnel sans dependance restent preservees.
 
 ## Regle « tous niveaux » et compatibilite Webform
 
@@ -294,15 +315,24 @@ fictive n'est creee. Au chargement et avant chaque rebuild, une ancienne valeur
 transitoire `course_details` et du private tempstore. Ce nettoyage cible ne
 modifie ni le cours ni le creneau memorises.
 
-Le Webform historique de `/reserver` conserve son champ `niveau_cours` requis et
-ses trois options dans la configuration existante. Le tunnel cree toutefois ses
-submissions directement par l'API Entity Webform : la contrainte `#required` du
-formulaire Webform n'est pas rejouee lors de ce `create()->save()`, et une
-submission sans cette cle est acceptee. Les consommateurs du nouveau tunnel
-tolerent cette absence : la ligne de niveau est omise de la description Google
-dry-run, et la ligne HTML historique vide est retiree des mails des submissions
-marquees `pay_on_site`. Les submissions historiques qui possedent un niveau et
-le flux `/reserver` ne sont pas modifies.
+Le Webform historique de `/reserver` conserve ses champs requis `niveau_cours`
+et `instrument`, leurs options et leur rendu dans la configuration existante.
+Le tunnel cree toutefois ses submissions directement par l'API Entity Webform :
+la contrainte `#required` du formulaire Webform n'est pas rejouee lors de ce
+`create()->save()`, et une submission sans ces cles est acceptee. Les
+consommateurs du nouveau tunnel tolerent cette absence : les lignes de niveau
+et d'instrument absentes sont omises de la description Google dry-run, et les
+lignes HTML historiques vides sont retirees des mails des submissions marquees
+`pay_on_site`. Les submissions historiques qui possedent ces valeurs et le flux
+`/reserver` ne sont pas modifies.
+
+Le titre Google dry-run ajoutait deja l'instrument seulement lorsqu'il avait une
+valeur. Sa description ajoute maintenant elle aussi `instrument` et
+`didgeridoo_pret` seulement lorsqu'ils existent. Pour les deux notifications
+Webform, le `mail_alter` retire la ligne HTML `Instrument` codee en dur uniquement
+pour une submission du tunnel `pay_on_site` sans instrument. Le mail client, le
+mail administrateur et le payload meditation / improvisation ne contiennent donc
+ni ligne vide ni instrument invente.
 
 Le niveau n'intervient dans aucun choix de produit, calcul de disponibilite,
 prix, navigation, paiement ou confirmation. L'audit du formulaire a aussi
@@ -331,8 +361,9 @@ La confirmation paiement sur place presente uniquement :
 - le statut client « À régler sur place » ;
 - le message « Votre créneau est réservé. Le règlement sera effectué sur place
   le jour du cours. » ;
-- un resume non vide avec cours, creneau, mode et instrument quand ces donnees
-  sont reconnues ;
+- un resume non vide avec cours, creneau et mode, plus l'instrument derive pour
+  essai, didgeridoo ou guimbarde ; la ligne Instrument est omise pour meditation
+  / improvisation ;
 - les actions « Réserver un autre cours » et « Retour à mon compte ».
 
 L'action de nouvelle reservation supprime seulement le private tempstore du
@@ -469,6 +500,38 @@ copier dans le depot principal. Trois sondes ont reussi 205 assertions :
 
 Google est reste desactive, les handlers de mail et le recu Commerce ont ete
 neutralises seulement en memoire, et aucun appel externe n'a ete effectue.
+
+## Validations DDEV de la derivation de l'instrument
+
+Les fichiers exacts de ce worktree ont ete charges depuis une racine Drupal
+temporaire dans le DDEV local ; les chemins de reflection et les empreintes des
+deux fichiers modifies ont ete controles avant les tests. Trois nouvelles
+sondes ont reussi 172 assertions :
+
+- 62 assertions Form API sur les quatre disciplines : aucun selecteur
+  `instrument`, pret obligatoire et sans `#states` seulement pour `essai` et
+  `didgeridoo`, derivation serveur meme face a un POST contradictoire, omission
+  pour meditation / improvisation, nettoyage du tempstore, retours et
+  progression avec une selection inchangee, puis invalidation des dependances
+  lors d'un vrai changement de discipline ;
+- 27 assertions downstream sur les corps string/Markup des mails client et
+  administrateur, la description et le titre Google dry-run, ainsi que la garde
+  qui laisse le flux Webform historique hors du nettoyage propre au tunnel ;
+- 83 assertions transactionnelles sur quatre creneaux disponibles distincts :
+  le tarif public Essai reste affiche a 10 EUR et son SKU d'essai reste sans
+  tarif, les quatre confirmations paiement sur place atteignent `COURS À PAYER`,
+  les submissions contiennent exactement l'instrument et le pret attendus, et
+  les deux mails, la confirmation client et la queue Google `pending_create`
+  omettent proprement l'instrument pour meditation / improvisation.
+
+La derniere sonde a desactive les handlers mail et le recu Commerce uniquement
+sur les objets en memoire. La transaction externe a ensuite ete annulee : les
+compteurs commandes, lignes de commande, submissions, droits et queue sont
+revenus a leurs valeurs initiales, et chaque entite creee par la sonde etait
+absente apres rollback. Une requete DDEV dans un second processus a confirme
+zero residu pour les identifiants de submissions, commandes, lignes de commande,
+droits et queue concernes. Aucun cron, `processPending()`, appel Google reel,
+paiement externe ou test navigateur de bout en bout n'a ete execute.
 
 ## Ce qui n'est pas encore complet
 
