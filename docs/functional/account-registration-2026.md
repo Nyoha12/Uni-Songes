@@ -148,50 +148,101 @@ comptes ni les rôles. Si les valeurs actives de départ avaient dérivé, utili
 la cible de rollback sûre affichée par le script, et non aveuglément les valeurs
 `Before`.
 
-## Vérification DDEV et Mailpit différée
+## Vérification DDEV et Mailpit exécutée
 
-Cette PR doit rester en brouillon jusqu'à l'exécution ultérieure de ce protocole.
-DDEV n'est volontairement pas utilisé pendant les travaux parallèles actuels et
-aucun email externe réel ne doit être envoyé.
+Le protocole a été exécuté le 14 août 2026, puis rejoué intégralement le 19 août
+après l'interruption de la machine. Les deux passages ont utilisé le projet DDEV
+local principal avec DDEV 1.25.3, PHP 8.3, MariaDB 10.11 et Drupal Core 11.3.3.
+Le dépôt principal, sans modification suivie sur `release/prod`, a servi en HEAD
+détachée le commit applicatif rebasé
+`dabf51d0cba0b2674acfc5a7b544ceeece41c3c1`. Aucune configuration `.ddev` ni
+aucun fichier versionné n'ont été édités. Après chaque passage, le checkout
+principal a été replacé sur `release/prod` et le projet DDEV a été arrêté.
 
-Dans un checkout DDEV isolé de cette branche, dont le transport sortant est
-Mailpit :
+Le transport PHP constaté pendant le test était exclusivement le Mailpit local :
+
+```text
+/usr/local/bin/mailpit sendmail -t --smtp-addr 127.0.0.1:1025
+```
+
+Aucun VPS et aucun transport mail externe n'ont été utilisés. Les commandes
+d'application rejouées dans le conteneur étaient :
 
 ```bash
-cd /chemin/vers/le-checkout-ddev/drupal
-ddev describe
+cd /home/yohan/Uni-Songes/repo/drupal
+ddev describe --json-output
 ddev exec ./scripts/apply-user-registration-policy-2026.sh --dry-run --allow-vps
 ddev exec ./scripts/apply-user-registration-policy-2026.sh --apply --allow-vps
 ddev exec vendor/bin/drush config:get user.settings --format=yaml
 ddev exec vendor/bin/drush config:get user.settings --include-overridden --format=yaml
-ddev launch '/user/register?destination=/reservation-cours'
-ddev launch -m
 ```
 
-Vérifier ensuite avec une adresse de test unique :
+Lors du premier passage, l'état actif initial était `register: admin_only` et
+`verify_mail: true` ; `/user/register` répondait alors HTTP 403. Le dry-run n'a
+rien écrit, puis `--apply` a produit `register: visitors` et
+`verify_mail: true`, à la fois dans la configuration stockée et dans la
+configuration effective. Le rejeu du 19 août a retrouvé cette cible après le
+redémarrage ; dry-run et apply ont confirmé le même état, sans dérive. La
+notification `register_no_approval_required` est restée effectivement activée.
 
-1. un anonyme reçoit HTTP 200 sur
-   `/user/register?destination=/reservation-cours` ;
-2. le lien du tunnel et l'action du formulaire conservent le paramètre
-   `destination=/reservation-cours` ;
-3. la soumission crée un compte actif sans action d'un administrateur, ne
-   connecte pas immédiatement le visiteur et revient à `/reservation-cours` ;
-4. Mailpit reçoit le message de bienvenue avec un lien à usage unique, sans
-   qu'aucun message sorte vers un transport externe ;
-5. le lien permet de définir le mot de passe et de se connecter ;
-6. l'utilisateur peut revenir sur `/reservation-cours` et continuer jusqu'aux
-   étapes authentifiées du tunnel ;
-7. un second dry-run affiche déjà la cible et n'annonce aucune écriture ;
-8. les comptes et rôles présents avant le test sont inchangés, hors compte de
-   test explicitement créé.
+Résultats HTTP et Mailpit avec un nom et une adresse `@example.test` uniques :
 
-Supprimer ensuite le compte de test par le processus local approuvé. Ne pas
-effectuer ce test sur le VPS et ne pas rendre la PR prête à fusionner avant que
-les résultats DDEV et Mailpit soient consignés.
+1. `/user/register?destination=/reservation-cours` a répondu HTTP 200. L'action
+   du formulaire était exactement
+   `/user/register?destination=/reservation-cours` ; aucun champ de mot de
+   passe n'était présent.
+2. Le rendu des formulaires d'inscription et de profil n'exposait aucun champ
+   de crédit, d'essai ou d'expiration (`field_seances_restantes`,
+   `field_essai_utilise`, `field_pack_expire_le`).
+3. Depuis une session anonyme neuve, un email invalide et un nom vide ont
+   renvoyé HTTP 200 avec `The email address … is not valid` et
+   `Username field is required`, sans création de compte.
+4. La soumission valide a renvoyé HTTP 303 vers
+   `https://unisonges.ddev.site/reservation-cours`. La session est restée
+   anonyme et `/user` redirigeait encore vers `/user/login` : il n'y a donc eu
+   aucune connexion automatique. Avec l'absence de champ mot de passe à
+   l'inscription, la suite du test confirme que le lien reçu est nécessaire au
+   choix initial du mot de passe.
+5. Mailpit a capturé exactement un message pour l'adresse de test unique,
+   intitulé `Account details for … at Uni-Songes Local`. Son lien à usage
+   unique a ouvert `user_pass_reset`, authentifié le compte et permis
+   d'enregistrer le mot de passe depuis le formulaire `user_form`.
+6. Le compte temporaire était actif, sans attente d'approbation administrateur,
+   avec le seul rôle effectif `authenticated` et aucune attribution de rôle
+   explicite.
+7. Après l'enregistrement du mot de passe, la même session issue du lien à usage
+   unique était authentifiée et a reçu HTTP 200 sur `/reservation-cours`. Le
+   lien email standard ne conserve pas `destination` : ce GET explicite prouve
+   la restauration manuelle du tunnel. En complément, une session neuve s'est
+   connectée depuis `/user/login?destination=/reservation-cours` ; Drupal a
+   répondu HTTP 303 vers `/reservation-cours?check_logged_in=1`, avec un statut
+   de session authentifiée égal à `1` et un tunnel en HTTP 200.
+8. Dans deux nouvelles sessions anonymes, une tentative avec le même nom et une
+   autre adresse a renvoyé `The username … is already taken`, puis une tentative
+   avec un autre nom et la même adresse a renvoyé
+   `The email address … is already taken`. Les deux réponses étaient HTTP 200.
+   Aucun compte supplémentaire et aucun second mail pour l'adresse de test
+   n'ont été créés.
+
+Le compte temporaire du premier passage avait reçu l'UID 7 ; celui du rejeu a
+reçu l'UID 8. Tous deux ont été supprimés par l'API d'entité avec des gardes
+strictes sur l'UID, le nom et l'adresse. Lors du rejeu, une photographie
+canonique avant/après suppression a retrouvé exactement les UID 0 à 6 et les
+mêmes empreintes pour chaque entité utilisateur et ses rôles, les quatre
+configurations `user.role.*`, les autres clés de `user.settings` et les 314
+objets de configuration active. La comparaison n'excluait que les deux clés de
+politique autorisées ; celles-ci étaient déjà identiques avant/après le rejeu.
+
+Enfin, le dry-run final du 19 août a affiché `visitors + true` dans `Before`,
+`Target` et `After`. Les objets `user.settings` stocké et effectif sont restés
+identiques avant/après ce dry-run, et
+`/user/register?destination=/reservation-cours` répondait toujours HTTP 200.
+Le script est donc idempotent sur l'état cible.
 
 ## Validations statiques de la PR
 
-Les contrôles attendus avant commit sont :
+Les contrôles suivants ont été exécutés avec succès le 19 août 2026 avant
+commit :
 
 ```bash
 git diff --check
