@@ -1,0 +1,29 @@
+{
+  "name": "Uni-Songes Drupal with DDEV",
+  "image": "mcr.microsoft.com/devcontainers/base:debian-12",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest"
+    },
+    "ghcr.io/ddev/ddev/install-ddev:latest": {}
+  },
+  "forwardPorts": [
+    8080,
+    8027
+  ],
+  "portsAttributes": {
+    "8080": {
+      "label": "Uni-Songes Drupal",
+      "onAutoForward": "notify",
+      "protocol": "http"
+    },
+    "8027": {
+      "label": "DDEV Mailpit",
+      "onAutoForward": "silent",
+      "protocol": "http"
+    }
+  },
+  "postCreateCommand": "bash .devcontainer/setup-project.sh",
+  "postStartCommand": "bash .devcontainer/setup-project.sh --start-only",
+  "remoteUser": "vscode"
+}
