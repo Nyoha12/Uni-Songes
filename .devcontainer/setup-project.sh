@@ -58,7 +58,11 @@ if ! REPO_ROOT="$(git -C "${SCRIPT_DIR}" rev-parse --show-toplevel 2>/dev/null)"
 fi
 REPO_ROOT="$(cd -- "${REPO_ROOT}" && pwd -P)"
 DRUPAL_DIR="${REPO_ROOT}/drupal"
-DDEV_CONFIG="${DRUPAL_DIR}/.ddev/config.yaml"
+DDEV_DIR="${DRUPAL_DIR}/.ddev"
+DDEV_CONFIG="${DDEV_DIR}/config.yaml"
+DDEV_CODESPACES_CONFIG="${DDEV_DIR}/config.codespaces.yaml"
+DDEV_CODESPACES_SETTINGS="${DDEV_DIR}/settings.codespaces.php"
+DRUPAL_SETTINGS="${DRUPAL_DIR}/web/sites/default/settings.php"
 
 case "${REPO_ROOT}" in
   /workspaces/*)
@@ -71,6 +75,27 @@ esac
 require_command() {
   local command_name="$1"
   command -v "${command_name}" >/dev/null 2>&1 || die "Required command not found: ${command_name}"
+}
+
+is_codespaces() {
+  [[ "${CODESPACES:-}" == "true" ]]
+}
+
+replace_file_if_changed() {
+  local target="$1"
+  local temporary_file
+
+  temporary_file="$(mktemp "${target}.tmp.XXXXXX")"
+  cat > "${temporary_file}"
+  chmod 0644 "${temporary_file}"
+
+  if [[ -f "${target}" ]] && cmp -s "${temporary_file}" "${target}"; then
+    rm -f "${temporary_file}"
+    return 0
+  fi
+
+  mv -f "${temporary_file}" "${target}"
+  log "Updated runtime-only file: ${target}"
 }
 
 ensure_runtime_git_exclude() {
@@ -140,6 +165,156 @@ ensure_ddev_config() {
     --webserver-type=nginx-fpm \
     --host-webserver-port=8080 \
     --host-https-port=8443
+}
+
+ensure_codespaces_runtime_config() {
+  if ! is_codespaces; then
+    if [[ -f "${DDEV_CODESPACES_CONFIG}" || -f "${DDEV_CODESPACES_SETTINGS}" ]]; then
+      rm -f -- "${DDEV_CODESPACES_CONFIG}" "${DDEV_CODESPACES_SETTINGS}"
+      log "Removed stale Codespaces-only DDEV runtime files."
+    fi
+    return 0
+  fi
+
+  [[ -n "${CODESPACE_NAME:-}" ]] || die "CODESPACE_NAME is missing from the Codespaces environment."
+  if [[ ! "${CODESPACE_NAME}" =~ ^[A-Za-z0-9][A-Za-z0-9-]*$ ]]; then
+    die "CODESPACE_NAME contains unexpected characters."
+  fi
+
+  [[ -n "${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-}" ]] || \
+    die "GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN is missing from the Codespaces environment."
+  if [[ ! "${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}" =~ ^[A-Za-z0-9.-]+$ ]]; then
+    die "GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN contains unexpected characters."
+  fi
+
+  replace_file_if_changed "${DDEV_CODESPACES_CONFIG}" <<EOF
+#ddev-silent-no-warn
+# Runtime-only direct bindings for the private GitHub Codespaces tunnels.
+host_webserver_port: "8080"
+host_https_port: "8443"
+host_mailpit_port: "8027"
+web_environment:
+  - CODESPACES=true
+  - CODESPACE_NAME=${CODESPACE_NAME}
+  - GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN=${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}
+EOF
+
+  replace_file_if_changed "${DDEV_CODESPACES_SETTINGS}" <<'PHP'
+<?php
+
+/**
+ * @file
+ * Runtime-only reverse-proxy settings for the private Codespaces tunnel.
+ */
+
+if (getenv('CODESPACES') !== 'true') {
+  return;
+}
+
+$codespace_name = getenv('CODESPACE_NAME') ?: '';
+$forwarding_domain = getenv('GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN') ?: '';
+if (
+  preg_match('/^[A-Za-z0-9][A-Za-z0-9-]*$/D', $codespace_name) !== 1 ||
+  preg_match('/^[A-Za-z0-9.-]+$/D', $forwarding_domain) !== 1
+) {
+  return;
+}
+
+$expected_host = strtolower($codespace_name . '-8080.' . $forwarding_domain);
+$forwarded_host = strtolower(trim($_SERVER['HTTP_X_FORWARDED_HOST'] ?? ''));
+$forwarded_proto = strtolower(trim($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''));
+$forwarded_port = trim($_SERVER['HTTP_X_FORWARDED_PORT'] ?? '');
+
+// Replace DDEV's development wildcard with the hosts used by this runtime.
+$settings['trusted_host_patterns'] = [
+  '^' . preg_quote($expected_host, '/') . '$',
+  '^localhost$',
+  '^127\\.0\\.0\\.1$',
+  '^\\[::1\\]$',
+  '^unisonges\\.ddev\\.site$',
+  '^web$',
+];
+
+// Only the canonical private Codespaces tunnel may influence generated URLs.
+// Direct localhost requests, including gh CLI tunnels, keep their original URL.
+if (
+  !in_array($forwarded_host, [$expected_host, $expected_host . ':443'], TRUE) ||
+  $forwarded_proto !== 'https' ||
+  ($forwarded_port !== '' && $forwarded_port !== '443')
+) {
+  unset(
+    $_SERVER['HTTP_X_FORWARDED_HOST'],
+    $_SERVER['HTTP_X_FORWARDED_PORT'],
+    $_SERVER['HTTP_X_FORWARDED_PROTO']
+  );
+  return;
+}
+
+// Published Docker ports reach the web container through its bridge gateway.
+// Trust that immediate peer, but never the client address forwarding chain.
+$codespaces_proxy_address = $_SERVER['REMOTE_ADDR'] ?? '';
+if (filter_var($codespaces_proxy_address, FILTER_VALIDATE_IP) === FALSE) {
+  return;
+}
+
+$settings['reverse_proxy'] = TRUE;
+$settings['reverse_proxy_addresses'] = [$codespaces_proxy_address];
+$settings['reverse_proxy_trusted_headers'] =
+  \Symfony\Component\HttpFoundation\Request::HEADER_X_FORWARDED_HOST |
+  \Symfony\Component\HttpFoundation\Request::HEADER_X_FORWARDED_PROTO;
+if ($forwarded_port === '443') {
+  $settings['reverse_proxy_trusted_headers'] |=
+    \Symfony\Component\HttpFoundation\Request::HEADER_X_FORWARDED_PORT;
+}
+PHP
+}
+
+ensure_codespaces_drupal_settings_include() {
+  local marker='// Uni-Songes Codespaces runtime proxy settings.'
+
+  if ! is_codespaces; then
+    return 0
+  fi
+
+  [[ -f "${DRUPAL_SETTINGS}" ]] || die "DDEV did not create ${DRUPAL_SETTINGS}."
+  if grep -Fqx "${marker}" "${DRUPAL_SETTINGS}"; then
+    return 0
+  fi
+  [[ -w "${DRUPAL_SETTINGS}" ]] || die "Drupal settings file is not writable: ${DRUPAL_SETTINGS}"
+
+  cat >> "${DRUPAL_SETTINGS}" <<'PHP'
+
+// Uni-Songes Codespaces runtime proxy settings.
+if (getenv('CODESPACES') === 'true') {
+  $codespaces_settings = dirname(__DIR__, 3) . '/.ddev/settings.codespaces.php';
+  if (is_readable($codespaces_settings)) {
+    include $codespaces_settings;
+  }
+}
+PHP
+  log "Enabled the runtime-only Drupal Codespaces proxy settings."
+}
+
+verify_codespaces_runtime_ports() {
+  local drupal_status
+
+  if ! is_codespaces; then
+    return 0
+  fi
+
+  if ! drupal_status="$(curl --noproxy '*' --silent --show-error --output /dev/null \
+    --write-out '%{http_code}' --max-time 15 http://127.0.0.1:8080/)"; then
+    die "Drupal is not reachable through Codespaces port 8080."
+  fi
+  [[ "${drupal_status}" =~ ^[123][0-9][0-9]$ ]] || \
+    die "Drupal port 8080 returned unexpected HTTP status ${drupal_status}."
+
+  if ! curl --noproxy '*' --fail --silent --show-error --output /dev/null \
+    --max-time 15 http://127.0.0.1:8027/api/v1/info; then
+    die "Mailpit UI is not reachable through Codespaces port 8027."
+  fi
+
+  log "Verified local listeners for Drupal (8080) and Mailpit (8027)."
 }
 
 start_ddev() {
@@ -232,6 +407,9 @@ require_command git
 require_command docker
 require_command ddev
 require_command grep
+require_command cmp
+require_command curl
+require_command mktemp
 ensure_runtime_git_exclude
 require_project_files
 wait_for_docker
@@ -239,14 +417,22 @@ cd "${DRUPAL_DIR}"
 
 if [[ "${MODE}" == "start-only" ]]; then
   [[ -f "${DDEV_CONFIG}" ]] || die "Runtime DDEV configuration is absent; rerun the post-create setup."
-  start_ddev
+else
+  ensure_ddev_config
+fi
+
+ensure_codespaces_runtime_config
+start_ddev
+ensure_codespaces_drupal_settings_include
+
+if [[ "${MODE}" == "start-only" ]]; then
+  verify_codespaces_runtime_ports
   log "DDEV restart completed; dependencies and Drupal data were not changed."
   exit 0
 fi
 
-ensure_ddev_config
-start_ddev
 install_locked_dependencies
+verify_codespaces_runtime_ports
 
 if [[ "${MODE}" == "initialize-site" ]]; then
   ensure_local_drupal_site

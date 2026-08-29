@@ -1,8 +1,10 @@
 # GitHub Codespaces with DDEV
 
-This environment runs Docker and DDEV inside GitHub Codespaces. The Windows PC
-needs only a browser and an internet connection; it does not need Docker, DDEV,
-PHP, Composer, Node.js, or MariaDB installed locally.
+This environment runs Docker and DDEV inside GitHub Codespaces. For the browser
+workflow, the Windows PC needs only a browser and an internet connection; it
+does not need Docker, DDEV, PHP, Composer, Node.js, or MariaDB installed
+locally. The optional PowerShell workflow requires GitHub CLI (`gh`) on the
+Windows PC, but the application dependencies still run only in the Codespace.
 
 The environment is development-only. The VPS is production only: never run
 these setup, fixture, branch-testing, or database commands on the VPS.
@@ -35,7 +37,14 @@ can take considerably longer. Later resumes usually take about 1–3 minutes
 because the image and dependency layers are already present.
 
 The automatic post-create step intentionally stops after DDEV and dependencies
-are ready. It does not claim that Drupal or fixtures are initialized.
+are ready. It also creates ignored, Codespaces-only DDEV overrides that bind
+Drupal to port 8080 and Mailpit's in-container UI port 8025 to port 8027. A
+runtime-only Drupal settings include accepts the forwarded host, protocol, and
+port only for that Codespace's exact private tunnel, so authenticated redirects
+stay on the reachable `app.github.dev` URL. None of these generated files under
+`drupal/.ddev` are tracked. A non-Codespaces run removes the managed override
+files before DDEV starts, so they cannot alter normal DDEV behavior. The
+post-create step does not claim that Drupal or fixtures are initialized.
 
 ## Initialize the local site once
 
@@ -113,6 +122,86 @@ PHP mail path appear in Mailpit and are not delivered externally. The active
 Commerce credit-flow test deliberately uses Drupal's in-memory test mail
 collector during the test, so those temporary test messages do not appear in
 Mailpit.
+
+The Ports panel uses private HTTPS tunnel URLs of the following form:
+
+```text
+https://<codespace-name>-8080.app.github.dev
+https://<codespace-name>-8027.app.github.dev
+```
+
+Do not replace the Drupal tunnel URL with a DDEV `localhost` URL in this
+browser workflow. Sign in at `/user/login` with the disposable `admin` account;
+the authenticated destination and `/user` must remain on the same private
+`app.github.dev` host.
+
+## Connect from Windows PowerShell
+
+Install [GitHub CLI](https://cli.github.com/) on Windows and authenticate it,
+then list the repository's Codespaces:
+
+```powershell
+gh auth login
+gh codespace list --repo Nyoha12/Uni-Songes
+$Codespace = "<codespace-name>"
+```
+
+Open an interactive shell in the dev container with:
+
+```powershell
+gh codespace ssh -c $Codespace
+```
+
+The committed `sshd` devcontainer feature is required for this command. Rebuild
+an older Codespace after changing devcontainer features before retrying SSH.
+
+To use local browser URLs, keep each of these blocking commands open in its own
+PowerShell window:
+
+```powershell
+gh codespace ports forward 8080:8080 -c $Codespace
+```
+
+```powershell
+gh codespace ports forward 8027:8027 -c $Codespace
+```
+
+The mapping order is `remote:local`. GitHub CLI binds these tunnels to the
+Windows loopback interface by default; do not add `--all-interfaces`. Open:
+
+- Drupal: <http://localhost:8080>
+- Mailpit: <http://localhost:8027>
+
+These localhost URLs use HTTP because they terminate at DDEV's direct HTTP
+bindings inside the Codespace. They are distinct from the private HTTPS
+`app.github.dev` URLs used by the Ports panel. Stop a local tunnel with
+`Ctrl+C`.
+
+Confirm that the Codespaces ports remain private:
+
+```powershell
+gh codespace ports -c $Codespace --json sourcePort,visibility
+gh codespace ports visibility 8080:private 8027:private -c $Codespace
+```
+
+## Install Codex CLI in the Codespace shell
+
+Node.js 24 and npm are installed in the outer dev container, so Codex CLI can
+be installed from either the Codespaces terminal or a `gh codespace ssh`
+session:
+
+```bash
+node --version
+npm install -g @openai/codex
+codex --version
+codex
+```
+
+Follow the interactive sign-in flow. Do not put authentication tokens, API
+keys, npm configuration containing credentials, or Codex authentication files
+in this repository. The project itself requires no OpenAI secret. See the
+[official Codex CLI documentation](https://developers.openai.com/codex/cli/)
+for current installation and sign-in options.
 
 ## Test an existing pull request safely
 
@@ -208,6 +297,8 @@ unexported DDEV database state.
 ## Security boundaries
 
 - No Codespaces secrets are required by this environment.
+- Codex and GitHub CLI authentication remains user-specific and outside the
+  repository.
 - Do not copy any payment credential into `.devcontainer`, `.ddev`, or the
   local database.
 - Do not upload SSH private keys or production database dumps.
