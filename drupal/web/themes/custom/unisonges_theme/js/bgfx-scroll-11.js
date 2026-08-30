@@ -73,6 +73,8 @@
   let recalcVersion = 0;
   let lastFrameTime = null;
   let writtenY = null;
+  let ownedImgH = '';
+  let legacyProbeMasked = false;
   let controller = null;
 
   const state = {
@@ -274,6 +276,7 @@
 
     // Re-read the route-owned value so Accueil can reconsider its fallback.
     body.style.removeProperty('--bg-once');
+    legacyProbeMasked = false;
     const cssOnce = extractUrl(getComputedStyle(body).getPropertyValue('--bg-once'));
     if (!cssOnce || destroyed || version !== recalcVersion) return;
 
@@ -295,8 +298,9 @@
     }
 
     const bgW = `${(result.scale * 100).toFixed(2)}%`;
+    ownedImgH = `${result.imgH}px`;
     body.style.setProperty('--bg-w', bgW);
-    body.style.setProperty('--bg-img-h', `${result.imgH}px`);
+    body.style.setProperty('--bg-img-h', ownedImgH);
     body.style.setProperty('--bg-scaled-h', `${result.scaledH}px`);
     scrollLayer.style.height = `${result.scaledH}px`;
     layer.style.height = `${result.scaledH}px`;
@@ -346,6 +350,12 @@
     });
   };
 
+  const maskLegacyDimensionProbe = () => {
+    if (destroyed || legacyProbeMasked) return;
+    legacyProbeMasked = true;
+    body.style.setProperty('--bg-once', 'none', 'important');
+  };
+
   const refreshMotionPolicy = () => {
     motionAllowed = !(reduceQuery && reduceQuery.matches) && !(connection && connection.saveData);
     if (!motionAllowed) {
@@ -383,6 +393,8 @@
     stopMotionLoop();
     if (recalcRaf) cancelAnimationFrame(recalcRaf);
     recalcRaf = 0;
+    if (legacyProbeMasked) body.style.removeProperty('--bg-once');
+    legacyProbeMasked = false;
     cleanups.splice(0).forEach((cleanup) => cleanup());
     if (motionStyle.isConnected) motionStyle.remove();
     if (window[CONTROLLER_KEY] === controller) delete window[CONTROLLER_KEY];
@@ -402,6 +414,10 @@
   };
 
   listen(frame, 'scroll', updateScrollTarget, { passive: true });
+  // Capture runs before bg-mirror-height.js's older non-capture listener. Its
+  // probe then sees no URL; this controller's later recalculation rAF restores
+  // the CSS route value in the same rendering cycle, before the next paint.
+  listen(window, 'resize', maskLegacyDimensionProbe, { capture: true, passive: true });
   listen(window, 'resize', scheduleRecalc, { passive: true });
   listen(document, 'visibilitychange', onVisibilityChange);
   listen(window, 'pagehide', onPageHide);
@@ -420,9 +436,29 @@
     listen(connection, 'change', refreshMotionPolicy);
   }
 
+  // bg-mirror-height.js predates this controller and may finish a cache-busted
+  // image probe after a newer resize/fallback calculation. Keep its late write
+  // from publishing dimensions for the previously selected image.
+  if (typeof MutationObserver === 'function') {
+    const sizingObserver = new MutationObserver(() => {
+      if (
+        !destroyed &&
+        ownedImgH &&
+        body.style.getPropertyValue('--bg-img-h') !== ownedImgH
+      ) {
+        body.style.setProperty('--bg-img-h', ownedImgH);
+      }
+    });
+    sizingObserver.observe(body, { attributes: true, attributeFilter: ['style'] });
+    cleanups.push(() => sizingObserver.disconnect());
+  }
+
   if (document.fonts && document.fonts.ready) {
     document.fonts.ready.then(() => {
-      if (!destroyed) scheduleRecalc();
+      if (!destroyed) {
+        maskLegacyDimensionProbe();
+        scheduleRecalc();
+      }
     }).catch(() => {});
   }
 
