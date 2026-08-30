@@ -77,6 +77,11 @@
   display: none !important;
 }
 
+.mobile-backdrop[hidden],
+.mobile-drawer[hidden] {
+  display: none !important;
+}
+
 body:not(.compact-nav) .site-header__center {
   overflow: visible !important;
 }

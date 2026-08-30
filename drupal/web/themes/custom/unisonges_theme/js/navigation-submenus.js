@@ -134,9 +134,7 @@
     return id;
   };
 
-  const defer = window.queueMicrotask
-    ? window.queueMicrotask.bind(window)
-    : (callback) => Promise.resolve().then(callback);
+  const defer = (callback) => window.setTimeout(callback, 0);
   const hoverQuery = window.matchMedia
     ? window.matchMedia("(hover: hover) and (pointer: fine)")
     : { matches: false };
@@ -266,7 +264,7 @@
       );
       const maximumLeft = Math.max(edge, viewportWidth - panelWidth - edge);
       const left = Math.min(Math.max(triggerBounds.left, edge), maximumLeft);
-      const top = triggerBounds.bottom + 6;
+      const top = triggerBounds.bottom;
 
       record.submenu.style.setProperty(
         "--navigation-submenu-left",
@@ -387,6 +385,8 @@
     });
 
     root.addEventListener("focusin", (event) => {
+      if (!desktop) return;
+
       const record = recordForElement(event.target);
       if (!record) return;
       if (event.target === record.toggle && record.suppressFocusOpen) return;
@@ -395,6 +395,7 @@
     });
 
     root.addEventListener("focusout", (event) => {
+      if (!desktop) return;
       if (!(event.target instanceof Element)) return;
 
       const affected = records.filter((record) =>
@@ -459,6 +460,18 @@
   );
   const mobileController = createController(mobileRoot, mobileList, "mobile");
   const controllers = [desktopController, mobileController];
+  const drawerToggle = document.querySelector(".nav-toggle");
+  const mobileDrawer = mobileRoot.closest(".mobile-drawer");
+
+  const focusWithoutScroll = (element) => {
+    if (!(element instanceof HTMLElement)) return;
+
+    try {
+      element.focus({ preventScroll: true });
+    } catch {
+      element.focus();
+    }
+  };
 
   document.addEventListener(
     "pointerdown",
@@ -484,19 +497,37 @@
     const nextCompact = document.body.classList.contains("compact-nav");
     if (nextCompact === compact) return;
 
+    const activeElement = document.activeElement;
     compact = nextCompact;
     controllers.forEach((controller) => controller.closeAll());
+
+    if (nextCompact && desktopRoot.contains(activeElement)) {
+      focusWithoutScroll(drawerToggle);
+      return;
+    }
+
+    if (
+      !nextCompact &&
+      (activeElement === drawerToggle || mobileDrawer?.contains(activeElement))
+    ) {
+      focusWithoutScroll(
+        document.querySelector("a.brand[href]") ||
+          desktopRoot.querySelector("a[href], button:not([disabled])"),
+      );
+    }
   });
   compactObserver.observe(document.body, {
     attributeFilter: ["class"],
     attributes: true,
   });
 
-  const drawerToggle = document.querySelector(".nav-toggle");
   if (drawerToggle) {
     const drawerObserver = new MutationObserver(() => {
       if (drawerToggle.getAttribute("aria-expanded") === "false") {
         mobileController.closeAll();
+        if (document.body.classList.contains("compact-nav")) {
+          focusWithoutScroll(drawerToggle);
+        }
       }
     });
     drawerObserver.observe(drawerToggle, {
