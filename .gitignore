@@ -7,3 +7,6 @@ drupal/web/themes/custom/unisonges_theme/js/*.bak.*
 drupal/web/themes/custom/unisonges_theme/js/*.pre_restore.*
 drupal/web/themes/custom/unisonges_theme/unisonges_theme.libraries.yml.*
 drupal/web/themes/custom/unisonges_theme/templates/**/*.bak.*
+
+# Runtime-only DDEV configuration (created by the Codespaces setup)
+drupal/.ddev/
