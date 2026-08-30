@@ -186,9 +186,54 @@ use Drupal\menu_link_content\Entity\MenuLinkContent;
 use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
 
+final class ContentArchitecturePreflightBlocked extends RuntimeException {}
+
+final class ContentArchitectureApplyRolledBack extends RuntimeException {
+
+  public function __construct(
+    string $message,
+    public readonly bool $rollbackConfirmed,
+    ?Throwable $previous = NULL,
+  ) {
+    parent::__construct($message, 0, $previous);
+  }
+
+}
+
+final class ContentArchitectureChangePlan {
+
+  public readonly string $fingerprint;
+
+  public function __construct(
+    public readonly array $pages,
+    public readonly array $aliases,
+    public readonly array $references,
+    public readonly array $menuLinks,
+    public readonly array $operations,
+  ) {
+    $this->fingerprint = $this->calculateFingerprint();
+  }
+
+  public function assertIntegrity(): void {
+    if (!hash_equals($this->fingerprint, $this->calculateFingerprint())) {
+      throw new RuntimeException('The immutable change plan failed its integrity check.');
+    }
+  }
+
+  private function calculateFingerprint(): string {
+    return hash('sha256', serialize([
+      'pages' => $this->pages,
+      'aliases' => $this->aliases,
+      'references' => $this->references,
+      'menu_links' => $this->menuLinks,
+      'operations' => $this->operations,
+    ]));
+  }
+
+}
+
 $mode = getenv('UNISONGES_CONTENT_ARCH_MODE') ?: 'dry-run';
 $is_apply = $mode === 'apply';
-$failed = FALSE;
 $body_format = 'full_html';
 
 $pages = [
@@ -751,241 +796,476 @@ $required_reference_page_aliases = [
   '/contact',
 ];
 
-section('Runtime guards');
-check($mode === 'dry-run' || $mode === 'apply', 'mode is dry-run or apply');
-check(\Drupal::entityTypeManager()->hasDefinition('node'), 'node entity type is available');
-check(\Drupal::entityTypeManager()->hasDefinition('path_alias'), 'path_alias entity type is available');
-check(\Drupal::entityTypeManager()->hasDefinition('menu_link_content'), 'menu_link_content entity type is available');
-check((bool) \Drupal\node\Entity\NodeType::load('page'), 'page content type exists');
-
-$format = \Drupal::entityTypeManager()->getStorage('filter_format')->load($body_format);
-check((bool) $format && (bool) $format->status(), 'full_html text format exists and is enabled');
-
-if ($failed) {
-  echo PHP_EOL . 'Blocked before content inspection. No content was changed.' . PHP_EOL;
-  exit(1);
-}
-
-section('Content preflight');
-$resolved_page_nodes = [];
-$creatable_page_aliases = [];
-foreach ($pages as $page) {
-  try {
-    $create_if_missing = $page['create_if_missing'] ?? NULL;
-    if (!is_bool($create_if_missing)) {
-      throw new RuntimeException('Page create_if_missing must be boolean.');
-    }
-    if ($create_if_missing) {
-      $creatable_page_aliases[] = $page['alias'];
-    }
-
-    $node = resolve_page_node($page['alias']);
-    if ($node) {
-      $node_id = (string) $node->id();
-      if (isset($resolved_page_nodes[$node_id])) {
-        throw new RuntimeException(
-          'Page aliases ' . $resolved_page_nodes[$node_id] . ' and ' . $page['alias']
-          . ' resolve to the same node ' . $node_id . '; refusing to update it twice.'
-        );
-      }
-      $resolved_page_nodes[$node_id] = $page['alias'];
-      echo 'OK inspected existing page target ' . $page['alias'] . ' -> node ' . $node_id . PHP_EOL;
-    }
-    else {
-      if (!$create_if_missing) {
-        throw new RuntimeException(
-          'Required existing page alias is missing; refusing to create or adopt a page by title.'
-        );
-      }
-      $same_title_node_ids = page_node_ids_by_title($page['title']);
-      if ($same_title_node_ids) {
-        throw new RuntimeException(
-          'Alias is missing but page title "' . $page['title'] . '" already belongs to node(s) '
-          . implode(', ', $same_title_node_ids) . '; refusing to create a duplicate or adopt by title.'
-        );
-      }
-      echo 'OK inspected new page target ' . $page['alias'] . PHP_EOL;
-    }
-  }
-  catch (Throwable $throwable) {
-    check(FALSE, $page['alias'] . ': ' . $throwable->getMessage());
-  }
-}
-
-foreach ($required_reference_page_aliases as $alias) {
-  try {
-    $node = page_node_by_alias($alias);
-    if (!$node) {
-      throw new RuntimeException('Required existing reference page alias is missing.');
-    }
-    $node_id = (string) $node->id();
-    if (isset($resolved_page_nodes[$node_id])) {
-      throw new RuntimeException(
-        'Reference alias resolves to node ' . $node_id . ', already selected by '
-        . $resolved_page_nodes[$node_id] . '.'
-      );
-    }
-    $resolved_page_nodes[$node_id] = $alias;
-    echo 'OK alias ' . $alias . ' -> /node/' . $node_id
-      . ' (reference page preserved; body unchanged)' . PHP_EOL;
-  }
-  catch (Throwable $throwable) {
-    check(FALSE, $alias . ': ' . $throwable->getMessage());
-  }
-}
-
-check(
-  $creatable_page_aliases === ['/cours-et-stages', '/ateliers', '/a-propos', '/origine'],
-  'only the four new public pages may be created'
-);
-
-if ($failed) {
-  echo PHP_EOL . 'Blocked before writes. No content was changed.' . PHP_EOL;
-  exit(1);
-}
-
-section('Menu preflight');
+$phase = 'Phase A';
 try {
-  preflight_main_menu_architecture($main_menu_links, $main_menu_links_to_disable);
-  echo 'OK main menu architecture is unambiguous and safe to reconcile' . PHP_EOL;
+  section('Phase A — complete read-only discovery and validation');
+  assert_runtime_guards($mode, $body_format);
+  $change_plan = build_change_plan(
+    $pages,
+    $required_reference_page_aliases,
+    $main_menu_links,
+    $main_menu_links_to_disable,
+    $body_format
+  );
+  $change_plan->assertIntegrity();
+  echo 'OK Phase A complete: immutable plan sha256=' . $change_plan->fingerprint . PHP_EOL;
+  print_change_plan($change_plan, $is_apply ? 'PLAN' : 'WOULD');
 }
 catch (Throwable $throwable) {
-  check(FALSE, $throwable->getMessage());
-}
-
-if ($failed) {
-  echo PHP_EOL . 'Blocked before writes. No content or menu links were changed.' . PHP_EOL;
+  echo PHP_EOL . 'BLOCKED Phase A: ' . $throwable->getMessage() . PHP_EOL;
+  echo 'FAIL Phase A did not produce a valid complete plan.' . PHP_EOL;
+  echo 'Phase B was not started; transaction_started=FALSE; writes=0.' . PHP_EOL;
   exit(1);
 }
 
-section($is_apply ? 'Page apply' : 'Page dry-run');
-$transaction = $is_apply ? \Drupal::database()->startTransaction() : NULL;
-foreach ($pages as $page) {
-  try {
-    $node = resolve_page_node($page['alias']);
-    $create_if_missing = (bool) $page['create_if_missing'];
-    if (!$node && $is_apply) {
-      if (!$create_if_missing) {
-        throw new RuntimeException('Required existing page disappeared after preflight; refusing to create it.');
-      }
-      $node = Node::create([
-        'type' => 'page',
-        'title' => $page['title'],
-        'langcode' => \Drupal::languageManager()->getDefaultLanguage()->getId(),
-        'status' => NodeInterface::PUBLISHED,
-        'body' => [
-          'value' => $page['body'],
-          'format' => $body_format,
-        ],
-      ]);
-      $node->save();
-      echo 'CREATED page ' . $page['alias'] . ' as node ' . $node->id() . PHP_EOL;
-    }
-    elseif (!$node) {
-      if (!$create_if_missing) {
-        throw new RuntimeException('Required existing page disappeared after preflight; refusing to create it.');
-      }
-      echo 'WOULD_CREATE page ' . $page['alias'] . ' title "' . $page['title'] . '"' . PHP_EOL;
-      print_exact_body_change($page['alias'], NULL, $page['body'], $body_format);
-    }
-
-    if ($node) {
-      $changes = page_changes($node, $page['title'], $page['body'], $body_format);
-      if ($changes) {
-        if ($is_apply) {
-          update_page_node($node, $page['title'], $page['body'], $body_format, $changes);
-          echo 'UPDATED page ' . $page['alias'] . ' node ' . $node->id() . ': ' . implode('; ', $changes) . PHP_EOL;
-        }
-        else {
-          echo 'WOULD_UPDATE page ' . $page['alias'] . ' node ' . $node->id() . ': ' . implode('; ', $changes) . PHP_EOL;
-          if (isset($changes['body'])) {
-            print_exact_body_change($page['alias'], $node, $page['body'], $body_format);
-          }
-        }
-      }
-      else {
-        echo 'OK page ' . $page['alias'] . ' node ' . $node->id() . ' already matches' . PHP_EOL;
-      }
-    }
-
-    if ($node) {
-      ensure_alias($node, $page['alias'], $is_apply);
-    }
-    elseif (!$is_apply) {
-      echo 'WOULD_CREATE alias ' . $page['alias'] . ' after node creation' . PHP_EOL;
-    }
-  }
-  catch (Throwable $throwable) {
-    check(FALSE, $page['alias'] . ': ' . $throwable->getMessage());
-    if ($is_apply) {
-      break;
-    }
-  }
-}
-
-if ($failed) {
-  if ($transaction) {
-    $transaction->rollBack();
-  }
-  echo PHP_EOL . 'Blocked while preparing pages. No menu links were changed.' . PHP_EOL;
-  echo $is_apply ? 'All page writes from this run were rolled back.' . PHP_EOL : '';
-  exit(1);
-}
-
-section($is_apply ? 'Menu apply' : 'Menu dry-run');
-foreach ($main_menu_links as $menu_link) {
-  try {
-    ensure_main_menu_link($menu_link, $main_menu_links, $is_apply);
-  }
-  catch (Throwable $throwable) {
-    check(FALSE, $menu_link['title'] . ': ' . $throwable->getMessage());
-    if ($is_apply) {
-      break;
-    }
-  }
-}
-
-if (!$failed) {
-  foreach ($main_menu_links_to_disable as $menu_path) {
-    try {
-      disable_main_menu_link($menu_path, $is_apply);
-    }
-    catch (Throwable $throwable) {
-      check(FALSE, $menu_path . ': ' . $throwable->getMessage());
-      if ($is_apply) {
-        break;
-      }
-    }
-  }
-}
-
-if ($failed) {
-  if ($transaction) {
-    $transaction->rollBack();
-  }
-  echo PHP_EOL . 'Content architecture failed.' . PHP_EOL;
-  echo $is_apply ? 'All writes from this run were rolled back.' . PHP_EOL : '';
-  exit(1);
-}
-
-unset($transaction);
-
-section('Result');
-if ($is_apply) {
-  echo 'Apply completed. Only allowlisted page nodes, aliases, and main-menu links were reconciled; the services link was retained and disabled.' . PHP_EOL;
+if (!$is_apply) {
+  section('Dry-run result');
+  echo 'Dry-run completed. No content, menu links, aliases, config, or Commerce data was changed.' . PHP_EOL;
 }
 else {
-  echo 'Dry-run completed. No content, menu links, aliases, config, or Commerce data was changed.' . PHP_EOL;
+  $phase = 'Phase B';
+  try {
+    section('Phase B — atomic apply');
+    $committed_messages = apply_change_plan($change_plan);
+    foreach ($committed_messages as $message) {
+      echo $message . PHP_EOL;
+    }
+    section('Apply result');
+    echo 'Apply completed. The complete immutable plan was committed atomically; the services link was retained and disabled.' . PHP_EOL;
+  }
+  catch (Throwable $throwable) {
+    echo PHP_EOL . 'BLOCKED Phase B: ' . $throwable->getMessage() . PHP_EOL;
+    echo 'FAIL Phase B did not complete with a confirmed atomic commit.' . PHP_EOL;
+    if ($throwable instanceof ContentArchitectureApplyRolledBack && $throwable->rollbackConfirmed) {
+      echo 'ROLLBACK_CONFIRMED; no planned entity write was committed.' . PHP_EOL;
+    }
+    else {
+      echo 'ROLLBACK_UNCONFIRMED; persistence state requires operator inspection.' . PHP_EOL;
+    }
+    echo 'No apply-success message was emitted.' . PHP_EOL;
+    exit(1);
+  }
 }
 
 function section(string $title): void {
   echo PHP_EOL . '== ' . $title . ' ==' . PHP_EOL;
 }
 
-function check(bool $ok, string $message): void {
-  global $failed;
-  echo ($ok ? 'OK ' : 'FAIL ') . $message . PHP_EOL;
-  $failed = $failed || !$ok;
+function assert_runtime_guards(string $mode, string $body_format): void {
+  $checks = [
+    'mode is dry-run or apply' => $mode === 'dry-run' || $mode === 'apply',
+    'node entity type is available' => \Drupal::entityTypeManager()->hasDefinition('node'),
+    'path_alias entity type is available' => \Drupal::entityTypeManager()->hasDefinition('path_alias'),
+    'menu_link_content entity type is available' => \Drupal::entityTypeManager()->hasDefinition('menu_link_content'),
+    'page content type exists' => (bool) \Drupal\node\Entity\NodeType::load('page'),
+  ];
+
+  $format = \Drupal::entityTypeManager()->getStorage('filter_format')->load($body_format);
+  $checks[$body_format . ' text format exists and is enabled'] = (bool) $format && (bool) $format->status();
+
+  $failures = [];
+  foreach ($checks as $message => $ok) {
+    echo ($ok ? 'OK ' : 'FAIL ') . 'Phase A runtime guard: ' . $message . PHP_EOL;
+    if (!$ok) {
+      $failures[] = $message;
+    }
+  }
+
+  if ($failures) {
+    throw new ContentArchitecturePreflightBlocked(
+      'Runtime guards failed: ' . implode('; ', $failures) . '.'
+    );
+  }
+}
+
+function build_change_plan(
+  array $page_specs,
+  array $reference_aliases,
+  array $menu_specs,
+  array $menu_paths_to_disable,
+  string $body_format,
+): ContentArchitectureChangePlan {
+  $blockers = [];
+  $reserved_uuids = [];
+  $seen_node_ids = [];
+  $page_plans = [];
+  $alias_plans = [];
+  $reference_plans = [];
+
+  $declared_creatable_pages = [];
+  foreach ($page_specs as $key => $spec) {
+    try {
+      validate_page_spec($key, $spec);
+      if ($spec['create_if_missing']) {
+        $declared_creatable_pages[] = $spec['alias'];
+      }
+
+      $node = resolve_page_node($spec['alias']);
+      if ($node) {
+        $node_id = (string) $node->id();
+        if (isset($seen_node_ids[$node_id])) {
+          throw new RuntimeException(
+            'Aliases ' . $seen_node_ids[$node_id] . ' and ' . $spec['alias']
+            . ' resolve to the same node ' . $node_id . '.'
+          );
+        }
+        $seen_node_ids[$node_id] = $spec['alias'];
+
+        $alias_entity = alias_entity($spec['alias']);
+        if (!$alias_entity) {
+          throw new RuntimeException('Resolved page has no canonical alias entity.');
+        }
+        $current = page_entity_snapshot($node);
+        $planned = planned_page_snapshot($current, $spec, $body_format);
+        $changes = page_snapshot_changes($current, $planned);
+        if ($changes) {
+          assert_planned_page_entity_valid($node, $planned, $spec['alias']);
+        }
+        $page_plans[$key] = [
+          'key' => $key,
+          'alias' => $spec['alias'],
+          'action' => $changes ? 'update' : 'none',
+          'entity_id' => (int) $node->id(),
+          'expected' => $current,
+          'planned' => $planned,
+          'changes' => $changes,
+        ];
+        $alias_snapshot = path_alias_snapshot($alias_entity);
+        $alias_plans[$spec['alias']] = [
+          'alias' => $spec['alias'],
+          'action' => 'none',
+          'target_page_key' => $key,
+          'entity_id' => (int) $alias_entity->id(),
+          'expected' => $alias_snapshot,
+          'planned' => $alias_snapshot,
+        ];
+      }
+      else {
+        if (!$spec['create_if_missing']) {
+          throw new RuntimeException(
+            'Required existing page alias is missing; refusing to create or adopt a page by title.'
+          );
+        }
+        $same_title_node_ids = page_node_ids_by_title($spec['title']);
+        if ($same_title_node_ids) {
+          throw new RuntimeException(
+            'Alias is missing but title "' . $spec['title'] . '" belongs to node(s) '
+            . implode(', ', $same_title_node_ids) . '; refusing a duplicate or title adoption.'
+          );
+        }
+
+        $node_uuid = reserve_entity_uuid('node', $reserved_uuids);
+        $alias_uuid = reserve_entity_uuid('path_alias', $reserved_uuids);
+        $langcode = \Drupal::languageManager()->getDefaultLanguage()->getId();
+        $planned = [
+          'uuid' => $node_uuid,
+          'langcode' => $langcode,
+          'title' => $spec['title'],
+          'published' => TRUE,
+          'body' => $spec['body'],
+          'format' => $body_format,
+          'summary' => NULL,
+        ];
+        assert_planned_page_entity_valid(NULL, $planned, $spec['alias']);
+        $page_plans[$key] = [
+          'key' => $key,
+          'alias' => $spec['alias'],
+          'action' => 'create',
+          'entity_id' => NULL,
+          'expected' => NULL,
+          'planned' => $planned,
+          'changes' => [
+            'title' => 'title <absent> -> "' . $spec['title'] . '"',
+            'status' => 'status <absent> -> published',
+            'body' => 'body <absent>; exact planned value follows',
+          ],
+        ];
+        $alias_plans[$spec['alias']] = [
+          'alias' => $spec['alias'],
+          'action' => 'create',
+          'target_page_key' => $key,
+          'entity_id' => NULL,
+          'expected' => NULL,
+          'planned' => [
+            'uuid' => $alias_uuid,
+            'alias' => $spec['alias'],
+            'langcode' => $langcode,
+            'path' => NULL,
+          ],
+        ];
+      }
+    }
+    catch (Throwable $throwable) {
+      $blockers[] = 'page ' . ($spec['alias'] ?? (string) $key) . ': ' . $throwable->getMessage();
+    }
+  }
+
+  $expected_creatable_pages = ['/cours-et-stages', '/ateliers', '/a-propos', '/origine'];
+  if ($declared_creatable_pages !== $expected_creatable_pages) {
+    $blockers[] = 'page create allowlist differs from the exact four canonical new pages.';
+  }
+
+  $validation_node_id = NULL;
+  foreach ($page_plans as $page_plan) {
+    if ($page_plan['entity_id'] !== NULL) {
+      $validation_node_id = $page_plan['entity_id'];
+      break;
+    }
+  }
+  foreach ($alias_plans as $alias_plan) {
+    if ($alias_plan['action'] !== 'create') {
+      continue;
+    }
+    if ($validation_node_id === NULL) {
+      $blockers[] = 'alias ' . $alias_plan['alias']
+        . ': no resolved existing page is available for read-only path validation.';
+      continue;
+    }
+    try {
+      assert_planned_alias_entity_valid(
+        $alias_plan['planned'],
+        $alias_plan['alias'],
+        $validation_node_id
+      );
+    }
+    catch (Throwable $throwable) {
+      $blockers[] = 'alias ' . $alias_plan['alias'] . ': ' . $throwable->getMessage();
+    }
+  }
+
+  foreach ($reference_aliases as $alias) {
+    try {
+      if (!is_string($alias) || !is_ascii_public_path($alias)) {
+        throw new RuntimeException('Reference alias must be an ASCII public path.');
+      }
+      $node = page_node_by_alias($alias);
+      if (!$node) {
+        throw new RuntimeException('Required existing reference page alias is missing.');
+      }
+      $node_id = (string) $node->id();
+      if (isset($seen_node_ids[$node_id])) {
+        throw new RuntimeException(
+          'Reference alias resolves to node ' . $node_id . ', already selected by '
+          . $seen_node_ids[$node_id] . '.'
+        );
+      }
+      $seen_node_ids[$node_id] = $alias;
+      $alias_entity = alias_entity($alias);
+      if (!$alias_entity) {
+        throw new RuntimeException('Reference page has no canonical alias entity.');
+      }
+      $reference_plans[$alias] = [
+        'alias' => $alias,
+        'node' => page_entity_snapshot($node),
+        'path_alias' => path_alias_snapshot($alias_entity),
+      ];
+    }
+    catch (Throwable $throwable) {
+      $blockers[] = 'reference page ' . (string) $alias . ': ' . $throwable->getMessage();
+    }
+  }
+
+  if ($reference_aliases !== ['/concerts', '/djam', '/orchestre-des-reveurs', '/contact']) {
+    $blockers[] = 'reference-page allowlist differs from the exact four preserved aliases.';
+  }
+
+  $menu_plans = discover_menu_change_plan(
+    $menu_specs,
+    $menu_paths_to_disable,
+    $reserved_uuids,
+    $blockers
+  );
+
+  if ($blockers) {
+    foreach ($blockers as $blocker) {
+      echo 'FAIL Phase A blocker: ' . $blocker . PHP_EOL;
+    }
+    throw new ContentArchitecturePreflightBlocked(
+      count($blockers) . ' preflight blocker(s) detected; complete plan rejected.'
+    );
+  }
+
+  $operations = [];
+  foreach ($page_plans as $key => $page_plan) {
+    if ($page_plan['action'] !== 'none') {
+      $operations[] = ['type' => 'page_' . $page_plan['action'], 'key' => $key];
+    }
+  }
+  foreach ($alias_plans as $alias => $alias_plan) {
+    if ($alias_plan['action'] !== 'none') {
+      $operations[] = ['type' => 'alias_' . $alias_plan['action'], 'key' => $alias];
+    }
+  }
+  foreach ($menu_plans as $path => $menu_plan) {
+    if ($menu_plan['action'] !== 'none') {
+      $operations[] = ['type' => 'menu_' . $menu_plan['action'], 'key' => $path];
+    }
+  }
+
+  return new ContentArchitectureChangePlan(
+    $page_plans,
+    $alias_plans,
+    $reference_plans,
+    $menu_plans,
+    $operations
+  );
+}
+
+function validate_page_spec(string $key, array $spec): void {
+  foreach (['title', 'alias', 'body', 'create_if_missing'] as $required_key) {
+    if (!array_key_exists($required_key, $spec)) {
+      throw new RuntimeException('Missing page specification key ' . $required_key . '.');
+    }
+  }
+  if ($key === '' || !is_string($spec['title']) || preg_match('//u', $spec['title']) !== 1) {
+    throw new RuntimeException('Page key and UTF-8 title must be valid.');
+  }
+  if (!is_ascii_public_path($spec['alias'])) {
+    throw new RuntimeException('Page alias is not an ASCII public path.');
+  }
+  if (!is_string($spec['body']) || preg_match('//u', $spec['body']) !== 1) {
+    throw new RuntimeException('Page body must be valid UTF-8.');
+  }
+  if (!is_bool($spec['create_if_missing'])) {
+    throw new RuntimeException('Page create_if_missing must be boolean.');
+  }
+}
+
+function assert_planned_page_entity_valid(
+  ?NodeInterface $current,
+  array $planned,
+  string $alias,
+): void {
+  $candidate = $current ? clone $current : Node::create([
+    'type' => 'page',
+    'uuid' => $planned['uuid'],
+    'langcode' => $planned['langcode'],
+  ]);
+  $candidate->setTitle($planned['title']);
+  if ($planned['published']) {
+    $candidate->setPublished();
+  }
+  else {
+    $candidate->setUnpublished();
+  }
+  $candidate->set('body', [
+    'value' => $planned['body'],
+    'format' => $planned['format'],
+    'summary' => $planned['summary'],
+  ]);
+  assert_entity_constraint_valid(
+    $candidate,
+    'planned page ' . $alias,
+    // The Drush bootstrap user has no text-format permissions. Phase A's
+    // runtime guard independently proves that full_html exists and is active.
+    ['body.0.format']
+  );
+}
+
+function assert_planned_alias_entity_valid(
+  array $planned,
+  string $alias,
+  int $validation_node_id,
+): void {
+  $candidate = \Drupal::entityTypeManager()->getStorage('path_alias')->create([
+    'uuid' => $planned['uuid'],
+    // The planned node's exact ID is allocated only by its transactional
+    // insert. A resolved required page provides a real route for Phase A's
+    // read-only constraint validation without reserving an ID.
+    'path' => '/node/' . $validation_node_id,
+    'alias' => $planned['alias'],
+    'langcode' => $planned['langcode'],
+  ]);
+  assert_entity_constraint_valid($candidate, 'planned alias ' . $alias);
+}
+
+function assert_entity_constraint_valid(
+  $entity,
+  string $description,
+  array $ignored_property_paths = [],
+): void {
+  $violations = $entity->validate();
+  $messages = [];
+  foreach ($violations as $violation) {
+    $property = $violation->getPropertyPath();
+    if (in_array($property, $ignored_property_paths, TRUE)) {
+      continue;
+    }
+    $messages[] = ($property !== '' ? $property . ': ' : '') . (string) $violation->getMessage();
+  }
+  if (!$messages) {
+    return;
+  }
+  throw new RuntimeException(
+    'Drupal entity validation failed for ' . $description . ': ' . implode('; ', $messages) . '.'
+  );
+}
+
+function reserve_entity_uuid(string $entity_type, array &$reserved_uuids): string {
+  $storage = \Drupal::entityTypeManager()->getStorage($entity_type);
+  for ($attempt = 0; $attempt < 10; $attempt++) {
+    $uuid = \Drupal::service('uuid')->generate();
+    if (isset($reserved_uuids[$uuid])) {
+      continue;
+    }
+    if ($storage->loadByProperties(['uuid' => $uuid])) {
+      continue;
+    }
+    $reserved_uuids[$uuid] = $entity_type;
+    return $uuid;
+  }
+  throw new RuntimeException('Could not reserve a unique UUID for ' . $entity_type . '.');
+}
+
+function page_entity_snapshot(NodeInterface $node): array {
+  $has_body = $node->hasField('body') && !$node->get('body')->isEmpty();
+  return [
+    'entity_id' => (int) $node->id(),
+    'uuid' => (string) $node->uuid(),
+    'revision_id' => (int) $node->getRevisionId(),
+    'langcode' => (string) $node->language()->getId(),
+    'title' => (string) $node->label(),
+    'published' => (bool) $node->isPublished(),
+    'body' => $has_body ? (string) $node->get('body')->value : '',
+    'format' => $has_body ? (string) $node->get('body')->format : '',
+    'summary' => $has_body ? $node->get('body')->summary : NULL,
+  ];
+}
+
+function planned_page_snapshot(array $current, array $spec, string $body_format): array {
+  return [
+    'uuid' => $current['uuid'],
+    'langcode' => $current['langcode'],
+    'title' => $spec['title'],
+    'published' => TRUE,
+    'body' => $spec['body'],
+    'format' => $body_format,
+    'summary' => $current['summary'],
+  ];
+}
+
+function page_snapshot_changes(array $current, array $planned): array {
+  $changes = [];
+  if ($current['title'] !== $planned['title']) {
+    $changes['title'] = 'title "' . $current['title'] . '" -> "' . $planned['title'] . '"';
+  }
+  if (!$current['published']) {
+    $changes['status'] = 'status unpublished -> published';
+  }
+  if ($current['body'] !== $planned['body'] || $current['format'] !== $planned['format']) {
+    $changes['body'] = 'body differs; exact current and planned values follow';
+  }
+  return $changes;
+}
+
+function path_alias_snapshot($alias_entity): array {
+  return [
+    'entity_id' => (int) $alias_entity->id(),
+    'uuid' => (string) $alias_entity->uuid(),
+    'alias' => (string) $alias_entity->getAlias(),
+    'path' => (string) $alias_entity->getPath(),
+    'langcode' => (string) $alias_entity->language()->getId(),
+  ];
 }
 
 function resolve_page_node(string $alias): ?NodeInterface {
@@ -1046,52 +1326,6 @@ function alias_entity(string $alias) {
   return reset($aliases);
 }
 
-function page_changes(NodeInterface $node, string $title, string $body, string $format): array {
-  $changes = [];
-  if ($node->label() !== $title) {
-    $changes['title'] = 'title "' . $node->label() . '" -> "' . $title . '"';
-  }
-  if (!$node->isPublished()) {
-    $changes['status'] = 'status unpublished -> published';
-  }
-
-  $current_body = $node->hasField('body') && !$node->get('body')->isEmpty()
-    ? (string) $node->get('body')->value
-    : '';
-  $current_format = $node->hasField('body') && !$node->get('body')->isEmpty()
-    ? (string) $node->get('body')->format
-    : '';
-  if ($current_body !== $body || $current_format !== $format) {
-    $changes['body'] = 'body differs; exact current and planned values follow';
-  }
-
-  return $changes;
-}
-
-function print_exact_body_change(string $alias, ?NodeInterface $node, string $planned_body, string $planned_format): void {
-  echo 'BODY_CHANGE_EXACT alias=' . $alias;
-  echo $node ? ' node=' . $node->id() . PHP_EOL : ' node=NEW' . PHP_EOL;
-
-  if ($node) {
-    $current_body = $node->hasField('body') && !$node->get('body')->isEmpty()
-      ? (string) $node->get('body')->value
-      : '';
-    $current_format = $node->hasField('body') && !$node->get('body')->isEmpty()
-      ? (string) $node->get('body')->format
-      : '';
-    echo 'CURRENT_FORMAT ' . $current_format . PHP_EOL;
-    print_exact_body_block('CURRENT_BODY', $current_body);
-  }
-  else {
-    echo 'CURRENT_FORMAT <absent>' . PHP_EOL;
-    echo 'CURRENT_BODY <absent>' . PHP_EOL;
-  }
-
-  echo 'PLANNED_FORMAT ' . $planned_format . PHP_EOL;
-  print_exact_body_block('PLANNED_BODY', $planned_body);
-  echo 'END_BODY_CHANGE_EXACT alias=' . $alias . PHP_EOL;
-}
-
 function print_exact_body_block(string $label, string $body): void {
   echo $label . '_BEGIN bytes=' . strlen($body) . ' sha256=' . hash('sha256', $body) . PHP_EOL;
   echo $body;
@@ -1101,18 +1335,748 @@ function print_exact_body_block(string $label, string $body): void {
   echo $label . '_END' . PHP_EOL;
 }
 
-function update_page_node(NodeInterface $node, string $title, string $body, string $format, array $changes): void {
-  $current_summary = $node->hasField('body') && !$node->get('body')->isEmpty()
-    ? $node->get('body')->summary
-    : NULL;
-  $node->setTitle($title);
-  $node->setPublished(TRUE);
-  $node->set('body', [
-    'value' => $body,
-    'format' => $format,
-    'summary' => $current_summary,
-  ]);
+function discover_menu_change_plan(
+  array $specs,
+  array $paths_to_disable,
+  array &$reserved_uuids,
+  array &$blockers,
+): array {
+  $inventory = main_menu_content_links();
+  $plans = [];
+  $declared_paths = [];
+  $declared_titles = [];
+  $normalized_paths = [];
+  $selected_plugins = [];
+  $plugin_by_path = [];
+  $declared_creatable_paths = [];
 
+  foreach ($specs as $index => $spec) {
+    $path = is_string($spec['path'] ?? NULL) ? $spec['path'] : 'spec#' . $index;
+    try {
+      $title = $spec['title'] ?? NULL;
+      $parent_path = $spec['parent_path'] ?? NULL;
+      $enabled = $spec['enabled'] ?? NULL;
+      $create_if_missing = $spec['create_if_missing'] ?? NULL;
+      $weight = $spec['weight'] ?? NULL;
+
+      if (!is_string($title) || $title === '' || preg_match('//u', $title) !== 1) {
+        throw new RuntimeException('Canonical menu label must be non-empty UTF-8.');
+      }
+      if (!is_ascii_public_path($path)) {
+        throw new RuntimeException('Canonical menu path is not an ASCII public path.');
+      }
+      if (!is_int($weight)) {
+        throw new RuntimeException('Canonical menu weight must be an integer.');
+      }
+      if ($enabled !== TRUE) {
+        throw new RuntimeException('Canonical active menu link must declare enabled TRUE.');
+      }
+      if (!is_bool($create_if_missing)) {
+        throw new RuntimeException('Menu create_if_missing must be boolean.');
+      }
+      if (isset($declared_paths[$path])) {
+        throw new RuntimeException('Canonical menu path is declared more than once.');
+      }
+      if (isset($declared_titles[$title])) {
+        throw new RuntimeException('Canonical menu label is declared more than once: "' . $title . '".');
+      }
+      if ($parent_path !== NULL && (!is_string($parent_path) || !isset($plugin_by_path[$parent_path]))) {
+        throw new RuntimeException('Parent ' . (string) $parent_path . ' is not fully planned before its child.');
+      }
+
+      if ($create_if_missing) {
+        $declared_creatable_paths[] = $path;
+      }
+      $normalized_path = normalized_internal_path($path);
+      if (isset($normalized_paths[$normalized_path])) {
+        throw new RuntimeException(
+          'Canonical paths ' . $normalized_paths[$normalized_path] . ' and ' . $path
+          . ' normalize to the same destination ' . $normalized_path . '.'
+        );
+      }
+
+      $link = find_unique_main_menu_link($path, $inventory);
+      if (!$link && !$create_if_missing) {
+        throw new RuntimeException('Required existing main-menu link is missing; refusing to create it.');
+      }
+      if ($link) {
+        assert_main_menu_destination_is_canonical($link, $path);
+      }
+      assert_main_menu_label_available($title, $link, $inventory);
+
+      if ($link) {
+        $current = menu_link_snapshot($link, $inventory);
+        $plugin_id = $current['plugin_id'];
+        $uuid = $current['uuid'];
+        $entity_id = $current['entity_id'];
+      }
+      else {
+        $current = NULL;
+        $uuid = reserve_entity_uuid('menu_link_content', $reserved_uuids);
+        $plugin_id = 'menu_link_content:' . $uuid;
+        if (\Drupal::service('plugin.manager.menu.link')->hasDefinition($plugin_id)) {
+          throw new RuntimeException('Reserved menu plugin ID already exists in the menu tree: ' . $plugin_id . '.');
+        }
+        $entity_id = NULL;
+      }
+
+      if (isset($selected_plugins[$plugin_id])) {
+        throw new RuntimeException(
+          'Paths ' . $selected_plugins[$plugin_id] . ' and ' . $path
+          . ' select the same menu plugin ' . $plugin_id . '.'
+        );
+      }
+
+      $planned_parent_id = $parent_path === NULL ? '' : $plugin_by_path[$parent_path];
+      $parent_spec = $parent_path === NULL ? NULL : menu_spec_by_path($specs, $parent_path);
+      $planned_parent_description = $parent_path === NULL
+        ? 'top-level'
+        : 'child of "' . $parent_spec['title']
+          . '" (' . $parent_path . '; ' . $planned_parent_id . ')';
+      $planned = [
+        'entity_id' => $entity_id,
+        'uuid' => $uuid,
+        'plugin_id' => $plugin_id,
+        'title' => $title,
+        'uri' => $current ? $current['uri'] : 'internal:' . $path,
+        'weight' => $weight,
+        'parent' => $planned_parent_id,
+        'parent_description' => $planned_parent_description,
+        'enabled' => TRUE,
+        'expanded' => $current ? $current['expanded'] : FALSE,
+      ];
+      $action = !$current
+        ? 'create'
+        : (menu_link_requires_update($current, $planned) ? 'update' : 'none');
+      if ($action !== 'none') {
+        assert_planned_menu_entity_valid($link, $planned, $path);
+      }
+      $plans[$path] = [
+        'kind' => 'active',
+        'path' => $path,
+        'parent_path' => $parent_path,
+        'create_if_missing' => $create_if_missing,
+        'action' => $action,
+        'entity_id' => $entity_id,
+        'expected' => $current,
+        'planned' => $planned,
+      ];
+
+      $declared_paths[$path] = TRUE;
+      $declared_titles[$title] = TRUE;
+      $normalized_paths[$normalized_path] = $path;
+      $selected_plugins[$plugin_id] = $path;
+      $plugin_by_path[$path] = $plugin_id;
+    }
+    catch (Throwable $throwable) {
+      $blockers[] = 'main-menu ' . $path . ': ' . $throwable->getMessage();
+    }
+  }
+
+  $expected_creatable_paths = ['/cours-et-stages', '/ateliers', '/a-propos', '/origine'];
+  if ($declared_creatable_paths !== $expected_creatable_paths) {
+    $blockers[] = 'menu create allowlist differs from the exact four canonical new destinations.';
+  }
+  if (count($specs) !== 12) {
+    $blockers[] = 'canonical active menu plan must contain exactly twelve links.';
+  }
+  if ($paths_to_disable !== ['/services-prestations-artistiques']) {
+    $blockers[] = 'menu disable allowlist must contain only /services-prestations-artistiques.';
+  }
+
+  foreach ($paths_to_disable as $path) {
+    try {
+      if (!is_string($path) || !is_ascii_public_path($path)) {
+        throw new RuntimeException('Disabled path is not an ASCII public path.');
+      }
+      if (isset($declared_paths[$path])) {
+        throw new RuntimeException('Path cannot be active and disabled in the same plan.');
+      }
+      $normalized_path = normalized_internal_path($path);
+      if (isset($normalized_paths[$normalized_path])) {
+        throw new RuntimeException(
+          'Disabled path and active path ' . $normalized_paths[$normalized_path]
+          . ' normalize to the same destination.'
+        );
+      }
+      $link = find_unique_main_menu_link($path, $inventory);
+      if (!$link) {
+        throw new RuntimeException('Required existing Services link is missing; there is nothing to disable.');
+      }
+      assert_main_menu_destination_is_canonical($link, $path);
+      $current = menu_link_snapshot($link, $inventory);
+      if ($current['parent'] !== '') {
+        throw new RuntimeException(
+          'Required Services link is not top-level; unexpected parent '
+          . $current['parent_description'] . '.'
+        );
+      }
+      if (isset($selected_plugins[$current['plugin_id']])) {
+        throw new RuntimeException(
+          'Services path selects the same plugin as ' . $selected_plugins[$current['plugin_id']] . '.'
+        );
+      }
+      $planned = $current;
+      $planned['enabled'] = FALSE;
+      if ($current['enabled']) {
+        assert_planned_menu_entity_valid($link, $planned, $path);
+      }
+      $plans[$path] = [
+        'kind' => 'disable',
+        'path' => $path,
+        'parent_path' => NULL,
+        'create_if_missing' => FALSE,
+        'action' => $current['enabled'] ? 'disable' : 'none',
+        'entity_id' => $current['entity_id'],
+        'expected' => $current,
+        'planned' => $planned,
+      ];
+      $selected_plugins[$current['plugin_id']] = $path;
+      $normalized_paths[$normalized_path] = $path;
+    }
+    catch (Throwable $throwable) {
+      $blockers[] = 'main-menu ' . (string) $path . ': ' . $throwable->getMessage();
+    }
+  }
+
+  return $plans;
+}
+
+function menu_link_snapshot(MenuLinkContent $link, array $inventory): array {
+  $parent_id = (string) $link->get('parent')->value;
+  assert_menu_plugin_definition_matches_entity($link);
+  return [
+    'entity_id' => (int) $link->id(),
+    'uuid' => (string) $link->uuid(),
+    'plugin_id' => menu_link_plugin_id($link),
+    'title' => (string) $link->label(),
+    'uri' => menu_link_uri($link),
+    'weight' => (int) $link->get('weight')->value,
+    'parent' => $parent_id,
+    'parent_description' => menu_parent_description($parent_id, $inventory),
+    'enabled' => (bool) $link->get('enabled')->value,
+    'expanded' => (bool) $link->get('expanded')->value,
+  ];
+}
+
+function menu_parent_description(string $parent_id, array $inventory): string {
+  if ($parent_id === '') {
+    return 'top-level';
+  }
+  foreach ($inventory as $candidate) {
+    if (menu_link_plugin_id($candidate) === $parent_id) {
+      return 'child of "' . $candidate->label() . '" (' . menu_link_uri($candidate) . '; ' . $parent_id . ')';
+    }
+  }
+  return 'plugin "' . $parent_id . '"';
+}
+
+function menu_link_requires_update(array $current, array $planned): bool {
+  foreach (['title', 'weight', 'parent', 'enabled'] as $field) {
+    if ($current[$field] !== $planned[$field]) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+function assert_planned_menu_entity_valid(
+  ?MenuLinkContent $current,
+  array $planned,
+  string $path,
+): void {
+  $candidate = $current ? clone $current : MenuLinkContent::create([
+    'uuid' => $planned['uuid'],
+    'menu_name' => 'main',
+    'link' => ['uri' => $planned['uri']],
+  ]);
+  $candidate->set('title', $planned['title']);
+  $candidate->set('weight', $planned['weight']);
+  $candidate->set('parent', $planned['parent']);
+  $candidate->set('enabled', $planned['enabled']);
+  $candidate->set('expanded', $planned['expanded']);
+  assert_entity_constraint_valid($candidate, 'planned main-menu link ' . $path);
+}
+
+function assert_menu_plugin_definition_matches_entity(MenuLinkContent $link): void {
+  $plugin_id = menu_link_plugin_id($link);
+  $definition = \Drupal::service('plugin.manager.menu.link')->getDefinition($plugin_id, FALSE);
+  if (!$definition) {
+    throw new RuntimeException('Menu plugin definition is missing for ' . $plugin_id . '.');
+  }
+
+  $entity_definition = $link->getPluginDefinition();
+  $expected = [
+    'id' => $plugin_id,
+    'menu_name' => 'main',
+    'title' => (string) $link->label(),
+    'weight' => (int) $link->get('weight')->value,
+    'parent' => (string) $link->get('parent')->value,
+    'enabled' => (int) (bool) $link->get('enabled')->value,
+    'expanded' => (int) (bool) $link->get('expanded')->value,
+  ];
+  foreach (['route_name', 'route_parameters', 'url', 'options'] as $destination_field) {
+    $expected[$destination_field] = $entity_definition[$destination_field] ?? NULL;
+  }
+  foreach ($expected as $field => $value) {
+    $definition_value = $definition[$field] ?? NULL;
+    if ($field === 'weight') {
+      $definition_value = (int) $definition_value;
+    }
+    elseif ($field === 'enabled' || $field === 'expanded') {
+      $definition_value = (int) (bool) $definition_value;
+    }
+    elseif ($field === 'url' && $definition_value === '') {
+      $definition_value = NULL;
+    }
+    if ($definition_value !== $value) {
+      throw new RuntimeException(
+        'Menu plugin definition ' . $plugin_id . ' has stale ' . $field . ' state.'
+      );
+    }
+  }
+}
+
+function print_change_plan(ContentArchitectureChangePlan $plan, string $mutation_prefix): void {
+  $plan->assertIntegrity();
+  section('Complete immutable change plan');
+
+  foreach ($plan->references as $reference) {
+    echo 'OK alias ' . $reference['alias'] . ' -> ' . $reference['path_alias']['path']
+      . ' (reference page preserved; body unchanged)' . PHP_EOL;
+  }
+
+  foreach ($plan->pages as $page) {
+    if ($page['action'] === 'create') {
+      echo $mutation_prefix . '_CREATE page ' . $page['alias'] . ' title "'
+        . $page['planned']['title'] . '" uuid=' . $page['planned']['uuid'] . PHP_EOL;
+      print_exact_planned_body_change($page);
+    }
+    elseif ($page['action'] === 'update') {
+      echo $mutation_prefix . '_UPDATE page ' . $page['alias'] . ' node '
+        . $page['entity_id'] . ': ' . implode('; ', $page['changes']) . PHP_EOL;
+      if (isset($page['changes']['body'])) {
+        print_exact_planned_body_change($page);
+      }
+    }
+    else {
+      echo 'OK page ' . $page['alias'] . ' node ' . $page['entity_id'] . ' already matches' . PHP_EOL;
+    }
+  }
+
+  foreach ($plan->aliases as $alias) {
+    if ($alias['action'] === 'create') {
+      echo $mutation_prefix . '_CREATE alias ' . $alias['alias']
+        . ' after planned page creation uuid=' . $alias['planned']['uuid'] . PHP_EOL;
+    }
+    else {
+      echo 'OK alias ' . $alias['alias'] . ' -> ' . $alias['planned']['path'] . PHP_EOL;
+    }
+  }
+
+  foreach ($plan->menuLinks as $menu_link) {
+    $path = $menu_link['path'];
+    $planned_state = menu_snapshot_state($menu_link['planned']);
+    if ($menu_link['action'] === 'create') {
+      echo $mutation_prefix . '_CREATE main menu link ' . $path . ': planned ' . $planned_state . PHP_EOL;
+    }
+    elseif ($menu_link['action'] === 'update') {
+      echo $mutation_prefix . '_UPDATE main menu link ' . $path . ': current '
+        . menu_snapshot_state($menu_link['expected']) . '; planned ' . $planned_state . PHP_EOL;
+    }
+    elseif ($menu_link['action'] === 'disable') {
+      echo $mutation_prefix . '_DISABLE main menu link ' . $path . ': current '
+        . menu_snapshot_state($menu_link['expected']) . '; planned ' . $planned_state
+        . '; retained, not deleted' . PHP_EOL;
+    }
+    elseif ($menu_link['kind'] === 'disable') {
+      echo 'OK disabled main menu link ' . $path . ': ' . $planned_state
+        . '; retained, not deleted' . PHP_EOL;
+    }
+    else {
+      echo 'OK main menu link ' . $path . ': ' . $planned_state . PHP_EOL;
+    }
+  }
+}
+
+function print_exact_planned_body_change(array $page): void {
+  echo 'BODY_CHANGE_EXACT alias=' . $page['alias'];
+  echo $page['expected'] ? ' node=' . $page['entity_id'] . PHP_EOL : ' node=NEW' . PHP_EOL;
+  if ($page['expected']) {
+    echo 'CURRENT_FORMAT ' . $page['expected']['format'] . PHP_EOL;
+    print_exact_body_block('CURRENT_BODY', $page['expected']['body']);
+  }
+  else {
+    echo 'CURRENT_FORMAT <absent>' . PHP_EOL;
+    echo 'CURRENT_BODY <absent>' . PHP_EOL;
+  }
+  echo 'PLANNED_FORMAT ' . $page['planned']['format'] . PHP_EOL;
+  print_exact_body_block('PLANNED_BODY', $page['planned']['body']);
+  echo 'END_BODY_CHANGE_EXACT alias=' . $page['alias'] . PHP_EOL;
+}
+
+function menu_snapshot_state(array $snapshot): string {
+  return menu_link_state(
+    $snapshot['title'],
+    $snapshot['weight'],
+    $snapshot['parent_description'],
+    $snapshot['enabled']
+  );
+}
+
+function apply_change_plan(ContentArchitectureChangePlan $plan): array {
+  $plan->assertIntegrity();
+  $connection = \Drupal::database();
+  if ($connection->inTransaction()) {
+    throw new ContentArchitectureApplyRolledBack(
+      'Refusing to run inside an existing database transaction; writes=0.',
+      TRUE
+    );
+  }
+  try {
+    $transaction = $connection->startTransaction('unisonges_content_architecture_2026');
+    if (!$connection->inTransaction()) {
+      throw new RuntimeException('Database connection did not enter a transaction.');
+    }
+  }
+  catch (Throwable $throwable) {
+    throw new ContentArchitectureApplyRolledBack(
+      'Transaction could not start; writes=0. ' . $throwable->getMessage(),
+      TRUE,
+      $throwable
+    );
+  }
+
+  try {
+    assert_change_plan_still_current($plan);
+    [$messages, $runtime_ids] = execute_change_plan($plan);
+    verify_applied_change_plan($plan, $runtime_ids);
+    $messages[] = 'OK Phase B post-apply verification passed inside the transaction.';
+    reset_content_entity_memory_cache();
+  }
+  catch (Throwable $throwable) {
+    $rollback_failure = NULL;
+    try {
+      $transaction->rollBack();
+    }
+    catch (Throwable $caught_rollback_failure) {
+      $rollback_failure = $caught_rollback_failure;
+    }
+    unset($transaction);
+    reset_content_entity_memory_cache();
+    $rollback_confirmed = $rollback_failure === NULL && !$connection->inTransaction();
+    if (!$rollback_confirmed) {
+      throw new ContentArchitectureApplyRolledBack(
+        'Atomic apply failed and rollback could not be confirmed. Cause: '
+        . $throwable->getMessage()
+        . ($rollback_failure ? '. Rollback failure: ' . $rollback_failure->getMessage() : ''),
+        FALSE,
+        $throwable
+      );
+    }
+    throw new ContentArchitectureApplyRolledBack(
+      'Atomic apply failed; transaction rollback confirmed. Cause: '
+      . $throwable->getMessage() . '.',
+      TRUE,
+      $throwable
+    );
+  }
+
+  try {
+    $transaction->commitOrRelease();
+    unset($transaction);
+  }
+  catch (Throwable $throwable) {
+    $rollback_failure = NULL;
+    $rollback_confirmed = FALSE;
+    if ($connection->inTransaction()) {
+      try {
+        $transaction->rollBack();
+        $rollback_confirmed = !$connection->inTransaction();
+      }
+      catch (Throwable $caught_rollback_failure) {
+        $rollback_failure = $caught_rollback_failure;
+      }
+    }
+    unset($transaction);
+    reset_content_entity_memory_cache();
+    throw new ContentArchitectureApplyRolledBack(
+      $rollback_confirmed
+        ? 'Transaction finalization failed before commit; rollback confirmed. Cause: '
+          . $throwable->getMessage()
+        : 'Transaction finalization failed; commit state is unknown. Cause: '
+          . $throwable->getMessage()
+          . ($rollback_failure ? '. Rollback failure: ' . $rollback_failure->getMessage() : ''),
+      $rollback_confirmed,
+      $throwable
+    );
+  }
+
+  return $messages;
+}
+
+function assert_change_plan_still_current(ContentArchitectureChangePlan $plan): void {
+  $plan->assertIntegrity();
+  reset_content_entity_memory_cache();
+
+  foreach ($plan->pages as $page) {
+    if ($page['expected']) {
+      $node = Node::load($page['entity_id']);
+      if (!$node instanceof NodeInterface || page_entity_snapshot($node) !== $page['expected']) {
+        throw new RuntimeException('Page drift detected before first write for ' . $page['alias'] . '.');
+      }
+    }
+    else {
+      if (alias_entity($page['alias'])) {
+        throw new RuntimeException('New page alias appeared after Phase A: ' . $page['alias'] . '.');
+      }
+      if (page_node_ids_by_title($page['planned']['title'])) {
+        throw new RuntimeException('New page title appeared after Phase A: ' . $page['planned']['title'] . '.');
+      }
+      if (\Drupal::entityTypeManager()->getStorage('node')->loadByProperties(['uuid' => $page['planned']['uuid']])) {
+        throw new RuntimeException('Reserved node UUID is no longer available for ' . $page['alias'] . '.');
+      }
+    }
+  }
+
+  foreach ($plan->aliases as $alias) {
+    $current = alias_entity($alias['alias']);
+    if ($alias['expected']) {
+      if (!$current || path_alias_snapshot($current) !== $alias['expected']) {
+        throw new RuntimeException('Alias drift detected before first write for ' . $alias['alias'] . '.');
+      }
+    }
+    elseif ($current) {
+      throw new RuntimeException('Planned new alias appeared after Phase A: ' . $alias['alias'] . '.');
+    }
+    elseif (\Drupal::entityTypeManager()->getStorage('path_alias')->loadByProperties([
+      'uuid' => $alias['planned']['uuid'],
+    ])) {
+      throw new RuntimeException('Reserved alias UUID is no longer available for ' . $alias['alias'] . '.');
+    }
+  }
+
+  foreach ($plan->references as $reference) {
+    $node = Node::load($reference['node']['entity_id']);
+    $alias = alias_entity($reference['alias']);
+    if (!$node instanceof NodeInterface || page_entity_snapshot($node) !== $reference['node']) {
+      throw new RuntimeException('Reference page drift detected before first write for ' . $reference['alias'] . '.');
+    }
+    if (!$alias || path_alias_snapshot($alias) !== $reference['path_alias']) {
+      throw new RuntimeException('Reference alias drift detected before first write for ' . $reference['alias'] . '.');
+    }
+  }
+
+  $inventory = main_menu_content_links();
+  foreach ($plan->menuLinks as $menu_link) {
+    $current = find_unique_main_menu_link($menu_link['path'], $inventory);
+    if ($menu_link['expected']) {
+      if (!$current || menu_link_snapshot($current, $inventory) !== $menu_link['expected']) {
+        throw new RuntimeException('Menu-link drift detected before first write for ' . $menu_link['path'] . '.');
+      }
+    }
+    else {
+      if ($current) {
+        throw new RuntimeException('Planned new menu destination appeared after Phase A: ' . $menu_link['path'] . '.');
+      }
+      if (\Drupal::entityTypeManager()->getStorage('menu_link_content')->loadByProperties([
+        'uuid' => $menu_link['planned']['uuid'],
+      ])) {
+        throw new RuntimeException('Reserved menu UUID is no longer available for ' . $menu_link['path'] . '.');
+      }
+      if (\Drupal::service('plugin.manager.menu.link')->hasDefinition($menu_link['planned']['plugin_id'])) {
+        throw new RuntimeException(
+          'Reserved menu plugin ID appeared in the menu tree for ' . $menu_link['path'] . '.'
+        );
+      }
+    }
+    if ($menu_link['kind'] === 'active') {
+      assert_main_menu_label_available($menu_link['planned']['title'], $current, $inventory);
+    }
+  }
+
+  $plugins_by_path = [];
+  foreach ($plan->menuLinks as $path => $menu_link) {
+    if ($menu_link['kind'] === 'active') {
+      $plugins_by_path[$path] = $menu_link['planned']['plugin_id'];
+    }
+  }
+  foreach ($plan->menuLinks as $menu_link) {
+    if ($menu_link['kind'] !== 'active') {
+      continue;
+    }
+    $expected_parent = $menu_link['parent_path'] === NULL
+      ? ''
+      : ($plugins_by_path[$menu_link['parent_path']] ?? NULL);
+    if (!is_string($expected_parent) || $menu_link['planned']['parent'] !== $expected_parent) {
+      throw new RuntimeException('Unresolved planned parent dependency for ' . $menu_link['path'] . '.');
+    }
+  }
+
+  echo 'OK Phase B concurrency guard: complete plan still matches; writes=0.' . PHP_EOL;
+}
+
+function execute_change_plan(ContentArchitectureChangePlan $plan): array {
+  $messages = [];
+  $runtime_ids = [
+    'pages' => [],
+    'aliases' => [],
+    'menu_links' => [],
+  ];
+  $available_menu_plugins = [];
+
+  foreach ($plan->pages as $key => $page) {
+    if ($page['entity_id'] !== NULL) {
+      $runtime_ids['pages'][$key] = $page['entity_id'];
+    }
+  }
+  foreach ($plan->aliases as $alias => $alias_plan) {
+    if ($alias_plan['entity_id'] !== NULL) {
+      $runtime_ids['aliases'][$alias] = $alias_plan['entity_id'];
+    }
+  }
+  foreach ($plan->menuLinks as $path => $menu_link) {
+    if ($menu_link['entity_id'] !== NULL) {
+      $runtime_ids['menu_links'][$path] = $menu_link['entity_id'];
+      $available_menu_plugins[$menu_link['planned']['plugin_id']] = TRUE;
+    }
+  }
+
+  foreach ($plan->operations as $operation) {
+    $type = $operation['type'];
+    $key = $operation['key'];
+    if ($type === 'page_create') {
+      $page = $plan->pages[$key];
+      $node = Node::create([
+        'type' => 'page',
+        'uuid' => $page['planned']['uuid'],
+        'langcode' => $page['planned']['langcode'],
+        'title' => $page['planned']['title'],
+        'status' => NodeInterface::PUBLISHED,
+        'body' => [
+          'value' => $page['planned']['body'],
+          'format' => $page['planned']['format'],
+          'summary' => $page['planned']['summary'],
+        ],
+      ]);
+      assert_entity_save_result($node->save(), SAVED_NEW, 'page ' . $page['alias']);
+      $runtime_ids['pages'][$key] = (int) $node->id();
+      $messages[] = 'CREATED page ' . $page['alias'] . ' as node ' . $node->id();
+    }
+    elseif ($type === 'page_update') {
+      $page = $plan->pages[$key];
+      $node = Node::load($page['entity_id']);
+      if (!$node instanceof NodeInterface) {
+        throw new RuntimeException('Planned page disappeared during apply: ' . $page['alias'] . '.');
+      }
+      set_planned_page_values($node, $page['planned'], $page['changes']);
+      assert_entity_save_result($node->save(), SAVED_UPDATED, 'page ' . $page['alias']);
+      $messages[] = 'UPDATED page ' . $page['alias'] . ' node ' . $node->id()
+        . ': ' . implode('; ', $page['changes']);
+    }
+    elseif ($type === 'alias_create') {
+      $alias = $plan->aliases[$key];
+      $page_id = $runtime_ids['pages'][$alias['target_page_key']] ?? NULL;
+      if (!is_int($page_id)) {
+        throw new RuntimeException('Planned alias has no resolved page ID: ' . $alias['alias'] . '.');
+      }
+      $alias_entity = \Drupal::entityTypeManager()->getStorage('path_alias')->create([
+        'uuid' => $alias['planned']['uuid'],
+        'path' => '/node/' . $page_id,
+        'alias' => $alias['planned']['alias'],
+        'langcode' => $alias['planned']['langcode'],
+      ]);
+      assert_entity_constraint_valid($alias_entity, 'final planned alias ' . $alias['alias']);
+      assert_entity_save_result(
+        $alias_entity->save(),
+        SAVED_NEW,
+        'alias ' . $alias['alias']
+      );
+      $runtime_ids['aliases'][$key] = (int) $alias_entity->id();
+      $messages[] = 'CREATED alias ' . $alias['alias'] . ' -> /node/' . $page_id;
+    }
+    elseif (strpos($type, 'menu_') === 0) {
+      $menu_link = $plan->menuLinks[$key];
+      $parent_plugin = $menu_link['planned']['parent'];
+      if ($parent_plugin !== '' && !isset($available_menu_plugins[$parent_plugin])) {
+        throw new RuntimeException('Planned parent plugin is unavailable for ' . $menu_link['path'] . '.');
+      }
+      if (
+        $parent_plugin !== ''
+        && !\Drupal::service('plugin.manager.menu.link')->hasDefinition($parent_plugin)
+      ) {
+        throw new RuntimeException('Planned parent plugin is unresolved in the menu tree for ' . $menu_link['path'] . '.');
+      }
+
+      if ($type === 'menu_create') {
+        $link = MenuLinkContent::create([
+          'uuid' => $menu_link['planned']['uuid'],
+          'title' => $menu_link['planned']['title'],
+          'menu_name' => 'main',
+          'link' => ['uri' => $menu_link['planned']['uri']],
+          'enabled' => $menu_link['planned']['enabled'],
+          'expanded' => $menu_link['planned']['expanded'],
+          'weight' => $menu_link['planned']['weight'],
+          'parent' => $parent_plugin,
+        ]);
+        if (menu_link_plugin_id($link) !== $menu_link['planned']['plugin_id']) {
+          throw new RuntimeException('Preallocated menu plugin ID mismatch for ' . $menu_link['path'] . '.');
+        }
+        assert_entity_save_result(
+          $link->save(),
+          SAVED_NEW,
+          'main-menu link ' . $menu_link['path']
+        );
+        assert_menu_plugin_definition_matches_entity($link);
+        $runtime_ids['menu_links'][$key] = (int) $link->id();
+        $available_menu_plugins[$menu_link['planned']['plugin_id']] = TRUE;
+        $messages[] = 'CREATED main menu link ' . $menu_link['path'] . ': planned '
+          . menu_snapshot_state($menu_link['planned']);
+      }
+      elseif ($type === 'menu_update' || $type === 'menu_disable') {
+        $link = MenuLinkContent::load($menu_link['entity_id']);
+        if (!$link instanceof MenuLinkContent) {
+          throw new RuntimeException('Planned main-menu link disappeared: ' . $menu_link['path'] . '.');
+        }
+        $link->set('title', $menu_link['planned']['title']);
+        $link->set('weight', $menu_link['planned']['weight']);
+        $link->set('parent', $parent_plugin);
+        $link->set('enabled', $menu_link['planned']['enabled']);
+        assert_entity_save_result(
+          $link->save(),
+          SAVED_UPDATED,
+          'main-menu link ' . $menu_link['path']
+        );
+        assert_menu_plugin_definition_matches_entity($link);
+        $verb = $type === 'menu_disable' ? 'DISABLED' : 'UPDATED';
+        $messages[] = $verb . ' main menu link ' . $menu_link['path'] . ': current '
+          . menu_snapshot_state($menu_link['expected']) . '; planned '
+          . menu_snapshot_state($menu_link['planned'])
+          . ($type === 'menu_disable' ? '; retained, not deleted' : '');
+      }
+      else {
+        throw new RuntimeException('Unknown planned menu operation ' . $type . '.');
+      }
+    }
+    else {
+      throw new RuntimeException('Unknown planned operation ' . $type . '.');
+    }
+  }
+
+  return [$messages, $runtime_ids];
+}
+
+function set_planned_page_values(NodeInterface $node, array $planned, array $changes): void {
+  $node->setTitle($planned['title']);
+  if (!$planned['published']) {
+    throw new RuntimeException('Managed page plan must keep every page published.');
+  }
+  $node->setPublished();
+  $node->set('body', [
+    'value' => $planned['body'],
+    'format' => $planned['format'],
+    'summary' => $planned['summary'],
+  ]);
   if (method_exists($node, 'setNewRevision')) {
     $node->setNewRevision(TRUE);
   }
@@ -1122,284 +2086,81 @@ function update_page_node(NodeInterface $node, string $title, string $body, stri
   if (method_exists($node, 'setRevisionCreationTime')) {
     $node->setRevisionCreationTime(\Drupal::time()->getRequestTime());
   }
-
-  $node->save();
 }
 
-function ensure_alias(NodeInterface $node, string $alias, bool $is_apply): void {
-  $path = '/node/' . $node->id();
-  $alias_entity = alias_entity($alias);
-
-  if ($alias_entity) {
-    if ((string) $alias_entity->getPath() === $path) {
-      echo 'OK alias ' . $alias . ' -> ' . $path . PHP_EOL;
-      return;
-    }
-
-    throw new RuntimeException('Alias ' . $alias . ' changed unexpectedly during this run.');
-  }
-
-  if ($is_apply) {
-    \Drupal::entityTypeManager()->getStorage('path_alias')->create([
-      'path' => $path,
-      'alias' => $alias,
-      'langcode' => \Drupal::languageManager()->getDefaultLanguage()->getId(),
-    ])->save();
-    echo 'CREATED alias ' . $alias . ' -> ' . $path . PHP_EOL;
-  }
-  else {
-    echo 'WOULD_CREATE alias ' . $alias . ' -> ' . $path . PHP_EOL;
+function assert_entity_save_result(int $actual, int $expected, string $description): void {
+  if ($actual !== $expected) {
+    throw new RuntimeException(
+      'Unexpected save result for ' . $description . ': expected ' . $expected . ', got ' . $actual . '.'
+    );
   }
 }
 
-function preflight_main_menu_architecture(array $specs, array $paths_to_disable): void {
-  $declared_paths = [];
-  $declared_titles = [];
-  $normalized_paths = [];
-  $selected_plugins = [];
+function verify_applied_change_plan(ContentArchitectureChangePlan $plan, array $runtime_ids): void {
+  reset_content_entity_memory_cache();
 
-  foreach ($specs as $spec) {
-    $title = (string) ($spec['title'] ?? '');
-    $path = (string) ($spec['path'] ?? '');
-    $parent_path = $spec['parent_path'] ?? NULL;
-    $enabled = $spec['enabled'] ?? NULL;
-    $create_if_missing = $spec['create_if_missing'] ?? NULL;
+  foreach ($plan->pages as $key => $page) {
+    $node_id = $runtime_ids['pages'][$key] ?? NULL;
+    $node = is_int($node_id) ? Node::load($node_id) : NULL;
+    if (!$node instanceof NodeInterface || page_final_snapshot($node) !== $page['planned']) {
+      throw new RuntimeException('Post-apply page verification failed for ' . $page['alias'] . '.');
+    }
+  }
 
-    if ($title === '' || preg_match('//u', $title) !== 1) {
-      throw new RuntimeException('Every canonical menu label must be non-empty UTF-8.');
+  foreach ($plan->aliases as $alias_plan) {
+    $alias_entity = alias_entity($alias_plan['alias']);
+    $page_id = $runtime_ids['pages'][$alias_plan['target_page_key']] ?? NULL;
+    if (!$alias_entity || !is_int($page_id)) {
+      throw new RuntimeException('Post-apply alias verification failed for ' . $alias_plan['alias'] . '.');
     }
-    if (!is_ascii_public_path($path)) {
-      throw new RuntimeException('Canonical menu path is not an ASCII public path: ' . $path . '.');
+    $snapshot = path_alias_snapshot($alias_entity);
+    $planned = $alias_plan['planned'];
+    if (
+      $snapshot['uuid'] !== $planned['uuid']
+      || $snapshot['alias'] !== $planned['alias']
+      || $snapshot['langcode'] !== $planned['langcode']
+      || $snapshot['path'] !== '/node/' . $page_id
+    ) {
+      throw new RuntimeException('Post-apply alias state differs for ' . $alias_plan['alias'] . '.');
     }
-    if (isset($declared_paths[$path])) {
-      throw new RuntimeException('Canonical menu path is declared more than once: ' . $path . '.');
-    }
-    if (isset($declared_titles[$title])) {
-      throw new RuntimeException('Canonical menu label is declared more than once: "' . $title . '".');
-    }
-    if ($enabled !== TRUE) {
-      throw new RuntimeException('Canonical active menu link must declare enabled TRUE: ' . $path . '.');
-    }
-    if (!is_bool($create_if_missing)) {
-      throw new RuntimeException('Menu create_if_missing must be boolean for ' . $path . '.');
-    }
-    if ($parent_path !== NULL && (!is_string($parent_path) || !isset($declared_paths[$parent_path]))) {
-      throw new RuntimeException('Parent ' . (string) $parent_path . ' must be declared before child ' . $path . '.');
-    }
+  }
 
-    $normalized_path = normalized_internal_path($path);
-    if (isset($normalized_paths[$normalized_path])) {
-      throw new RuntimeException(
-        'Canonical paths ' . $normalized_paths[$normalized_path] . ' and ' . $path
-        . ' normalize to the same destination ' . $normalized_path . '.'
-      );
+  foreach ($plan->references as $reference) {
+    $node = Node::load($reference['node']['entity_id']);
+    $alias = alias_entity($reference['alias']);
+    if (!$node instanceof NodeInterface || page_entity_snapshot($node) !== $reference['node']) {
+      throw new RuntimeException('Reference page changed during apply: ' . $reference['alias'] . '.');
     }
+    if (!$alias || path_alias_snapshot($alias) !== $reference['path_alias']) {
+      throw new RuntimeException('Reference alias changed during apply: ' . $reference['alias'] . '.');
+    }
+  }
 
-    $link = find_unique_main_menu_link($path);
-    if (!$link && !$create_if_missing) {
-      throw new RuntimeException(
-        'Required existing main menu link for ' . $path . ' is missing; refusing to create it.'
-      );
+  $inventory = main_menu_content_links();
+  foreach ($plan->menuLinks as $menu_link) {
+    $link = find_unique_main_menu_link($menu_link['path'], $inventory);
+    if (!$link) {
+      throw new RuntimeException('Post-apply menu link is missing: ' . $menu_link['path'] . '.');
     }
-    if ($link) {
-      assert_main_menu_destination_is_canonical($link, $path);
-    }
-    assert_main_menu_label_available($title, $link);
-
-    if ($link) {
-      $plugin_id = menu_link_plugin_id($link);
-      if (isset($selected_plugins[$plugin_id])) {
+    $snapshot = menu_link_snapshot($link, $inventory);
+    foreach (['uuid', 'plugin_id', 'title', 'uri', 'weight', 'parent', 'enabled', 'expanded'] as $field) {
+      if ($snapshot[$field] !== $menu_link['planned'][$field]) {
         throw new RuntimeException(
-          'Menu paths ' . $selected_plugins[$plugin_id] . ' and ' . $path
-          . ' select the same link plugin ' . $plugin_id . '.'
+          'Post-apply menu field ' . $field . ' differs for ' . $menu_link['path'] . '.'
         );
       }
-      $selected_plugins[$plugin_id] = $path;
-      echo 'OK inspected existing main menu target ' . $path . ' [' . $plugin_id . ']' . PHP_EOL;
     }
-    else {
-      echo 'OK inspected new main menu target ' . $path . PHP_EOL;
-    }
-
-    $declared_paths[$path] = TRUE;
-    $declared_titles[$title] = TRUE;
-    $normalized_paths[$normalized_path] = $path;
-  }
-
-  foreach ($paths_to_disable as $path) {
-    if (!is_string($path) || !is_ascii_public_path($path)) {
-      throw new RuntimeException('Disabled menu path is not an ASCII public path.');
-    }
-    if (isset($declared_paths[$path])) {
-      throw new RuntimeException('Menu path cannot be active and disabled in the same plan: ' . $path . '.');
-    }
-
-    $normalized_path = normalized_internal_path($path);
-    if (isset($normalized_paths[$normalized_path])) {
-      throw new RuntimeException(
-        'Disabled path ' . $path . ' and active path ' . $normalized_paths[$normalized_path]
-        . ' normalize to the same destination ' . $normalized_path . '.'
-      );
-    }
-
-    $link = find_unique_main_menu_link($path);
-    if (!$link) {
-      throw new RuntimeException(
-        'Required existing main menu link for ' . $path . ' is missing; there is nothing to disable.'
-      );
-    }
-    assert_main_menu_destination_is_canonical($link, $path);
-    if ((string) $link->get('parent')->value !== '') {
-      throw new RuntimeException(
-        'Required services link is not top-level; refusing to disable it from unexpected parent '
-        . current_menu_parent_description((string) $link->get('parent')->value) . '.'
-      );
-    }
-    $plugin_id = menu_link_plugin_id($link);
-    if (isset($selected_plugins[$plugin_id])) {
-      throw new RuntimeException(
-        'Disabled path ' . $path . ' selects the same link plugin as ' . $selected_plugins[$plugin_id] . '.'
-      );
-    }
-    echo 'OK inspected existing main menu target to disable ' . $path . ' [' . $plugin_id . ']' . PHP_EOL;
-    $selected_plugins[$plugin_id] = $path;
-    $normalized_paths[$normalized_path] = $path;
   }
 }
 
-function ensure_main_menu_link(array $spec, array $specs, bool $is_apply): void {
-  $title = (string) $spec['title'];
-  $path = (string) $spec['path'];
-  $weight = (int) $spec['weight'];
-  $enabled = (bool) $spec['enabled'];
-  $create_if_missing = (bool) $spec['create_if_missing'];
-  $planned_parent = planned_menu_parent($spec, $specs, $is_apply);
-  $planned_state = menu_link_state($title, $weight, $planned_parent['description'], $enabled);
-  $link = find_unique_main_menu_link($path);
-
-  if (!$link) {
-    if (!$create_if_missing) {
-      throw new RuntimeException('Required existing link disappeared after preflight; refusing to create it.');
-    }
-    if ($is_apply) {
-      if (!is_string($planned_parent['plugin_id'])) {
-        throw new RuntimeException('Parent plugin ID is unavailable for ' . $path . '.');
-      }
-      $link = MenuLinkContent::create([
-        'title' => $title,
-        'menu_name' => 'main',
-        'link' => ['uri' => 'internal:' . $path],
-        'enabled' => $enabled,
-        'expanded' => FALSE,
-        'weight' => $weight,
-        'parent' => $planned_parent['plugin_id'],
-      ]);
-      $link->save();
-      echo 'CREATED main menu link ' . $path . ': planned ' . $planned_state . PHP_EOL;
-    }
-    else {
-      echo 'WOULD_CREATE main menu link ' . $path . ': planned ' . $planned_state . PHP_EOL;
-    }
-    return;
-  }
-
-  $current_parent_id = (string) $link->get('parent')->value;
-  $current_state = menu_link_state(
-    $link->label(),
-    (int) $link->get('weight')->value,
-    current_menu_parent_description($current_parent_id),
-    (bool) $link->get('enabled')->value
-  );
-  $parent_changed = $planned_parent['plugin_id'] === NULL
-    || $current_parent_id !== $planned_parent['plugin_id'];
-  $has_changes = $link->label() !== $title
-    || (int) $link->get('weight')->value !== $weight
-    || $parent_changed
-    || (bool) $link->get('enabled')->value !== $enabled;
-
-  if (!$has_changes) {
-    echo 'OK main menu link ' . $path . ': ' . $planned_state . PHP_EOL;
-    return;
-  }
-
-  if ($is_apply) {
-    if (!is_string($planned_parent['plugin_id'])) {
-      throw new RuntimeException('Parent plugin ID is unavailable for ' . $path . '.');
-    }
-    if ($link->label() !== $title) {
-      $link->set('title', $title);
-    }
-    if ((int) $link->get('weight')->value !== $weight) {
-      $link->set('weight', $weight);
-    }
-    if ($current_parent_id !== $planned_parent['plugin_id']) {
-      $link->set('parent', $planned_parent['plugin_id']);
-    }
-    if ((bool) $link->get('enabled')->value !== $enabled) {
-      $link->set('enabled', $enabled);
-    }
-    $link->save();
-    echo 'UPDATED main menu link ' . $path . ': current ' . $current_state . '; planned ' . $planned_state . PHP_EOL;
-  }
-  else {
-    echo 'WOULD_UPDATE main menu link ' . $path . ': current ' . $current_state . '; planned ' . $planned_state . PHP_EOL;
-  }
+function page_final_snapshot(NodeInterface $node): array {
+  $snapshot = page_entity_snapshot($node);
+  unset($snapshot['entity_id'], $snapshot['revision_id']);
+  return $snapshot;
 }
 
-function disable_main_menu_link(string $path, bool $is_apply): void {
-  $link = find_unique_main_menu_link($path);
-  if (!$link) {
-    throw new RuntimeException('Required existing link disappeared after preflight; refusing to create it.');
-  }
-
-  $label = $link->label();
-  $weight = (int) $link->get('weight')->value;
-  $parent = current_menu_parent_description((string) $link->get('parent')->value);
-  $is_enabled = (bool) $link->get('enabled')->value;
-  $current_state = menu_link_state($label, $weight, $parent, $is_enabled);
-  $planned_state = menu_link_state($label, $weight, $parent, FALSE);
-
-  if (!$is_enabled) {
-    echo 'OK disabled main menu link ' . $path . ': ' . $planned_state . '; retained, not deleted' . PHP_EOL;
-    return;
-  }
-
-  if ($is_apply) {
-    $link->set('enabled', FALSE);
-    $link->save();
-    echo 'DISABLED main menu link ' . $path . ': current ' . $current_state . '; planned ' . $planned_state . '; retained, not deleted' . PHP_EOL;
-  }
-  else {
-    echo 'WOULD_DISABLE main menu link ' . $path . ': current ' . $current_state . '; planned ' . $planned_state . '; retained, not deleted' . PHP_EOL;
-  }
-}
-
-function planned_menu_parent(array $spec, array $specs, bool $is_apply): array {
-  $parent_path = $spec['parent_path'];
-  if ($parent_path === NULL) {
-    return [
-      'plugin_id' => '',
-      'description' => 'top-level',
-    ];
-  }
-
-  $parent_spec = menu_spec_by_path($specs, $parent_path);
-  $parent_link = find_unique_main_menu_link($parent_path);
-  if (!$parent_link) {
-    if ($is_apply) {
-      throw new RuntimeException('Parent link ' . $parent_path . ' was not created before its child.');
-    }
-    return [
-      'plugin_id' => NULL,
-      'description' => 'child of "' . $parent_spec['title'] . '" (' . $parent_path . '; UUID assigned on apply)',
-    ];
-  }
-
-  $plugin_id = menu_link_plugin_id($parent_link);
-  return [
-    'plugin_id' => $plugin_id,
-    'description' => 'child of "' . $parent_spec['title'] . '" (' . $parent_path . '; ' . $plugin_id . ')',
-  ];
+function reset_content_entity_memory_cache(): void {
+  \Drupal::service('entity.memory_cache')->deleteAll();
 }
 
 function menu_spec_by_path(array $specs, string $path): array {
@@ -1411,11 +2172,11 @@ function menu_spec_by_path(array $specs, string $path): array {
   throw new RuntimeException('No canonical menu specification exists for parent ' . $path . '.');
 }
 
-function find_unique_main_menu_link(string $path): ?MenuLinkContent {
+function find_unique_main_menu_link(string $path, ?array $inventory = NULL): ?MenuLinkContent {
   $expected_path = normalized_internal_path($path);
   $matching_links = [];
 
-  foreach (main_menu_content_links() as $candidate) {
+  foreach ($inventory ?? main_menu_content_links() as $candidate) {
     if (menu_link_system_path($candidate) === $expected_path || menu_link_uri($candidate) === 'internal:' . $path) {
       $matching_links[] = $candidate;
     }
@@ -1446,9 +2207,13 @@ function main_menu_content_links(): array {
   ));
 }
 
-function assert_main_menu_label_available(string $title, ?MenuLinkContent $selected): void {
+function assert_main_menu_label_available(
+  string $title,
+  ?MenuLinkContent $selected,
+  ?array $inventory = NULL,
+): void {
   $selected_plugin_id = $selected ? menu_link_plugin_id($selected) : NULL;
-  foreach (main_menu_content_links() as $candidate) {
+  foreach ($inventory ?? main_menu_content_links() as $candidate) {
     if ($candidate->label() !== $title) {
       continue;
     }
@@ -1513,18 +2278,6 @@ function menu_link_plugin_id(MenuLinkContent $link): string {
     throw new RuntimeException('Menu link has no UUID-backed plugin ID: ' . $plugin_id . '.');
   }
   return $plugin_id;
-}
-
-function current_menu_parent_description(string $parent_id): string {
-  if ($parent_id === '') {
-    return 'top-level';
-  }
-  foreach (main_menu_content_links() as $candidate) {
-    if (menu_link_plugin_id($candidate) === $parent_id) {
-      return 'child of "' . $candidate->label() . '" (' . menu_link_uri($candidate) . '; ' . $parent_id . ')';
-    }
-  }
-  return 'plugin "' . $parent_id . '"';
 }
 
 function menu_link_state(string $title, int $weight, string $parent, bool $enabled): string {

@@ -189,6 +189,47 @@ du menu se termine avant toute écriture. En mode application, une transaction
 englobe pages, alias et menu afin qu'une erreur tardive annule les écritures de
 la passe. Le mode dry-run n'écrit ni contenu, ni alias, ni menu.
 
+## Préflight fermé et application atomique
+
+Le défaut transactionnel reproduit lors de l'intégration locale provenait de la
+portée d'une variable PHP. Drush charge le fichier généré avec `include` depuis
+la méthode `PhpCommands::script()`. La variable de niveau supérieur `$failed`
+était donc locale à cette méthode, tandis que la fonction de contrôle déclarait
+`global $failed` et modifiait `$GLOBALS['failed']`, une autre variable. Les
+gardes continuaient à lire `FALSE` : sur une base vide, le script avait pu
+enregistrer le premier lien « Cours & Stages », rencontrer ensuite une cible
+manquante, valider la transaction et afficher un succès erroné.
+
+La commande est désormais divisée en deux phases explicites :
+
+1. **Phase A — découverte et validation en lecture seule.** Elle résout tous
+   les nœuds existants et de référence par alias, contrôle les alias et les
+   destinations de menu ambigus, valide les entités prévues avec les contraintes
+   Drupal, vérifie la cohérence entre entités de menu et définitions de plugins,
+   réserve les UUID des nouvelles entités et calcule tous les parents au format
+   `menu_link_content:<uuid>`. Elle produit ensuite un plan composé uniquement
+   de valeurs scalaires, scellé par une empreinte SHA-256. Chaque état attendu,
+   état prévu, dépendance et opération y figure avant toute écriture.
+2. **Phase B — application atomique.** Elle refuse une transaction englobante,
+   ouvre une transaction dédiée seulement après le succès complet de la phase A,
+   puis revalide le plan entier, les UUID, les libellés et les plugins parents
+   avec `writes=0`. Elle exécute exclusivement les opérations du plan, vérifie
+   pages, alias, références, liens et arbre de menu dans la transaction, puis
+   appelle explicitement `commitOrRelease()`. Les messages `CREATED`, `UPDATED`
+   et `DISABLED` restent en mémoire jusqu'au commit.
+
+Toute exception avant la finalisation demande un rollback et ne peut produire
+un message de succès. Un rollback effectivement terminé affiche
+`ROLLBACK_CONFIRMED`; un échec de finalisation dont l'état ne peut être prouvé
+affiche au contraire `ROLLBACK_UNCONFIRMED` et demande une inspection. Les
+échecs de phase A affichent `BLOCKED`, `FAIL`,
+`transaction_started=FALSE; writes=0` et terminent le processus avec le statut
+1. Le script utilise `exit(1)`, et non la valeur de retour d'un fichier inclus,
+afin que Drush et le shell propagent bien l'échec. Aucun nettoyage destructif
+ne tente de compenser une écriture partielle : la phase A l'empêche, et la
+transaction constitue la seconde protection. Les remises à zéro de cache du
+processus restent limitées au cache mémoire d'entités.
+
 ## Décisions de contenu confirmées
 
 - Le hub `/cours-et-stages` reprend seulement les tarifs confirmés : essai
@@ -356,9 +397,44 @@ marqueur d'écriture réel `CREATED`, `UPDATED` ou `DELETED` n'était présent.
 
 Ce snapshot local vide ne reproduisait pas le contenu actif de production. Il
 ne permet de confirmer ni la conservation des pages existantes, ni les deltas
-de la version élargie à seize pages et douze liens actifs. Aucun nouveau dry-run
-DDEV n'est revendiqué pour cette version. La PR reste en brouillon jusqu'à un
-dry-run VPS représentatif, intégral et revu.
+de la version élargie à seize pages et douze liens actifs. La matrice locale
+actuelle ci-dessous valide les gardes et la transaction avec des fixtures, mais
+ne remplace toujours pas un dry-run VPS représentatif et intégralement revu.
+
+### Matrice d'intégration DDEV atomique du 30 août 2026
+
+La matrice a utilisé Drupal 11.3.3 dans le projet DDEV local, sans donnée de
+production, sans import de configuration et sans accès VPS. Chaque scénario a
+été isolé par snapshot. L'empreinte DB couvre les lignes des 95 tables durables
+dans un export déterministe ; elle exclut uniquement les tables de cache et
+d'exécution volatiles, les triggers de test, le schéma et les compteurs
+`AUTO_INCREMENT`. L'empreinte de configuration active couvre les 314 objets,
+triés et normalisés. L'empreinte de configuration est restée
+`314:e96a6b849b5e15c6e16fde5b6494a9e57fe9f7161dd8398c819963ddfdfc2127`
+pendant toute la matrice.
+
+| Scénario | Résultat | Empreinte DB durable avant → après |
+| --- | --- | --- |
+| 1. Base vide | `--apply` termine avec le statut 1, 29 blockers de phase A, `transaction_started=FALSE; writes=0` ; 0 nœud, 0 alias géré et 0 lien principal après l'échec. | `95:4216ba9c6ed358615568e9fad2f474edd4f28c5f1ed8d6bf9b3185b4bef3da88` → identique |
+| 2. Base partielle | Fixture de 4 pages et 2 liens ; `--apply` termine avec le statut 1, 19 blockers explicites, sans démarrer la phase B ; les comptes restent 4 nœuds, 20 alias totaux et 2 liens. | `95:fe43ffeca5b9f7112df02e5e4097fe61c0b5f5c0be3525c9872dd8253016cc03` → identique |
+| 3. Destination ambiguë | Fixture complète avec deux liens normalisés vers `/concerts` ; statut 1, les deux plugin IDs sont affichés, 0 écriture ; les comptes restent 16 nœuds, 32 alias et 10 liens. | `95:96db503d9adaea931125da7ae2c631a2f60bbd4e3d02bb2a4110edac9b32bb6e` → identique |
+| 4. Base représentative locale | Le dry-run, sans écriture, prévoit 4 pages, 4 alias, 4 liens, 8 mises à jour de liens et 1 désactivation. La première application crée l'arbre exact de 5 racines et 7 enfants ; les 16 identités nœud/alias existantes et les 4 pages de référence restent identiques. La seconde application ne contient aucune opération et ne change aucune empreinte. | dry-run : `95:d77ab85144f37815c94212adf7d8b8491cde2e2aa64f417d5f16160914de0738` → identique ; première application : cette empreinte → `95:397021c6f060706717caf1e729ddddc53c66ca9ba723ef3d4b8c3dd43e2132ca` ; seconde application : empreinte finale identique |
+| 5. Échec tardif forcé | Un trigger local `BEFORE INSERT` sur `menu_link_content_data` bloque le premier lien créé, après les tentatives d'écriture des pages et alias. Le statut est 1, `ROLLBACK_CONFIRMED` est affiché, aucun message de mutation n'est libéré et les comptes restent 16 nœuds, 32 alias et 9 liens. | `95:d77ab85144f37815c94212adf7d8b8491cde2e2aa64f417d5f16160914de0738` → identique |
+
+Pour le scénario 4, seules les tables de nœuds et révisions, corps, alias et
+révisions, liens et révisions de menu ainsi que `menu_tree` ont changé. Les
+quatre pages de référence ont conservé exactement le même SHA-256 sérialisé
+avant et après. Les 13 liens finaux comprennent les 12 liens actifs canoniques
+et le lien Services conservé au premier niveau mais désactivé.
+
+Le premier essai de mécanisme de faute utilisait un trigger `BEFORE UPDATE` ;
+Drupal réécrit cette table par insertion lors de la sauvegarde et ce probe n'a
+donc pas provoqué d'échec. Le snapshot représentatif a été restauré avant le
+test valide `BEFORE INSERT` décrit ci-dessus. Enfin, le snapshot de base vide a
+été restauré : aucun trigger, nœud, alias géré ou lien de fixture ne subsiste.
+Ces résultats démontrent le comportement fermé et le rollback local, mais la
+base de fixtures ne reproduit pas le contenu actif de production. La PR reste
+en brouillon jusqu'au dry-run VPS en lecture seule demandé ci-après.
 
 ## Exécution VPS
 
