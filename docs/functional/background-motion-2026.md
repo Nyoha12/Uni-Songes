@@ -1,8 +1,8 @@
 # Autonomous background motion — 2026
 
-Status: implemented for static review. Browser validation is deliberately
-deferred. DDEV must not be used until PR #67 has released it, and no VPS is in
-scope.
+Status: implemented and validated in local Chromium after PR #67 merged into
+`origin/release/prod`. DDEV was used only for the isolated local validation
+described below. No VPS was accessed.
 
 ## Scope
 
@@ -119,6 +119,13 @@ the lower edge and disables motion for that geometry.
 - Resize and `document.fonts.ready` schedule one recalculation frame. The
   scroll extent is refreshed on scroll events, while the continuous animation
   callback performs no layout measurement.
+- A capture-phase resize hook temporarily hides `--bg-once` from the older
+  `bg-mirror-height.js` resize probe. The controller restores the route-owned
+  value during its recalculation in the same rendering cycle, preventing a
+  cache-busted image transfer on every resize.
+- A body-style observer protects the controller-owned `--bg-img-h` from a late
+  result produced by that older probe. The observer is disconnected with all
+  other controller resources during destruction.
 - No interval, timeout, network API, module import, package, or external script
   is introduced.
 
@@ -203,8 +210,11 @@ The final pre-commit pass must stage only the two guarded files before
 
 ### Results — 30 August 2026
 
-The validated base is `origin/release/prod` at `22e1673`. The local
-`release/prod` branch was intentionally not used because it was stale.
+PR #67 was verified merged, `origin` was fetched, and the PR branch was rebased
+onto `origin/release/prod` at `fe419c2`. The local `release/prod` branch was not
+used because it was stale. The final JavaScript exercised by the correction
+reruns is commit `b288f80f4c64a098441463bc8e66b7734913e238` (SHA-256
+`4084b6ee5ed4887579b570a1f5083f93647ec652caca17ca2a014687aa585cba`).
 
 | Check | Result |
 | --- | --- |
@@ -216,36 +226,103 @@ The validated base is `origin/release/prod` at `22e1673`. The local
 | Animation lifecycle review: one continuous rAF owner, one debounced recalculation rAF, cleanup, visibility and bfcache paths | Pass |
 | Reduced-motion and Save-Data review, including both legacy CSS animation targets | Pass |
 | Supplemental mocked DOM/rAF lifecycle and bounds harness | Pass; static harness only |
-| Chromium matrix | Pending; not run |
-| DDEV / VPS | Not used |
+| Chromium matrix | Pass; all BG-C01 through BG-C15 |
+| DDEV | Used locally after taking a snapshot; original state restored |
+| VPS | Not accessed |
 
-These results do not constitute browser validation.
+## Chromium validation
 
-## Deferred Chromium matrix
+The matrix ran against local DDEV with Playwright `1.55.0` and Chromium
+`140.0.7339.16`, in both headless and headed Xvfb sessions. Viewports included
+desktop `1440 × 900`, tablet `1024 × 768`, tall tablet `820 × 1180`, and mobile
+`390 × 844`. Seven temporary page fixtures supplied both zero-overflow and
+long-scroll content; `/user/login` exercised the default image. The fixtures
+were local only and were removed by snapshot restoration.
 
-This matrix remains pending until PR #67 releases DDEV. Run it only against a
-local checkout serving the exact draft-PR commit; do not contact the VPS. The
-test must inspect the wrapper, layer, and `::before` transforms so a legacy CSS
-animation cannot be mistaken for the new controller.
+The 145-second motion trace exercised the same autonomous-motion core as the
+final commit. The two defects found afterward were confined to resize/font
+interop with `bg-mirror-height.js`; all affected resize, font, resource,
+singleton, bfcache, reduced-motion, and Save-Data cases were rerun against the
+final JavaScript before the correction was committed.
 
-| ID | Scenario | Procedure and required result | Status |
+| ID | Scenario | Measured result | Status |
 | --- | --- | --- | --- |
-| BG-C01 | Idle motion | On a normal route, sample transforms and layer bounds for at least 60 seconds without input. The wrapper moves continuously and smoothly on the cosine path, remains within the measured interval, and has no abrupt frame delta. | Pending |
-| BG-C02 | Active scrolling | Wheel/touch-scroll slowly and rapidly, then use programmatic jumps to top, middle, and bottom. The additional displacement never exceeds `5 px`, settles smoothly on start/stop, and does not consume image travel. | Pending |
-| BG-C03 | Fixed viewport relation | Compare `#unisonges-bgfx.getBoundingClientRect()` before and after scroll. It remains fixed at the viewport while only the inner wrapper transform changes. | Pending |
-| BG-C04 | Long page | Use a route where `scrollHeight > clientHeight`, repeat idle and scroll checks at top/middle/bottom, and verify identical ambient speed at every content position. | Pending |
-| BG-C05 | Short page | Use a route with no scroll overflow. Scroll influence remains zero, autonomous drift remains available when image capacity permits, and no `NaN` transform appears. | Pending |
-| BG-C06 | Route images | Check Accueil, Cours, Stages, Concerts, Association, D'Jam, Orchestre, and a default route. Each computed `--bg-once` keeps its expected image. | Pending |
-| BG-C07 | Accueil fallback | Test one viewport that retains `accueil.jpg` and one that crosses the existing `1.45` threshold. Resize back and confirm the CSS-owned source is reconsidered correctly. | Pending |
-| BG-C08 | Resize and fonts | Cycle desktop, tall portrait, mobile, and desktop sizes, including resize bursts before and after `document.fonts.ready`. Bounds, height variables, and `--header-h` recalculate without an avoidable jump or duplicate loop; a safety clamp is acceptable only when required to keep the image covering the viewport. | Pending |
-| BG-C09 | Hidden tab | Hide the page for at least 30 seconds and return. No animation frames run while hidden, phase does not leap, and exactly one loop resumes. | Pending |
-| BG-C10 | Reduced motion | Load with Chromium media emulation set to `reduce`, then toggle if supported. Wrapper, layer, and pseudo-element remain static while image sizing/fallback/header variables remain valid. | Pending |
-| BG-C11 | Save-Data | Set `navigator.connection.saveData` before this script executes, and confirm on a real supported profile if available. No continuous frame is scheduled and all three visual transforms stay static. | Pending |
-| BG-C12 | Page lifecycle | Exercise back/forward cache and repeat script evaluation against the same DOM. One controller and at most one continuous rAF remain; speed is unchanged after each return. | Pending |
-| BG-C13 | No blank edge | At both autonomous extrema and top/middle/bottom scroll positions, test desktop and tall mobile viewports. The painted/clipping layer covers the viewport bottom (and top where geometrically possible) with no visible band. | Pending |
-| BG-C14 | Pointer safety | Activate header/menu and content controls near every viewport edge during motion. BGFX remains `aria-hidden`, pointer-inert, and never captures a click. | Pending |
-| BG-C15 | Resource reuse | During resize/font/lifecycle cases, inspect image requests and controller state. A URL's in-flight/resolved dimensions are reused and no resize-triggered request series appears. | Pending |
+| BG-C01 | Idle motion | A `145015.5 ms` trace collected 3,894 animation frames and 545 samples. The observed range was `13.994 px`; the best and exact fit was `140000 ms` with R² `0.999999837` and `0.00203 px` RMSE. Maximum transform change for a sub-50 ms frame was `0.018 px`. BGFX layout-read counters stayed at 14 rect/4 style reads for the whole trace. | Pass |
+| BG-C02 | Active scrolling | Dedicated autonomous-baseline isolation measured a maximum scroll residual of `4.996 px` (`4.990 px` at bottom and `2.495 px` at half progress). It returned to `0.012 px` at the top. Wheel, touch, programmatic top/middle/bottom, and start/stop smoothing produced no discontinuity. | Pass |
+| BG-C03 | Fixed viewport relation | `#unisonges-bgfx` remained `position: fixed` with viewport origin and dimensions before and after content scrolling; only the inner wrapper transform moved. | Pass |
+| BG-C04 | Long page | Cours provided `3206 px` of scroll range. Top, middle, and bottom stayed bounded, covered, and retained autonomous motion independently of scroll position. Association was also exercised as long content. | Pass |
+| BG-C05 | Short page | Accueil had `maxScroll = 0`; its idle transform changed from `0.009 px` to `0.119 px` while its scroll contribution remained zero. All sizing and transforms stayed finite. | Pass |
+| BG-C06 | Route images | Accueil `accueil.jpg`, Cours `cours.jpg`, Stages `yoksel-zok-LdDewlTIn34-unsplash.jpg`, Concerts `concerrts.jpg`, Association `asso.jpg`, D'Jam `djams.jpg`, Orchestre `orchestre.jpg`, and default `fontdefault.jpg` all matched their CSS route selection. | Pass |
+| BG-C07 | Accueil fallback | `1440 × 900` retained `accueil.jpg`; `390 × 844` selected `fontdefault.jpg`; returning to `1440 × 900` restored `accueil.jpg`. `--bg-img-h` correctly followed `960 → 585 → 960 px`. | Pass |
+| BG-C08 | Resize and fonts | Desktop, tablet, tall portrait, mobile, burst resize, and desktop return all recalculated safe bounds, image variables, and `--header-h`. A delayed real WOFF2 load and `document.fonts.ready` also recalculated. No uncovered transient or duplicate loop was observed. | Pass |
+| BG-C09 | Hidden tab | Direct headed Chromium was hidden through real Chrome UI tab switching for `33875 ms`, with CDP disconnected. Transform delta and fired animation frames while hidden were both zero. Return deltas were `0.027 px` immediately and `0.032 px` at 80 ms; motion then resumed by `0.164 px` with one loop. | Pass |
+| BG-C10 | Reduced motion | Native Chromium media emulation loaded and toggled `prefers-reduced-motion: reduce`. All visual transforms stayed static for 3.2 seconds, no autonomous rAF was requested, and sizing/fallback variables remained valid. | Pass |
+| BG-C11 | Save-Data | Chromium CDP `Emulation.setDataSaverOverride` exposed `navigator.connection.saveData === true` before controller evaluation. Initial and live-policy checks stayed static for 3.2 seconds with no autonomous rAF, while sizing remained valid. | Pass |
+| BG-C12 | Page lifecycle | Five repeated evaluations kept the same controller, one owner style, and at most one pending animation frame. Real persisted `pagehide`/`pageshow` bfcache navigation retained document/controller identity and resumed one smooth loop. | Pass |
+| BG-C13 | No blank edge | Layer and reconstructed pseudo-image bounds covered the guarded top and bottom at autonomous extrema and top/middle/bottom scroll positions across desktop, tablet, tall portrait, and mobile. Screenshots at 0, 70, and 140 seconds showed no blank band. | Pass |
+| BG-C14 | Pointer safety | BGFX remained `aria-hidden` and `pointer-events: none`; four real control clicks and the mobile drawer worked during motion. Root/body widths equalled every viewport width, with no horizontal overflow. | Pass |
+| BG-C15 | Resource reuse | After initial settle, three resize cycles plus controller refresh produced zero cache-busted background transfers, zero new BGFX dimension loads, and no request series. The resolved and in-flight dimension caches were reused. | Pass |
 
-Browser success must not be claimed until every applicable row has been run and
-the results, Chromium version, viewport matrix, exact commit SHA, and evidence
-locations have been appended to this document.
+### Runtime defects corrected
+
+Chromium exposed two races with the older `bg-mirror-height.js` listener:
+
+- its delayed Accueil image probe could overwrite the current `--bg-img-h`
+  after a wide/mobile/wide fallback cycle;
+- its resize path issued a cache-busted full background transfer on every
+  resize.
+
+The controller now protects its owned height value and masks the legacy probe
+until its own same-frame recalculation. Final reruns measured the correct
+`960 → 585 → 960 px` Accueil sequence and zero post-settle resize transfers.
+
+### Temporary evidence
+
+Browser artifacts were kept outside the repository, as required, under
+`/tmp/pr79-background-motion.DoaZUN`. Principal records are:
+
+- `full-cycle-results.json` and the 0/70/140-second screenshots for the
+  145-second trace (its combined harness's early-sample scroll assertion is
+  superseded by the dedicated residual result below; the trace itself fits the
+  140-second curve);
+- `2026-08-30T18-46-38-128Z-short-scroll-influence.json` for the isolated
+  scroll cap;
+- `matrix-results.json` for routes, short/long content, viewports, geometry,
+  fallback, fixed positioning, and overflow;
+- `2026-08-30T18-59-45-383Z-short-resize-font-touch.json` and
+  `2026-08-30T18-59-24-662Z-short-pointer-resource-overflow.json` for final
+  resize/font/touch and pointer/resource reruns;
+- `2026-08-30T19-00-49-325Z-short-lifecycle-repeat-bfcache.json`,
+  `chromium-lifecycle-validation.json`, and
+  `chromium-hidden-no-frame-validation.json` for singleton, bfcache, and the
+  genuine hidden-tab interval;
+- `2026-08-30T19-00-48-786Z-short-reduced-motion.json` and
+  `2026-08-30T19-00-48-777Z-short-save-data.json` for static policies.
+
+These `/tmp` artifacts are intentionally ephemeral and are not PR files or
+project dependencies.
+
+### DDEV restoration
+
+Before changing local Drupal state, DDEV snapshot
+`pr79-background-motion-prebrowser-20260830T182647Z` and a public-files archive
+were created. After Chromium validation, the snapshot and archive were
+restored and the serving checkout was returned to its original local
+`release/prod` commit `be485180c2c2d13419014b2489ea34f96006ace8`.
+
+The restoration audit found:
+
+- zero nodes, zero `PR79-BGFX-D2D0F771` titles, zero fixture aliases/sources,
+  and the original total of 16 aliases;
+- default/admin themes `olivero`/`claro`, front page `/node`, and no enabled
+  `unisonges_theme` entry; the active-config fingerprint exactly matched the
+  baseline (`f1c730b40df5ef1063370c36b1006dace96fb26ab8ac2db12c9ea3c74c3f8dd0`);
+- an exact normalized public-file path/type/content fingerprint before and
+  after (`4e8060931358d3aae596c7f6f09e371d11c194635b75c829cc1becd119b45e85`);
+- a clean serving checkout. Full normalized SQL differed only in three
+  volatile `cache_bootstrap` entries warmed between snapshot creation and the
+  baseline export; every other database line was identical.
+
+No fixture, browser package, test container, tracked dependency, or theme/local
+state change remains in the repository or Drupal instance. The VPS was never
+contacted.
