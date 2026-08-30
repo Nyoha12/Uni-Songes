@@ -12,13 +12,18 @@
       </a>
     </div>
 
-    <nav class="site-header__center site-nav" aria-label="Menu principal">
-      {% if page.primary_menu %}
-        {{ page.primary_menu }}
-      {% elseif page.navigation %}
-        {{ page.navigation }}
-      {% endif %}
-    </nav>
+    <div class="site-header__center site-nav">
+      <div
+        class="navigation-submenus navigation-submenus--desktop"
+        data-navigation-submenus="desktop"
+      >
+        {% if page.primary_menu %}
+          {{ page.primary_menu }}
+        {% elseif page.navigation %}
+          {{ page.navigation }}
+        {% endif %}
+      </div>
+    </div>
 
     <div class="site-header__right site-account">
       
@@ -46,13 +51,11 @@
   <aside class="mobile-drawer" id="mobile-drawer" hidden>
     <button class="mobile-drawer__close" type="button" aria-label="Fermer">×</button>
 
-    <nav class="mobile-drawer__nav" aria-label="Menu mobile">
-      {% if page.primary_menu %}
-        {{ page.primary_menu }}
-      {% elseif page.navigation %}
-        {{ page.navigation }}
-      {% endif %}
-    </nav>
+    <nav
+      class="mobile-drawer__nav navigation-submenus navigation-submenus--mobile"
+      data-navigation-submenus="mobile"
+      aria-label="Menu mobile"
+    ></nav>
 
     <div class="mobile-drawer__account">
       <a class="btn btn--cta" href="/reserver">Reserver</a>
