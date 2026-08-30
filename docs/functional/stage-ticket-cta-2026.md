@@ -1,7 +1,7 @@
 # Stage ticket CTA — 2026
 
-Status: implemented and statically validated; browser/DDEV verification remains
-pending, so the pull request must stay in draft.
+Status: implemented and validated by static checks, the complete local DDEV
+runtime/HTTP matrix, and an anonymous Chromium browser.
 
 ## Scope
 
@@ -71,8 +71,8 @@ block.
 - No capacity or availability logic changed.
 - No Commerce product, script, module business logic, schema, or synced config
   changed.
-- No global CSS, URL, DNS, routing, tunnel, DDEV, Composer, or VPS file/action
-  changed.
+- No versioned global CSS, public URL, DNS, routing, tunnel, DDEV, Composer, or
+  VPS file changed.
 - Existing scoped classes `unisonges-detail-section`,
   `unisonges-price-note`, and `unisonges-offer-card__cta` are reused.
 
@@ -138,8 +138,8 @@ The following isolated harness loads the real theme file, calls
 `unisonges_theme_preprocess_node()`, and inspects the resulting render arrays.
 Its doubles do not claim to replace Drupal runtime coverage; they make the
 published, unavailable, access, scope, price, and no-form branches
-reproducible without DDEV. The double checks cache contexts, not Drupal's real
-cache tags or max-age propagation, which remain runtime assertions:
+reproducible without DDEV. The double checks cache contexts, while Drupal's
+real cache tags and semantic transitions were asserted at runtime:
 
 ```bash
 docker run --rm --pull=never --network none -i \
@@ -410,7 +410,7 @@ PHP
 ```
 
 No Twig file changes in this patch. Twig and active Drupal/Commerce rendering
-remain covered by the pending browser/DDEV verification.
+were verified by the local DDEV and Chromium runs recorded below.
 
 Immediately before commit, then after commit, run:
 
@@ -419,16 +419,21 @@ git diff --cached --check
 git diff --check origin/release/prod...HEAD
 ```
 
-## Pending browser/DDEV verification
+## DDEV and Chromium validation protocol
 
-PR #75 currently owns the shared DDEV/tunnel workflow. Do not run any command
-against that project until its owner explicitly releases it. Keep this pull
-request in draft before, during, and after the verification.
+The following protocol was executed with exclusive ownership of the local DDEV
+project. It separates code identity, transaction rollback, anonymous HTTP and
+browser rendering, cache transitions, and targeted cleanup.
 
 ### Runtime preflight and code identity
 
-After the handoff, use an exclusive DDEV session and fail before creating data
-unless every check passes:
+With exclusive ownership, fail before creating fixture data unless every check
+passes. The minimal local `standard` database did not contain the Stage and
+ticket configuration required by the repository. Its complete active
+configuration and theme state were recorded first. Only the missing local
+prerequisites were then created through Drupal entity APIs from individual
+synced definitions, with every temporary item recorded for targeted cleanup.
+No configuration import was run.
 
 1. Record the PR head SHA, a clean-worktree status, the DDEV version,
    `ddev describe`, `drush status`, PHP version, base URL, and active theme.
@@ -444,9 +449,10 @@ unless every check passes:
    and the venue/capacity fields exist.
 4. Resolve the active product view display and require its `variations`
    component to use `commerce_add_to_cart`. The repository has no synced
-   `commerce_product.ticket_stage.default` display, so this is a genuine
-   runtime gate. If it is absent, report a blocker; do not import or change
-   config for this PR.
+   `commerce_product.ticket_stage.default` display, so the minimal local test
+   creates that temporary display through the entity API after recording the
+   baseline, then removes it during targeted cleanup. Never run a
+   configuration import.
 5. Run one `drush cr` after the correct code is mounted. Do not rebuild caches
    again during the state-transition test.
 
@@ -567,11 +573,12 @@ the first response after a save and the second warm response must both match.
 | 5 | Republish the product | The CTA returns on both identical-URL fetches. | Anonymous canonical HTTP 200 with exactly one form/control. |
 | 6 | Delete the linked fixture product without resaving the Stage | HTTP 200; unresolved/cleared relationship gives zero CTA, one controlled unavailable status, and no broken link. | Product no longer resolves. |
 
-The autosync hook prevents a saved Stage relationship from remaining empty via
-the Entity API. Therefore step 6 is the deterministic browser case for a
-missing linked target. The strictly empty field branch is additionally covered
-by clearing the field only on the in-memory Stage used by the rollback probe;
-do not disable the module or write fixture rows directly with SQL.
+The autosync hook ordinarily prevents a saved Stage relationship from
+remaining empty. The exact empty-field browser fixture was created through the
+Entity API while suppressing only that hook implementation for the one setup
+save; the module remained installed, active configuration was unchanged, and
+no fixture row was written directly with SQL. The earlier anonymous HTTP run
+also covered deletion of a linked target without resaving the Stage.
 
 Capture `X-Drupal-Cache` and `X-Drupal-Dynamic-Cache` when present, but do not
 require `HIT`: the active performance configuration may set page max age to
@@ -603,11 +610,11 @@ the form. In the no-usable-variation state, both counts must be zero. Follow the
 CTA once in the private context and require final HTTP 200 on the expected
 origin/path with no `/user/login` redirect.
 
-Save fixed-name full-page and ticket-container screenshots for initial
-available, product available, variation unavailable, variation restored,
-product unavailable, missing target, plus a manifest of browser/version,
-viewport, locale, timezone, IDs/paths, state transitions, DOM counts, response
-metadata, code hashes, and cleanup results.
+Save fixed-name full-page and ticket-container screenshots for the initial
+available state and the variation-unpublished controlled fallback. Retain a
+manifest of browser/version, viewport, locale, timezone, IDs/paths, all other
+state transitions, DOM counts, response metadata, code hashes, and cleanup
+results.
 
 Any wrong status/final URL, simultaneous CTA and unavailable status, stale
 first or second response, Stage Commerce form/button, product form/control
@@ -615,5 +622,64 @@ count other than the expected zero or one, invisible/disabled purchase control,
 price omission/duplication, code-hash mismatch, or cleanup residue blocks
 runtime sign-off. Do not merge or mark the pull request ready on failure.
 
-DDEV and browser runtime were intentionally not used while PR #75 owns the
-shared environment.
+## Executed DDEV and Chromium validation — 30 August 2026
+
+The final matrix ran only in the local Codespace against application commit
+`da424698ceeba43db036257f3317124926748505`, rebased on
+`origin/release/prod` at `ddff8cc30aadfc64f1120a9cce7a33095260c5a2`.
+The theme file served by DDEV matched the worktree SHA-256
+`bc4e92203c491c33d006a0fddcb0961d0b5512dc216444a3fa2d11bf190b1ab4`.
+DDEV 1.25.3 served Drupal 11.3.3 on PHP 8.3.31 and MariaDB 10.11. No VPS,
+production URL, config import, DNS, or routing change was used.
+
+The starting local database was a standard installation without the Stage and
+ticket bundles needed for the cases. The test installed `datetime_range`,
+`commerce_cart`, Bootstrap Barrio, and the Uni-Songes theme temporarily, then
+created only the prerequisite active configuration through Drupal APIs from
+individual repository YAML definitions. It made Uni-Songes the temporary
+default theme and retained Claro as admin theme. This was not a config import.
+
+Playwright 1.62.1 and Chromium 151.0.7922.34 were installed only under `/tmp`.
+The anonymous context used `fr-FR`, `Europe/Paris`, a `1440x1000` viewport, and
+`http://127.0.0.1:8080`. Browser routing rejected every non-local origin; none
+was attempted.
+
+| Fixture/state | Result |
+| --- | --- |
+| Published accessible ticket: Stage 32, product 23, variation 23 | Stage HTTP 200, exactly one visible CTA and `Tarif : 37,00 €`, zero Commerce forms/controls. A real click reached canonical `/product/23` with HTTP 200 and no login redirect; the product had exactly one visible, enabled normal purchase control in exactly one add-to-cart form. |
+| Unpublished linked product: Stage 33, product 24 | Zero CTA and exactly one controlled unavailable status. |
+| No linked ticket: Stage 34 | Zero CTA and exactly one controlled unavailable status. |
+| No published usable variation: Stage 35, product 25 | Zero CTA and exactly one controlled unavailable status; the canonical product had zero add-to-cart forms/controls. |
+| Wrong product bundle: Stage 36, product 26 | Zero CTA and exactly one controlled unavailable status. |
+| Cache transitions on Stage 32 | Available -> variation unpublished -> restored -> product unpublished -> restored was correct on both identical-URL GETs per state. Each first response was `MISS` and each warm response `HIT`. There was no cache rebuild or manual Stage-tag invalidation after any entity save. |
+
+The preceding anonymous HTTP/DOM run additionally proved that the unpublished
+product canonical page returned 403 and the deleted target returned 404 while
+the Stage failed closed. Its rollback probe created and rendered marked Stage,
+ticket, and wrong-bundle entities inside a transaction; a second Drush process
+found every recorded ID, title, SKU, alias, reverse reference, and order-item
+reference absent after rollback.
+
+Chromium measured the CTA at `197.953125x66.140625` CSS pixels with
+`inline-flex`, visible opacity, active pointer events, and bounds inside both
+the viewport and `#unisonges-scrollframe`. All five interior
+`elementFromPoint()` probes hit the CTA; a trial click and the real navigation
+both passed. The custom theme stylesheet returned HTTP 200. Console errors,
+page errors, external requests, failed local requests, abnormal local
+responses, and PHP problem markers were all zero.
+
+The available and unavailable full-page and ticket-section screenshots are in
+`/tmp/pr74-stage-ticket-browser.FeQJGm/`. The marker was
+`PR74-STAGE-CTA-DA424698CEEB`. Fresh-process cleanup checks found zero marked
+nodes, products, variations, SKUs, aliases, order items, reverse references,
+or loadable fixture IDs. The temporary matrix configuration fingerprint was
+identical before and after its fixtures:
+`371:420de252e628624da0636ed14637f161ad7fe4a143b8197d4fb8ac39394cd6f4`.
+
+Final cleanup restored the exact original 314-object active-configuration
+snapshot and fingerprint
+`314:e96a6b849b5e15c6e16fde5b6494a9e57fe9f7161dd8398c819963ddfdfc2127`.
+Full normalized configuration and theme/module-state diffs were empty;
+Olivero/Claro were restored, deleted field/storage definitions and temporary
+field tables were zero, the main checkout was clean on `release/prod`, and
+DDEV was stopped.
