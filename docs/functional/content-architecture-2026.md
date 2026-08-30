@@ -398,8 +398,9 @@ marqueur d'écriture réel `CREATED`, `UPDATED` ou `DELETED` n'était présent.
 Ce snapshot local vide ne reproduisait pas le contenu actif de production. Il
 ne permet de confirmer ni la conservation des pages existantes, ni les deltas
 de la version élargie à seize pages et douze liens actifs. La matrice locale
-actuelle ci-dessous valide les gardes et la transaction avec des fixtures, mais
-ne remplace toujours pas un dry-run VPS représentatif et intégralement revu.
+ci-dessous valide les gardes et la transaction avec des fixtures. Le dry-run
+VPS représentatif, exécuté ensuite et consigné plus bas, valide séparément le
+plan contre le contenu actif de production.
 
 ### Matrice d'intégration DDEV atomique du 30 août 2026
 
@@ -433,15 +434,69 @@ donc pas provoqué d'échec. Le snapshot représentatif a été restauré avant 
 test valide `BEFORE INSERT` décrit ci-dessus. Enfin, le snapshot de base vide a
 été restauré : aucun trigger, nœud, alias géré ou lien de fixture ne subsiste.
 Ces résultats démontrent le comportement fermé et le rollback local, mais la
-base de fixtures ne reproduit pas le contenu actif de production. La PR reste
-en brouillon jusqu'au dry-run VPS en lecture seule demandé ci-après.
+base de fixtures ne reproduit pas le contenu actif de production. Cette limite
+a été couverte par le dry-run VPS en lecture seule documenté ci-après.
 
 ## Exécution VPS
 
 Le script refuse les chemins `/var/www` sauf si `--allow-vps` est passé
 explicitement.
 
-### Validation active ultérieure en lecture seule
+### Dry-run production représentatif du 30 août 2026
+
+Le dry-run en lecture seule a été exécuté contre le contenu actif de production
+avec exactement le script du commit
+`7a7d0583eab2714d2d8480a89b75f9aee9cb76e9`. Le checkout déployé est resté sur
+`release/prod` pendant toute l'opération ; aucun basculement de branche, aucune
+application et aucune écriture Drupal n'ont eu lieu. La phase A s'est terminée
+avec succès et a produit le plan immuable SHA-256 suivant :
+
+```text
+7ebf43ce832dd500c8b80be1944f7374b49c9213da8eb21dd833975b1d3777c8
+```
+
+La sortie intégrale confirme :
+
+- aucun `BLOCKED`, `FAIL`, `ROLLBACK_UNCONFIRMED`, `CREATED`, `UPDATED`,
+  `DISABLED`, `DELETED` ou autre marqueur d'écriture réel ;
+- les quatre pages de référence conservées en lecture seule : `/concerts` vers
+  le nœud 6, `/djam` vers le nœud 10, `/orchestre-des-reveurs` vers le nœud 9
+  et `/contact` vers le nœud 7 ;
+- la résolution correcte de toutes les pages gérées et de leurs alias ;
+- `WOULD_UPDATE page /accueil` sur le nœud 14 et
+  `WOULD_UPDATE page /association` sur le nœud 13, leurs corps actifs étant
+  actuellement vides ;
+- exactement quatre créations de pages et quatre créations d'alias :
+  `/cours-et-stages`, `/ateliers`, `/a-propos` et `/origine` ;
+- la conservation des pages existantes de cours, stages, artistes et services,
+  sans modification étrangère au périmètre ;
+- les cinq futurs liens de premier niveau, dans l'ordre : « Cours & Stages »,
+  « Concerts & Événements », « Ateliers », « À propos » et « Contact » ;
+- les enfants exacts : « Cours particuliers » et « Stages » sous « Cours &
+  Stages » ; « D’Jam » et « Orchestre » sous « Ateliers » ; « L’Asso »,
+  « Partenaires » et « Origine » sous « À propos » ;
+- la désactivation sur place du lien Prestations existant, sans suppression,
+  tandis que `/services-prestations-artistiques` reste accessible depuis les
+  cartes des hubs ;
+- aucune opération Commerce, produit, import de configuration, suppression ou
+  modification de contenu non liée.
+
+Le dry-run s'est terminé avec succès et sans écriture. Après suppression du
+script temporaire, le checkout VPS est resté propre et inchangé. Le journal
+complet de l'exécution a été conservé sur l'hôte sous :
+
+```text
+/tmp/pr72-production-dry-run-20260830-130753.log
+```
+
+Ce contrôle lève la condition de brouillon liée à la validation du contenu
+actif et permet de placer la PR en revue. Il ne constitue pas une autorisation
+d'appliquer le plan ni de déployer cette PR. Le commit de documentation qui
+consigne ce résultat ne modifie pas
+`drupal/scripts/apply-content-architecture-2026.sh` : le script validé reste
+exactement celui du commit `7a7d0583eab2714d2d8480a89b75f9aee9cb76e9`.
+
+### Procédure de validation active en lecture seule
 
 Ce contrôle doit partir d'un checkout VPS déjà revu et contenant exactement le
 commit approuvé de la PR. Il ne doit pas servir à basculer ni mettre à jour le
@@ -485,8 +540,9 @@ La revue doit vérifier la sortie complète selon les critères suivants :
   `DELETED` n'apparaît.
 
 Ne lancer ni `--apply`, ni import de configuration, ni reconstruction de cache.
-Toute divergence maintient la PR en brouillon et exige une revue avant une
-opération d'écriture distinctement autorisée.
+Toute divergence aurait maintenu la PR en brouillon et exigé une revue avant
+une opération d'écriture distinctement autorisée ; aucune divergence de ce type
+n'a été observée lors du dry-run consigné ci-dessus.
 
 Dry-run VPS :
 
@@ -505,3 +561,12 @@ cd /var/www/<site>/drupal
 Avant toute application VPS, vérifier le dry-run, le chemin courant, la branche
 déployée et la sauvegarde de base de données. Ne pas lancer d'import de
 configuration pour cette opération.
+
+### Ordonnancement intentionnel du déploiement
+
+Le déploiement de cette architecture reste intentionnellement en attente de la
+PR #77. La version de thème capable d'afficher les sous-menus doit être présente
+avant toute application de la hiérarchie de menu préparée ici. La mise en revue
+de la PR #72 ne modifie pas cet ordre : ne pas lancer `--apply` et ne pas
+déployer cette architecture tant que cette dépendance n'est pas satisfaite et
+qu'une opération d'écriture séparée n'a pas été explicitement autorisée.
