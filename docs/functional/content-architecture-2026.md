@@ -224,10 +224,79 @@ cd ~/Uni-Songes/repo/drupal
 ./scripts/apply-content-architecture-2026.sh --apply
 ```
 
+### Dry-run actif Codespaces du 30 août 2026
+
+La syntaxe Bash du script a été validée. Deux invocations préliminaires se sont
+arrêtées avant l'inspection du contenu Drupal, sans écriture : l'exécution
+directe depuis l'hôte utilisait PHP 8.2.33 alors que le projet requiert PHP 8.3,
+puis l'exécution DDEV sans dérogation de chemin a rencontré la garde
+`/var/www`. Le dry-run actif a donc été exécuté dans le projet DDEV local avec :
+
+```bash
+ddev exec ./scripts/apply-content-architecture-2026.sh --dry-run --allow-vps
+```
+
+Dans cette commande locale, `--allow-vps` autorise uniquement le chemin interne
+DDEV `/var/www/html` ; aucun VPS n'a été contacté. Drupal 11.3.3 a démarré et le
+dry-run s'est terminé avec le statut 0, sans `--apply`.
+
+La base Codespaces ne contient aucune des cibles attendues. La sortie complète
+propose exactement :
+
+- 12 `WOULD_CREATE page`, pour `/accueil`, `/cours`, les trois pages Cours, le
+  hub `/stages`, les trois pages Stages, `/association`,
+  `/les-artistes-de-l-asso` et `/services-prestations-artistiques` ;
+- 12 blocs `BODY_CHANGE_EXACT` avec `node=NEW`, `CURRENT_FORMAT <absent>` et
+  `CURRENT_BODY <absent>` ;
+- 12 `WOULD_CREATE alias` ;
+- 9 `WOULD_CREATE main menu link` ;
+- aucun `WOULD_UPDATE page`, aucun `OK page /...`, aucun `OK alias`, aucun lien
+  de menu `OK` ou `WOULD_UPDATE`, et aucun `FAIL`.
+
+Les lignes `OK inspected page target` du préflight signifient seulement que la
+résolution n'a pas levé d'exception ; elles ne prouvent pas qu'un nœud existe.
+La sortie se termine par `Dry-run completed. No content, menu links, aliases,
+config, or Commerce data was changed.` Aucun marqueur d'écriture réel
+`CREATED`, `UPDATED` ou `DELETED` n'est présent.
+
+Ce snapshot local vide pour ce périmètre ne reproduit pas le contenu actif de
+production. Il ne permet donc de confirmer ni la conservation des nœuds
+existants `/accueil` et `/association`, ni un delta limité à leurs deux corps.
+La PR reste en brouillon jusqu'à un dry-run actif représentatif et revu.
+
 ## Exécution VPS
 
 Le script refuse les chemins `/var/www` sauf si `--allow-vps` est passé
 explicitement.
+
+### Validation active ultérieure en lecture seule
+
+Ce contrôle doit partir d'un checkout VPS déjà revu et contenant exactement le
+commit approuvé de la PR. Il ne doit pas servir à basculer ni mettre à jour le
+checkout déployé. Si le SHA attendu n'est pas déjà présent, préparer séparément
+un checkout autorisé ou différer le contrôle.
+
+```bash
+cd /var/www/<site>
+git status --short --branch --untracked-files=no
+git diff --quiet
+git diff --cached --quiet
+git rev-parse HEAD
+
+cd drupal
+bash -n scripts/apply-content-architecture-2026.sh
+./scripts/apply-content-architecture-2026.sh --dry-run --allow-vps
+```
+
+La revue doit vérifier dans la sortie complète que `/accueil` et `/association`
+sont les deux seules lignes `WOULD_UPDATE page`, avec `body` comme seul
+changement, que les dix autres pages et les douze alias sont `OK`, et que les
+neuf liens de menu canoniques sont `OK` avec leur poids attendu et au premier
+niveau. Aucun `WOULD_CREATE`, autre `WOULD_UPDATE`, `FAIL`, `CREATED`, `UPDATED`
+ou `DELETED` ne doit apparaître. Ne lancer ni `--apply`, ni import de
+configuration, ni reconstruction de cache. Toute divergence maintient la PR en
+brouillon et exige une revue avant une opération d'écriture distinctement
+autorisée.
 
 Dry-run VPS :
 
