@@ -17,6 +17,7 @@ fi
 MODE="dry-run"
 REQUESTED_MODE=""
 ALLOW_VPS="0"
+VERIFIED_LOCAL_DDEV="0"
 
 log() {
   printf '[apply-stage-hub-view-2026] %s\n' "$*"
@@ -50,7 +51,8 @@ Safety:
     script reads that setting but never changes it.
   - No full or partial config import/export is run. No content is written.
   - /mnt/c and temporary-directory checkouts are refused. /var/www requires
-    the explicit --allow-vps staging acknowledgement.
+    either a positively identified local DDEV web container or the explicit
+    --allow-vps staging acknowledgement.
 
 Targeted rollback:
   Deploy the previous reviewed revision of
@@ -95,6 +97,23 @@ for arg in "$@"; do
   esac
 done
 
+is_verified_local_ddev() {
+  [[ "${IS_DDEV_PROJECT:-}" == "true" ]] || return 1
+  [[ "${DEPLOY_NAME:-}" == "local" ]] || return 1
+  [[ "${DDEV_PROJECT_TYPE:-}" == "drupal11" ]] || return 1
+  [[ "${DDEV_DOCROOT:-${DOCROOT:-}}" == "web" ]] || return 1
+  [[ -f "/mnt/ddev_config/config.yaml" ]] || return 1
+
+  local ddev_approot="${DDEV_APPROOT:-}"
+  local ddev_composer_root="${DDEV_COMPOSER_ROOT:-}"
+  [[ -n "${ddev_approot}" && -n "${ddev_composer_root}" ]] || return 1
+
+  ddev_approot="$(realpath -e -- "${ddev_approot}")" || return 1
+  ddev_composer_root="$(realpath -e -- "${ddev_composer_root}")" || return 1
+  [[ "${ddev_approot}" == "${DRUPAL_DIR}" ]] || return 1
+  [[ "${ddev_composer_root}" == "${DRUPAL_DIR}" ]] || return 1
+}
+
 require_safe_path() {
   case "${DRUPAL_DIR}" in
     /|/tmp|/tmp/*|/mnt/c|/mnt/c/*)
@@ -102,7 +121,13 @@ require_safe_path() {
       exit 1
       ;;
     /var/www|/var/www/*)
-      if [[ "${ALLOW_VPS}" != "1" ]]; then
+      if is_verified_local_ddev; then
+        if [[ "${ALLOW_VPS}" == "1" ]]; then
+          warn "--allow-vps is invalid inside a verified local DDEV container."
+          exit 2
+        fi
+        VERIFIED_LOCAL_DDEV="1"
+      elif [[ "${ALLOW_VPS}" != "1" ]]; then
         warn "Refusing /var/www execution without --allow-vps: ${DRUPAL_DIR}"
         warn "Use --allow-vps only on the reviewed staging checkout, never production."
         exit 1
@@ -160,6 +185,11 @@ print_plan() {
   printf 'Drupal project: %s\n' "${DRUPAL_DIR}"
   printf 'Staged source: %s\n' "${CONFIG_FILE}"
   printf 'Only writable config: %s\n' "${CONFIG_NAME}"
+  if [[ "${VERIFIED_LOCAL_DDEV}" == "1" ]]; then
+    printf 'Execution context: verified local DDEV web container\n'
+  else
+    printf 'Execution context: canonical host or acknowledged staging checkout\n'
+  fi
   cat <<'EOF'
 Required active timezone: Europe/Paris
 The command compares normalized active and staged values before any write.
@@ -368,7 +398,7 @@ if ($canonical_active === $canonical_staged) {
   echo $is_apply
     ? 'NOOP No config write was necessary.' . PHP_EOL
     : 'DRY_RUN No config was changed.' . PHP_EOL;
-  exit(0);
+  return;
 }
 
 $compare($canonical_active, $canonical_staged);
@@ -382,7 +412,7 @@ foreach ($differences as $difference) {
 if (!$is_apply) {
   echo PHP_EOL . 'WOULD_WRITE ' . $config_name . PHP_EOL;
   echo 'DRY_RUN No config was changed. Rerun with --apply after reviewing this comparison.' . PHP_EOL;
-  exit(0);
+  return;
 }
 
 $section('Targeted apply');
