@@ -1,0 +1,33 @@
+uuid: cbfb0014-ee4b-4f5b-883c-f8814305e682
+langcode: fr
+status: true
+dependencies:
+  config:
+    - field.storage.node.comment
+    - node.type.forum_topic
+  module:
+    - comment
+id: node.forum_topic.comment
+field_name: comment
+entity_type: node
+bundle: forum_topic
+label: Discussion
+description: 'Seuls les membres authentifiés peuvent répondre.'
+required: false
+translatable: true
+default_value:
+  -
+    status: 2
+    cid: 0
+    last_comment_timestamp: 0
+    last_comment_name: null
+    last_comment_uid: 0
+    comment_count: 0
+default_value_callback: ''
+settings:
+  default_mode: 1
+  per_page: 50
+  anonymous: 0
+  form_location: true
+  preview: 1
+field_type: comment

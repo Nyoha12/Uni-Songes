@@ -1,0 +1,22 @@
+uuid: 8424a8b4-6995-4f05-bb1b-3d3fe192affc
+langcode: fr
+status: true
+dependencies:
+  config:
+    - node.type.forum_topic
+id: node.forum_topic.status
+field_name: status
+entity_type: node
+bundle: forum_topic
+label: Publié
+description: 'La publication doit être décidée explicitement après relecture.'
+required: false
+translatable: true
+default_value:
+  -
+    value: 0
+default_value_callback: ''
+settings:
+  on_label: Activé
+  off_label: Désactivé
+field_type: boolean

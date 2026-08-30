@@ -1,0 +1,26 @@
+uuid: 5f2a5728-3b24-4e4e-a2f2-7ea590f1ad31
+langcode: fr
+status: true
+dependencies:
+  config:
+    - field.storage.node.body
+    - filter.format.basic_html
+    - node.type.forum_topic
+  module:
+    - text
+id: node.forum_topic.body
+field_name: body
+entity_type: node
+bundle: forum_topic
+label: Description
+description: ''
+required: true
+translatable: true
+default_value: {  }
+default_value_callback: ''
+settings:
+  display_summary: true
+  required_summary: false
+  allowed_formats:
+    - basic_html
+field_type: text_with_summary

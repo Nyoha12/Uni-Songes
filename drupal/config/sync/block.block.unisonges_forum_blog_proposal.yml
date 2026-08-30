@@ -1,0 +1,39 @@
+uuid: 01f58684-8fde-4544-850b-09d380361c22
+langcode: fr
+status: true
+dependencies:
+  config:
+    - webform.webform.forum_blog_proposal
+  module:
+    - system
+    - user
+    - webform
+  theme:
+    - unisonges_theme
+id: unisonges_forum_blog_proposal
+theme: unisonges_theme
+region: content
+weight: 30
+provider: null
+plugin: webform_block
+settings:
+  id: webform_block
+  label: 'Proposer un sujet ou une idée'
+  label_display: '0'
+  provider: webform
+  webform_id: forum_blog_proposal
+  default_data: ''
+  redirect: false
+  lazy: false
+visibility:
+  request_path:
+    id: request_path
+    negate: false
+    pages: /forum
+  user_role:
+    id: user_role
+    negate: false
+    context_mapping:
+      user: '@user.current_user_context:current_user'
+    roles:
+      authenticated: authenticated

@@ -1,0 +1,29 @@
+uuid: 977da79e-66d4-49d8-9665-9d724bcd1a2a
+langcode: fr
+status: true
+dependencies:
+  config:
+    - views.view.blog_posts
+  module:
+    - system
+    - views
+  theme:
+    - unisonges_theme
+id: unisonges_blog_posts
+theme: unisonges_theme
+region: content
+weight: 20
+provider: null
+plugin: 'views_block:blog_posts-block_1'
+settings:
+  id: 'views_block:blog_posts-block_1'
+  label: 'Derniers articles'
+  label_display: visible
+  provider: views
+  views_label: ''
+  items_per_page: null
+visibility:
+  request_path:
+    id: request_path
+    negate: false
+    pages: /blog

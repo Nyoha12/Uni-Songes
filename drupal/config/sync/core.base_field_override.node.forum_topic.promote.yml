@@ -1,0 +1,22 @@
+uuid: 7a681ed8-bbf4-4eff-9408-6c475d46b479
+langcode: fr
+status: true
+dependencies:
+  config:
+    - node.type.forum_topic
+id: node.forum_topic.promote
+field_name: promote
+entity_type: node
+bundle: forum_topic
+label: "Promu en page d'accueil"
+description: ''
+required: false
+translatable: false
+default_value:
+  -
+    value: 0
+default_value_callback: ''
+settings:
+  on_label: Activé
+  off_label: Désactivé
+field_type: boolean
