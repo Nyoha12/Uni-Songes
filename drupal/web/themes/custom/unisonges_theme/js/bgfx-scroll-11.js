@@ -1,146 +1,431 @@
 (() => {
-  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const saveData = navigator.connection && navigator.connection.saveData;
-  if (reduce || saveData) return;
-
+  const CONTROLLER_KEY = '__unisongesBgfxScroll11';
   const body = document.body;
   const root = document.documentElement;
+  const bgfx = document.getElementById('unisonges-bgfx');
   const scrollLayer = document.getElementById('unisonges-bgfx-scroll');
   const layer = document.getElementById('unisonges-bgfx-layer');
   const frame = document.getElementById('unisonges-scrollframe');
   const header = document.querySelector('.site-header') || document.querySelector('.site-header__inner');
+  const previousController = window[CONTROLLER_KEY];
 
-  if (!body || !scrollLayer || !layer || !frame) return;
+  if (
+    previousController &&
+    previousController.body === body &&
+    previousController.bgfx === bgfx &&
+    previousController.scrollLayer === scrollLayer &&
+    previousController.layer === layer &&
+    previousController.frame === frame
+  ) {
+    previousController.refresh();
+    return;
+  }
 
-  const DEFAULT_URL = "/themes/custom/unisonges_theme/images/bgsrc/fontdefault.jpg";
-  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  const extractUrl = (v) => {
-    v = (v || "").trim();
-    const m = v.match(/url\((['"]?)(.*?)\1\)/i);
-    return m ? m[2] : "";
+  if (previousController && typeof previousController.destroy === 'function') {
+    previousController.destroy();
+  }
+
+  if (!body || !bgfx || !scrollLayer || !layer || !frame) return;
+
+  const DEFAULT_URL = '/themes/custom/unisonges_theme/images/bgsrc/fontdefault.jpg';
+  const AUTONOMOUS_PERIOD_MS = 140000;
+  const AUTONOMOUS_MAX_PX = 14;
+  const SCROLL_MAX_PX = 5;
+  const EDGE_GUARD_PX = 2;
+  const POSITION_EASE_MS = 650;
+  const MAX_BLEND_DELTA_MS = 100;
+  const LEGACY_MOTION_STYLE_ID = 'unisonges-bgfx-js-motion-owner';
+  const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+  const extractUrl = (value) => {
+    value = (value || '').trim();
+    const match = value.match(/url\((['"]?)(.*?)\1\)/i);
+    return match ? match[2] : '';
+  };
+
+  const oldMotionStyle = document.getElementById(LEGACY_MOTION_STYLE_ID);
+  if (oldMotionStyle) oldMotionStyle.remove();
+
+  // The active CSS cascade animates both nodes. The wrapper below must be the
+  // sole motion owner so reduced motion and Save-Data can be genuinely static.
+  const motionStyle = document.createElement('style');
+  motionStyle.id = LEGACY_MOTION_STYLE_ID;
+  motionStyle.textContent = `
+    #unisonges-bgfx-layer,
+    #unisonges-bgfx-layer::before {
+      animation: none !important;
+    }
+  `;
+  (document.head || root).appendChild(motionStyle);
+
+  const reduceQuery = typeof window.matchMedia === 'function'
+    ? window.matchMedia('(prefers-reduced-motion: reduce)')
+    : null;
+  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  const dimCache = new Map(); // url -> {w,h}
+  const dimLoads = new Map(); // url -> in-flight Promise
+  const cleanups = [];
+
+  let destroyed = false;
+  let pageSuspended = false;
+  let motionAllowed = !(reduceQuery && reduceQuery.matches) && !(connection && connection.saveData);
+  let motionRaf = 0;
+  let recalcRaf = 0;
+  let recalcVersion = 0;
+  let lastFrameTime = null;
+  let writtenY = null;
+  let controller = null;
+
+  const state = {
+    ready: false,
+    elapsedMs: 0,
+    renderedY: 0,
+    minY: 0,
+    maxY: 0,
+    anchorY: 0,
+    direction: -1,
+    autonomousRange: 0,
+    scrollRange: 0,
+    scrollTarget: 0,
+    maxScroll: 0,
+  };
+
+  const listen = (target, type, handler, options) => {
+    target.addEventListener(type, handler, options);
+    cleanups.push(() => target.removeEventListener(type, handler, options));
   };
 
   const setHeaderH = () => {
-    const h = header ? Math.round(header.getBoundingClientRect().height) : 72;
-    body.style.setProperty('--header-h', `${h}px`);
+    const height = header ? Math.round(header.getBoundingClientRect().height) : 72;
+    body.style.setProperty('--header-h', `${height}px`);
   };
 
-  const dimCache = new Map(); // url -> {w,h}
-  const loadDims = (u) => new Promise((res) => {
-    if (!u) return res(null);
-    if (dimCache.has(u)) return res(dimCache.get(u));
-    const img = new Image();
-    img.decoding = 'async';
-    img.onload = () => {
-      const d = { w: img.naturalWidth || 0, h: img.naturalHeight || 0 };
-      if (d.w && d.h) dimCache.set(u, d);
-      res(d.w && d.h ? d : null);
-    };
-    img.onerror = () => res(null);
-    img.src = u + (u.includes('?') ? '&' : '?') + 'v=' + Date.now();
-  });
+  const loadDims = (url) => {
+    if (!url) return Promise.resolve(null);
+    if (dimCache.has(url)) return Promise.resolve(dimCache.get(url));
+    if (dimLoads.has(url)) return dimLoads.get(url);
 
-  let state = { maxTravel: 0 };
-
-  let rafScroll = 0;
-  const onScroll = () => {
-    if (rafScroll) return;
-    rafScroll = requestAnimationFrame(() => {
-      rafScroll = 0;
-      const maxScroll = Math.max(0, frame.scrollHeight - frame.clientHeight);
-      const progress = maxScroll > 0 ? clamp(frame.scrollTop / maxScroll, 0, 1) : 0;
-      const y = -Math.round(progress * state.maxTravel);
-      scrollLayer.style.transform = `translate3d(0, ${y}px, 0)`;
+    const loading = new Promise((resolve) => {
+      const image = new Image();
+      image.decoding = 'async';
+      image.onload = () => {
+        const dimensions = {
+          w: image.naturalWidth || 0,
+          h: image.naturalHeight || 0,
+        };
+        if (dimensions.w && dimensions.h) {
+          dimCache.set(url, dimensions);
+          resolve(dimensions);
+        } else {
+          resolve(null);
+        }
+      };
+      image.onerror = () => resolve(null);
+      // Reuse the same URL as the CSS background so the browser cache can
+      // satisfy this dimension probe, including when Save-Data is enabled.
+      image.src = url;
+    }).finally(() => {
+      dimLoads.delete(url);
     });
+
+    dimLoads.set(url, loading);
+    return loading;
   };
 
-  const compute = async (url, vw, vh, margin, maxS) => {
-    const d = await loadDims(url);
-    if (!d) return null;
+  const compute = async (url, viewportWidth, viewportHeight, margin, maxScale) => {
+    const dimensions = await loadDims(url);
+    if (!dimensions) return null;
 
-    const imgH = Math.round(vw * (d.h / d.w)); // height when background-width = 100%
+    const imgH = Math.round(viewportWidth * (dimensions.h / dimensions.w));
     const base = 1.00;
-
-    // scale needed so scaled height >= viewport height (plus margin)
-    const needed = ((vh * (1 + margin)) / Math.max(1, imgH));
-    const scale = clamp(Math.max(base, needed), base, maxS);
-
+    const needed = (viewportHeight * (1 + margin)) / Math.max(1, imgH);
+    const scale = clamp(Math.max(base, needed), base, maxScale);
     const scaledH = Math.max(1, Math.round(imgH * scale));
-    const maxTravel = Math.max(0, scaledH - vh);
 
-    return { imgH, scale, scaledH, maxTravel };
+    return {
+      imgH,
+      scale,
+      scaledH,
+      aspectRatio: dimensions.h / dimensions.w,
+    };
   };
 
-  // Debounced resize -> recalc
-  let rafRecalc = 0;
-  const scheduleRecalc = () => {
-    if (rafRecalc) return;
-    rafRecalc = requestAnimationFrame(() => {
-      rafRecalc = 0;
-      recalc();
-    });
+  const writeTransform = (value) => {
+    const rounded = Math.abs(value) < 0.0005 ? 0 : Math.round(value * 1000) / 1000;
+    if (rounded === writtenY) return;
+    writtenY = rounded;
+    scrollLayer.style.transform = `translate3d(0, ${rounded}px, 0)`;
+  };
+
+  const updateScrollTarget = () => {
+    state.maxScroll = Math.max(0, frame.scrollHeight - frame.clientHeight);
+    const progress = state.maxScroll > 0
+      ? clamp(frame.scrollTop / state.maxScroll, 0, 1)
+      : 0;
+    state.scrollTarget = progress * state.scrollRange;
+  };
+
+  const configureMotionRange = () => {
+    const clipRect = bgfx.getBoundingClientRect();
+    const scrollRect = scrollLayer.getBoundingClientRect();
+    const layerRect = layer.getBoundingClientRect();
+    const baseTop = layerRect.top - scrollRect.top;
+    const baseBottom = baseTop + layerRect.height;
+    const safeMinY = clipRect.height + EDGE_GUARD_PX - baseBottom;
+    const safeMaxY = -EDGE_GUARD_PX - baseTop;
+
+    // If an extreme aspect ratio cannot cover both edges, keep the lower edge
+    // aligned and static. Normal layouts always have a non-empty safe interval.
+    if (safeMinY > safeMaxY) {
+      state.minY = safeMinY;
+      state.maxY = safeMinY;
+      state.anchorY = safeMinY;
+      state.direction = 1;
+      state.autonomousRange = 0;
+      state.scrollRange = 0;
+      return;
+    }
+
+    state.minY = safeMinY;
+    state.maxY = safeMaxY;
+    state.anchorY = clamp(0, safeMinY, safeMaxY);
+
+    const upwardCapacity = state.anchorY - safeMinY;
+    const downwardCapacity = safeMaxY - state.anchorY;
+    const fullPreferredRange = AUTONOMOUS_MAX_PX + SCROLL_MAX_PX;
+
+    if (upwardCapacity >= fullPreferredRange) {
+      state.direction = -1;
+    } else if (downwardCapacity >= fullPreferredRange) {
+      state.direction = 1;
+    } else {
+      state.direction = upwardCapacity >= downwardCapacity ? -1 : 1;
+    }
+
+    const directionalCapacity = state.direction < 0 ? upwardCapacity : downwardCapacity;
+    state.autonomousRange = Math.min(AUTONOMOUS_MAX_PX, directionalCapacity * 0.45);
+    state.scrollRange = Math.min(SCROLL_MAX_PX, directionalCapacity * 0.15);
+  };
+
+  const canAnimate = () => (
+    !destroyed &&
+    !pageSuspended &&
+    !document.hidden &&
+    motionAllowed &&
+    state.ready &&
+    (state.autonomousRange > 0.01 || state.scrollRange > 0.01)
+  );
+
+  const stopMotionLoop = () => {
+    if (motionRaf) cancelAnimationFrame(motionRaf);
+    motionRaf = 0;
+    lastFrameTime = null;
+  };
+
+  const animate = (timestamp) => {
+    motionRaf = 0;
+    if (!canAnimate()) return;
+
+    if (lastFrameTime === null) lastFrameTime = timestamp;
+    const delta = Math.max(0, timestamp - lastFrameTime);
+    lastFrameTime = timestamp;
+    state.elapsedMs = (state.elapsedMs + delta) % AUTONOMOUS_PERIOD_MS;
+
+    const phase = (state.elapsedMs / AUTONOMOUS_PERIOD_MS) * Math.PI * 2;
+    const autonomousProgress = 0.5 - (0.5 * Math.cos(phase));
+    const desiredY = clamp(
+      state.anchorY + state.direction * (
+        state.autonomousRange * autonomousProgress + state.scrollTarget
+      ),
+      state.minY,
+      state.maxY,
+    );
+
+    if (delta > 0) {
+      const blendDelta = Math.min(delta, MAX_BLEND_DELTA_MS);
+      const blend = 1 - Math.exp(-blendDelta / POSITION_EASE_MS);
+      state.renderedY += (desiredY - state.renderedY) * blend;
+    }
+    state.renderedY = clamp(state.renderedY, state.minY, state.maxY);
+    writeTransform(state.renderedY);
+    motionRaf = requestAnimationFrame(animate);
+  };
+
+  const syncMotionLoop = () => {
+    if (!canAnimate()) {
+      stopMotionLoop();
+      return;
+    }
+    if (!motionRaf) motionRaf = requestAnimationFrame(animate);
   };
 
   const recalc = async () => {
+    const version = ++recalcVersion;
     setHeaderH();
 
-    const vw = Math.max(root.clientWidth, window.innerWidth || 0);
-    const vh = Math.max(root.clientHeight, window.innerHeight || 0);
-
+    const viewportWidth = Math.max(root.clientWidth, window.innerWidth || 0);
+    const viewportHeight = Math.max(root.clientHeight, window.innerHeight || 0);
     const isAccueil = body.classList.contains('section-accueil');
-
     const heavyZoom =
       body.classList.contains('section-asso') || body.classList.contains('section-association') ||
       body.classList.contains('section-djam') || body.classList.contains('section-djams') ||
       body.classList.contains('section-orchestre') || body.classList.contains('section-orchestre-des-reveurs');
-
-    // margins are relative: 0.12 = +12% of viewport height
     const margin = heavyZoom ? 0.22 : 0.10;
-    const maxS   = heavyZoom ? 3.20 : 1.75;
+    const maxScale = heavyZoom ? 3.20 : 1.75;
 
-    // Start from CSS var (current page image)
+    // Re-read the route-owned value so Accueil can reconsider its fallback.
     body.style.removeProperty('--bg-once');
     const cssOnce = extractUrl(getComputedStyle(body).getPropertyValue('--bg-once'));
-    if (!cssOnce) return;
+    if (!cssOnce || destroyed || version !== recalcVersion) return;
 
-    // Accueil rule: keep accueil.jpg unless it would require "too much zoom".
-    // If required scale > 1.45 => switch to default instead.
     let chosen = cssOnce;
-    let r = await compute(chosen, vw, vh, 0.10, 1.75);
-    if (!r) return;
+    let result = await compute(chosen, viewportWidth, viewportHeight, 0.10, 1.75);
+    if (!result || destroyed || version !== recalcVersion) return;
 
     if (isAccueil) {
       const switchThreshold = 1.45;
-      if (r.scale > switchThreshold) {
+      if (result.scale > switchThreshold) {
         chosen = DEFAULT_URL;
         body.style.setProperty('--bg-once', `url("${chosen}")`, 'important');
-        r = await compute(chosen, vw, vh, 0.10, 1.75);
-        if (!r) return;
+        result = await compute(chosen, viewportWidth, viewportHeight, 0.10, 1.75);
+        if (!result || destroyed || version !== recalcVersion) return;
       }
     } else {
-      // For other pages we always enforce "never see below image"
-      r = await compute(chosen, vw, vh, margin, maxS);
-      if (!r) return;
+      result = await compute(chosen, viewportWidth, viewportHeight, margin, maxScale);
+      if (!result || destroyed || version !== recalcVersion) return;
     }
 
-    // publish vars: background-size via % width
-    const bgW = (r.scale * 100).toFixed(2) + "%";
+    const bgW = `${(result.scale * 100).toFixed(2)}%`;
     body.style.setProperty('--bg-w', bgW);
-    body.style.setProperty('--bg-img-h', `${r.imgH}px`);
-    body.style.setProperty('--bg-scaled-h', `${r.scaledH}px`);
+    body.style.setProperty('--bg-img-h', `${result.imgH}px`);
+    body.style.setProperty('--bg-scaled-h', `${result.scaledH}px`);
+    scrollLayer.style.height = `${result.scaledH}px`;
+    layer.style.height = `${result.scaledH}px`;
 
-    // lock actual element heights so we never translate beyond end
-    scrollLayer.style.height = `${r.scaledH}px`;
-    layer.style.height = `${r.scaledH}px`;
+    // The final CSS paints into an extra-wide ::before and then clips it to
+    // the layer. Expand that clip only as far as the painted image and viewport
+    // require so capped landscape images cover tall screens without a blank.
+    const layerRect = layer.getBoundingClientRect();
+    const clipRect = bgfx.getBoundingClientRect();
+    const scrollRect = scrollLayer.getBoundingClientRect();
+    const pseudoWidthValue = getComputedStyle(layer, '::before').width || '';
+    const parsedPseudoWidth = Number.parseFloat(pseudoWidthValue);
+    let pseudoWidth = 0;
+    if (Number.isFinite(parsedPseudoWidth)) {
+      pseudoWidth = pseudoWidthValue.trim().endsWith('%')
+        ? layerRect.width * parsedPseudoWidth / 100
+        : parsedPseudoWidth;
+    }
+    const publishedScale = Number.parseFloat(bgW) / 100;
+    const paintedHeight = pseudoWidth > 0
+      ? Math.floor(pseudoWidth * publishedScale * result.aspectRatio)
+      : result.scaledH;
+    const baseTop = layerRect.top - scrollRect.top;
+    const requiredCoverHeight = Math.ceil(clipRect.height + EDGE_GUARD_PX - baseTop);
+    const visibleHeight = Math.max(
+      result.scaledH,
+      Math.min(paintedHeight, requiredCoverHeight),
+    );
 
-    state = { maxTravel: r.maxTravel };
-    onScroll();
+    body.style.setProperty('--bg-scaled-h', `${visibleHeight}px`);
+    scrollLayer.style.height = `${visibleHeight}px`;
+    layer.style.height = `${visibleHeight}px`;
+
+    configureMotionRange();
+    updateScrollTarget();
+    state.renderedY = clamp(state.renderedY, state.minY, state.maxY);
+    state.ready = true;
+    writeTransform(state.renderedY);
+    syncMotionLoop();
   };
 
-  frame.addEventListener('scroll', onScroll, { passive: true });
-  window.addEventListener('resize', scheduleRecalc, { passive: true });
-  if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(scheduleRecalc).catch(() => {});
+  const scheduleRecalc = () => {
+    if (destroyed || recalcRaf) return;
+    recalcRaf = requestAnimationFrame(() => {
+      recalcRaf = 0;
+      recalc();
+    });
+  };
+
+  const refreshMotionPolicy = () => {
+    motionAllowed = !(reduceQuery && reduceQuery.matches) && !(connection && connection.saveData);
+    if (!motionAllowed) {
+      stopMotionLoop();
+      return;
+    }
+    updateScrollTarget();
+    syncMotionLoop();
+  };
+
+  const onVisibilityChange = () => {
+    if (document.hidden) {
+      stopMotionLoop();
+      return;
+    }
+    scheduleRecalc();
+    syncMotionLoop();
+  };
+
+  const onPageHide = () => {
+    pageSuspended = true;
+    stopMotionLoop();
+  };
+
+  const onPageShow = (event) => {
+    pageSuspended = false;
+    if (event.persisted) scheduleRecalc();
+    syncMotionLoop();
+  };
+
+  const destroy = () => {
+    if (destroyed) return;
+    destroyed = true;
+    recalcVersion += 1;
+    stopMotionLoop();
+    if (recalcRaf) cancelAnimationFrame(recalcRaf);
+    recalcRaf = 0;
+    cleanups.splice(0).forEach((cleanup) => cleanup());
+    if (motionStyle.isConnected) motionStyle.remove();
+    if (window[CONTROLLER_KEY] === controller) delete window[CONTROLLER_KEY];
+  };
+
+  controller = {
+    body,
+    bgfx,
+    scrollLayer,
+    layer,
+    frame,
+    refresh: () => {
+      refreshMotionPolicy();
+      scheduleRecalc();
+    },
+    destroy,
+  };
+
+  listen(frame, 'scroll', updateScrollTarget, { passive: true });
+  listen(window, 'resize', scheduleRecalc, { passive: true });
+  listen(document, 'visibilitychange', onVisibilityChange);
+  listen(window, 'pagehide', onPageHide);
+  listen(window, 'pageshow', onPageShow);
+
+  if (reduceQuery) {
+    if (typeof reduceQuery.addEventListener === 'function') {
+      listen(reduceQuery, 'change', refreshMotionPolicy);
+    } else if (typeof reduceQuery.addListener === 'function') {
+      reduceQuery.addListener(refreshMotionPolicy);
+      cleanups.push(() => reduceQuery.removeListener(refreshMotionPolicy));
+    }
   }
+
+  if (connection && typeof connection.addEventListener === 'function') {
+    listen(connection, 'change', refreshMotionPolicy);
+  }
+
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => {
+      if (!destroyed) scheduleRecalc();
+    }).catch(() => {});
+  }
+
+  window[CONTROLLER_KEY] = controller;
   recalc();
 })();
