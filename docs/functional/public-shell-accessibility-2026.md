@@ -8,10 +8,11 @@ rétablit aussi l’unique chemin d’affichage des messages Drupal sans rendre 
 région d’en-tête complète.
 
 La base inspectée est `origin/release/prod` au commit
-`54562e22f4025b88ce2b755248db833151d1637b`, après intégration des changements
-de navigation, de typographie et de mouvement autonome du fond. La correction
-ne change aucune URL publique, aucun style, aucun JavaScript, aucune logique de
-réservation ou Commerce et aucun fichier de la PR #80.
+`625c613dca22301b04a3f1bdc3c93db961fe9132`, après intégration des PR #80 et
+#78 ainsi que des changements de navigation, de typographie et de mouvement
+autonome du fond. La correction ne change aucune URL publique, aucun style,
+aucun JavaScript, aucune logique de réservation ou Commerce et aucun fichier
+des PR parallèles #82 à #85.
 
 ## État constaté
 
@@ -97,8 +98,8 @@ test "$(rg -c '\{\{ page\.content \}\}' \
 La vérification finale couvre aussi : compilation/sanity Twig disponible sans
 amorcer Drupal, parsing YAML du bloc modifié, raisonnement des landmarks,
 cohérence de la cible du lien d’évitement, unicité du chemin des messages,
-garde exacte des trois fichiers, absence de tout fichier de la PR #80 et revue
-accessibilité indépendante.
+garde exacte des trois fichiers, absence de tout fichier des PR #82 à #85 et
+revue accessibilité indépendante.
 
 Garde exacte du périmètre, fichiers non suivis compris :
 
@@ -132,29 +133,83 @@ diff -u \
   interdits : OK ;
 - deux shells, deux éléments `main`, deux cibles `#main-content`, un rendu
   `page.content` par shell et un seul bloc messages actif pour le thème : OK ;
-- aucun chevauchement avec les listes de fichiers des PR #78 et #80 : OK ;
+- aucun chevauchement avec les listes de fichiers des PR #82 à #85 : OK ;
 - revue accessibilité et revue de l’ordre de rendu Drupal indépendantes : OK,
   aucun blocage statique.
 
-## Matrice d’exécution différée
+## Validation Drupal et Chromium
 
-La validation Drupal et navigateur est volontairement différée tant que la
-PR #80 possède DDEV, Docker, Drush, Chromium et Mailpit. La PR doit rester en
-brouillon jusqu’à libération de ces ressources.
+Le commit source `d190d4e331f0fdf9370d947ca0c5bd3d0d87c9a7` a été chargé tel
+quel dans le checkout de service. Le répertoire ignoré `drupal/.ddev` a été
+préservé. Le thème et les seules dépendances de test ont été activés par les
+API Drupal ; le bloc messages a été modifié par l’API d’entité Block. Aucun
+import de configuration complet ou partiel n’a été exécuté. Les hubs Forum et
+Blog utilisaient les vraies configurations fusionnées des PR #80 et #78.
 
-| Scénario | Desktop | Mobile | Résultat attendu |
-| --- | --- | --- | --- |
-| Page d’accueil anonyme | Différé | Différé | Un `main`, cible d’évitement réelle, aucun doublon |
-| Basic page normale | Différé | Différé | Un `main`, titre et contenu rendus une fois |
-| Erreur de validation de réservation | Différé | Différé | Message visible une fois avant le formulaire |
-| Erreur de connexion | Différé | Différé | Erreur visible une fois avant le formulaire |
-| Connexion réussie | Différé | Différé | Statut visible une fois dans le contenu principal |
-| Validation Webform | Différé | Différé | Erreurs/messages visibles une seule fois |
-| Message Commerce/panier | Différé | Différé | Statut ou erreur visible une seule fois |
-| Lien d’évitement au clavier | Différé | Différé | Le focus/viewport atteint `#main-content` |
-| Header, menu et drawer | Différé | Différé | Header fixe et interactions inchangés, aucun doublon |
-| Scrollframe et BGFX | Différé | Différé | Scroll central et mouvement autonome préservés |
+Le harness Chromium Playwright 1.55.0 a exécuté 14 contrôles, tous réussis,
+avec un viewport desktop de 1440 × 900 et un viewport mobile de 390 × 844.
+Les réponses HTML serveur ont été vérifiées séparément du DOM enrichi par
+JavaScript. Les captures et le résultat JSON ont été conservés uniquement sous
+`/tmp/pr81-playwright/evidence/`.
 
-Pour chaque scénario, contrôler explicitement l’absence de doublon de header,
-marque, navigation, liens de compte, drawer, messages, contenu et landmark
-principal.
+| Scénario | Serveur | Desktop | Mobile | Résultat |
+| --- | --- | --- | --- | --- |
+| Accueil anonyme | OK | OK | OK | Un unique `main#main-content` et un rendu du contenu |
+| Basic page normale | OK | OK | OK | Landmark, titre et contenu uniques |
+| Réservation | OK | OK | OK | Landmark unique ; erreur de discipline dans un unique `alert-danger` |
+| Connexion et inscription | OK | OK | OK | Landmarks uniques ; erreur de connexion rendue une fois |
+| Connexion réussie | — | OK | — | Aucun doublon ; zéro message de statut, donc au plus un attendu |
+| Produit et panier Commerce | OK | OK | OK | Landmarks uniques ; ajout au panier dans un unique `alert-success` |
+| Forum et Blog | OK | OK | OK | Landmarks uniques et vrais blocs de hubs présents |
+| Validation Webform Contact | OK | OK | OK | Un unique résumé d’erreur accessible |
+| Soumission Webform Contact | — | OK | — | Un unique `alert-success` ; deux livraisons Mailpit locales |
+| Avertissement Drupal | — | OK | — | Un unique `alert-warning` via un lien de réinitialisation d’un autre compte |
+| Lien d’évitement clavier | — | OK | — | `Tab`, `Entrée`, cible `:target`, puis focus réel dans le `main` |
+| Header, navigation et drawer | OK | OK | OK | Header fixe, source serveur unique et drawer mobile fonctionnel |
+| Scrollframe et BGFX | — | OK | — | Scroll réel et transform autonome de `#unisonges-bgfx-scroll` |
+
+Les trois sévérités gardent les classes et rôles Barrio attendus : statut
+`.alert-success[role="status"]`, avertissement
+`.alert-warning[role="alert"]` et erreur `.alert-danger[role="alert"]`. Pour
+chaque opération, le DOM contient un seul wrapper `[data-drupal-messages]`,
+dans `main#main-content`, avant le bloc ou formulaire concerné et jamais dans
+le header. Les erreurs inline propres aux formulaires ne constituent pas un
+second rendu du bloc système.
+
+Sur les dix routes représentatives, les assertions communes ont confirmé un
+seul landmark principal, une seule cible d’évitement, une seule marque, un
+seul bloc de navigation dans le HTML serveur, un seul drawer, un seul
+scrollframe, un seul jeu d’IDs BGFX et un seul bloc de contenu. Le clone du menu
+mobile renomme ses IDs. Aucun ID dupliqué, débordement horizontal, réponse 5xx,
+erreur console ou erreur de page n’a été observé. Les logs du run réussi ne
+contiennent aucun warning ou fatal PHP et aucun événement watchdog de sévérité
+4 ou plus critique.
+
+## Restauration locale
+
+Le snapshot nommé
+`pr81-public-shell-accessibility-pre-runtime-20260831T153500Z` a été créé avant
+toute écriture. Avant sa restauration, le nettoyage ciblé a supprimé deux
+soumissions Contact marquées, un panier/ordre et sa ligne, quatre nœuds, quatre
+aliases et un lien de menu. Aucun produit, utilisateur, paiement ou dépôt de
+réservation temporaire n’avait été créé. Les quatre messages Mailpit marqués
+ont aussi été supprimés par leurs IDs exacts.
+
+Après restauration, un nouveau processus Drupal a confirmé : zéro nœud, zéro
+lien de menu, zéro soumission, zéro ordre et zéro ligne de commande ; 16
+aliases, quatre produits, quatre variations et sept utilisateurs, soit les
+comptes de base. Les IDs et marqueurs temporaires sont tous absents. Le front
+est revenu à `/node`, les seuls thèmes activés sont Olivero et Claro, et les
+empreintes avant/après sont strictement identiques :
+
+- base de données normalisée :
+  `6c81065691a71a4c33c357a35b52e12b159f6877339ed0bf2b2f0ff372c6b369` ;
+- configuration active :
+  `f1c730b40df5ef1063370c36b1006dace96fb26ab8ac2db12c9ea3c74c3f8dd0` ;
+- fichiers publics normalisés :
+  `31f3c1526a6213fc2016da7bdf8efab93ea0f22fc3baee51f25acb4ccdff9756`
+  (245 fichiers, zéro symlink, 1 370 487 octets).
+
+Le checkout de service a finalement été remis sur `release/prod` au commit
+`625c613dca22301b04a3f1bdc3c93db961fe9132`, avec un statut Git propre. DDEV
+a été arrêté et les harnesses temporaires ont été supprimés.
