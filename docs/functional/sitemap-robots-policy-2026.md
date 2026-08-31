@@ -7,23 +7,30 @@ does not report current production state. This change was prepared without
 DDEV, Docker, Drush, Chromium, Mailpit, or VPS access, and it neither applies
 active configuration nor regenerates a sitemap.
 
-The policy must remain in draft until PR #78 and PR #80 are integrated and the
-runtime matrix below passes in the DDEV environment owned by PR #80. It must not
-be merged or applied to production before then.
+PR #78 and PR #80 are now merged into `release/prod`, and this branch has been
+rebased onto both merge commits. The policy must remain in draft until the
+runtime matrix below passes after PR #81 releases its exclusive ownership of
+DDEV and the other runtime tools. It must not be merged or applied to
+production before then.
 
 ## Scope and concurrency boundary
 
 This work is based on `origin/release/prod` at
-`54562e22f4025b88ce2b755248db833151d1637b`.
+`625c613dca22301b04a3f1bdc3c93db961fe9132`.
 
-- PR #78 owns `drupal/scripts/apply-content-architecture-2026.sh` and
-  `docs/functional/content-architecture-2026.md`. It prepares the `/blog` and
-  `/forum` Basic pages and aliases.
-- PR #80 owns the Forum/Blog bundle, Views, blocks, Webform, module code, its
-  apply helpers, and its functional document. Blog uses the existing `article`
-  bundle. Forum uses the future `forum_topic` bundle, unpublished by default.
-- This policy does not edit any file from either PR and does not depend on
-  either branch being present in this worktree.
+- PR #80 merged as `233896619e6f74904927fbb62073a00962881069`.
+  Its tracked Forum/Blog bundle, Views, blocks, private Webform, access hooks,
+  apply helpers, and functional document are now present. Blog uses the
+  existing `article` bundle. `forum_topic` defaults to unpublished.
+- PR #78 merged as `625c613dca22301b04a3f1bdc3c93db961fe9132`.
+  Its targeted content/menu helper prepares the `/blog` and `/forum` Basic
+  pages and aliases and retains `/ateliers` as the canonical path for the
+  “Projets collectifs” hub.
+- Git ancestry checks confirm both merge commits are ancestors of the base.
+  This policy still edits no PR #78 or PR #80 file.
+- PR #81 exclusively owns DDEV, Docker, Drush, Chromium, and Mailpit during
+  this static refresh. Its three files do not overlap this policy, and no
+  runtime or VPS access occurred here.
 
 ## Repository audit
 
@@ -80,9 +87,9 @@ included node.
 
 ### Routes and content types
 
-Current editorial node bundles are `page`, `article`, `stage`, and `concert`.
-The current public architecture describes the following stable aliases without
-depending on numeric node IDs:
+Tracked editorial node bundles are now `page`, `article`, `stage`, `concert`,
+and `forum_topic`. The current public architecture describes the following
+stable aliases without depending on numeric node IDs:
 
 - `/accueil`;
 - `/cours-et-stages`, `/cours`, `/cours/didgeridoo`, `/cours/guimbarde`, and
@@ -95,10 +102,21 @@ depending on numeric node IDs:
   `/services-prestations-artistiques`;
 - `/contact`.
 
-PR #78 keeps `/ateliers` as the canonical alias for the “Projets collectifs”
-hub and prepares `/blog` and `/forum`. PR #80 makes Blog a published-`article`
-listing and adds `forum_topic`, unpublished by default, plus a private proposal
-Webform.
+The merged PR #78 architecture keeps `/ateliers` as the canonical alias for the
+“Projets collectifs” hub. Forum is its third child after D’Jam and Orchestre;
+Blog is the fourth child of À propos after L’Asso, Partenaires, and Origine.
+The Services menu link is disabled in place, while its public informational
+page remains reachable from the hubs and remains eligible for the sitemap.
+
+The merged PR #80 configuration makes Blog a block-only listing of published
+`article` nodes on `/blog`, and Forum a block-only listing of published
+`forum_topic` nodes on `/forum`. The bundle defaults to unpublished, the custom
+access hook explicitly forbids unpublished topics to non-administrators, and
+the View also filters `status=1`. Its proposal Webform has `page: false`, is
+embedded only on `/forum` for authenticated users, grants no submission
+view/update/delete access, and has no handler that creates public content.
+These are tracked-source findings; active installation and sitemap behavior
+remain part of the later PR #81-owned runtime phase.
 
 ### Deployment and configuration drift
 
@@ -124,7 +142,9 @@ There is an operational caveat: Drupal Core 11.3.3 declares
 `file-mapping` override. Composer scaffold overwrites the destination by
 default. Because `composer.json` and a separate append asset are outside this
 PR's allowed files, the current deployment script will overwrite the tracked
-policy during `composer install`.
+policy during `composer install`. The post-rebase static audit reconfirmed the
+same locked Core/Scaffold version, mapping, and deployment behavior; neither
+merged prerequisite changed this caveat.
 
 Until a separately approved Composer mapping is added, staging deployment must
 restore the reviewed Git blob immediately after every standalone Composer
@@ -164,7 +184,11 @@ transactional or historical Basic pages such as `/reserver`.
 Sitemap validates custom paths and omits a path that does not exist. The
 targeted diagnostic treats both as a deferred pair while they are absent,
 refuses a partial or ambiguous pair, and requires the same published,
-anonymous-accessible, canonical Basic-page guarantees after PR #78 lands.
+anonymous-accessible, canonical Basic-page guarantees when the merged PR #78
+content architecture is active. Source integration is complete; an absent
+active pair may still be diagnosed as deferred while PR #80 is also inactive,
+but cannot satisfy the runtime promotion gate. Active PR #80 configuration with
+either page absent is blocking drift.
 
 The custom-link priorities are deliberately simple: `/accueil` is `1.0`; every
 other page is `0.5`; no speculative change frequency is asserted. Images are
@@ -174,19 +198,20 @@ not added from custom links.
 
 | Bundle | Policy | Rationale |
 | --- | --- | --- |
-| `article` | Include by bundle | Current editorial articles and future published Blog articles. |
+| `article` | Include by bundle | Current editorial articles and published Blog articles. |
 | `stage` | Include by bundle | Published, anonymous-accessible Stage detail content. |
 | `concert` | Include by bundle | Published, anonymous-accessible Concert detail content. |
 | `page` | Exclude by bundle | Only the explicit alias allowlist is eligible. |
-| future `forum_topic` | Conditional include after PR #80 | Apply only when the exact bundle and its unpublished-default guard exist; runtime tests must prove drafts are absent. |
+| `forum_topic` | Conditional include | Its tracked source is merged; apply only when the exact bundle and all PR #80 publication/access guards are active, and runtime tests prove drafts are absent. |
 
-The `forum_topic` Simple XML Sitemap config object is tracked now so the future
-policy is reviewable without copying a PR #80 file. Simple XML Sitemap bundle
-objects do not declare Drupal config dependencies in their schema. The guarded
-script therefore treats this one object as deferred and refuses to write it to
-active configuration until `node.type.forum_topic` and PR #80's exact
-unpublished-default override are present. A partially present guard is an
-error, not an invitation to create the bundle here.
+The `forum_topic` Simple XML Sitemap config object remains owned by this policy;
+no merged PR #80 file is copied or modified. Simple XML Sitemap bundle objects
+do not declare Drupal config dependencies in their schema. The guarded script
+therefore refuses to write this object until all fourteen merged PR #80 config
+objects, the exact unpublished-default override, the hardened comment format,
+and the three access hooks are active and match their tracked sources. An
+absent active feature is deferred; a partially present or divergent guard is an
+error, not an invitation to repair Forum/Blog from this PR.
 
 All bundle settings use priority `0.5`, no change frequency, and no image
 expansion. The type is restricted to the `custom` and `entity` generators, and
@@ -200,16 +225,18 @@ and remains included. Hub Views may separately hide past events. If an event
 must leave the index, that requires an explicit editorial unpublish/archive or
 redirect decision rather than an implicit date hook in this policy.
 
-Dynamic entities must have a non-numeric canonical alias. A published Stage,
-Concert, Article, or Forum Topic whose canonical remains `/node/<id>` blocks
-generation until its alias policy is fixed in the owning scope.
+Dynamic entities must have exactly one non-numeric canonical PathAlias. A
+published Stage, Concert, Article, or Forum Topic whose canonical remains
+`/node/<id>`, is duplicated, or falls under any private/transactional route
+family blocks generation until its alias policy is fixed in the owning scope.
 
-PR #80 does not add a Pathauto pattern for `article` or `forum_topic`, and the
-current base tracks patterns only for Stage and Concert. Integrating PR #80 is
-therefore not sufficient by itself: every published Blog Article and Forum
-Topic must already have a reviewed canonical alias, or its owning follow-up
-must add an approved alias strategy. Pathauto and public route changes are
-outside this PR.
+The merged base still has no Pathauto pattern for `article` or `forum_topic`;
+only Stage and Concert patterns are tracked. The PR #80 runtime evidence used
+numeric `/node/{nid}` links for its temporary Blog and Forum fixtures. That was
+valid for its feature tests but is intentionally a blocking result for this
+sitemap policy: every published Blog Article and Forum Topic must receive a
+reviewed non-numeric canonical alias before generation. Pathauto and public
+route changes remain outside this PR.
 
 ## Explicit exclusion policy
 
@@ -220,11 +247,11 @@ only crawl guidance; Drupal access control remains the confidentiality boundary.
 | --- | --- |
 | `/user` and account subroutes | Exclude profiles, login/registration helpers, order history, address book, and payment methods. |
 | `/admin` | Exclude all administrative routes. |
-| `/cart`, `/checkout`, order and payment routes | Exclude session, transactional, return, cancellation, notification, and history URLs. |
+| `/cart`, `/checkout`, order, payment, and `/commerce-paypal` routes | Exclude session, transactional, provider callback, return, cancellation, notification, and history URLs. |
 | Webform direct pages, drafts, submissions, results | Exclude `/form`, `/webform`, and administrative results; retain explicit Webform CSS/JavaScript asset allows. |
 | Private Forum/Blog proposal | Never include its direct Webform, drafts, confirmations, submissions, or administrative review routes. Only the authenticated block on `/forum` is intended. |
 | Unpublished Forum Topics and other unpublished nodes | Never include; anonymous access and runtime tests must enforce this. |
-| Reservation flow | Exclude `/reservation-cours`, `/reserver`, direct reservation Webform pages, parameters, and later transactional steps. |
+| Reservation flow | Exclude `/reservation-cours`, `/reserver`, direct reservation Webform pages, parameters, and the Webform Booking `/get-days/`, `/get-slots/`, `/webform_booking/`, and `/webform-booking-calendar-data/` endpoint families. |
 | Commerce products and variations | Exclude public/internal product, variation, order, checkout, and payment routes. Editorial Stage/Concert/Course pages remain the discovery surface. |
 | Numeric node paths | Never emit `/node/<id>`; aliases and canonical consistency are mandatory. |
 | Search, filters, comment reply and media utilities | Retain Drupal Core exclusions. |
@@ -242,9 +269,10 @@ Sitemap: https://unisonges.fr/sitemap.xml
 ## Guarded targeted diagnostic and apply
 
 Run the script only from a reviewed, complete Drupal environment after the
-parallel PRs and content prerequisites are available. Its default mode is
-read-only with respect to Drupal, content, aliases, generated XML, and active
-configuration:
+merged PR #78/#80 installers and content prerequisites are active. PR #81 owns
+that environment now, so none of these commands is authorized during this
+static refresh. The script's default mode is read-only with respect to Drupal,
+content, aliases, generated XML, and active configuration:
 
 ```bash
 cd drupal
@@ -296,8 +324,8 @@ The apply is eligible to write only:
 - `simple_sitemap.type.default_hreflang:url_generators`;
 - `simple_sitemap.custom_links.default:links`;
 - the five tracked `default.node` bundle-setting objects, with
-  `default.node.forum_topic` deferred until its bundle and PR #80 publication
-  guards exist.
+  `default.node.forum_topic` deferred until the merged PR #80 bundle and all
+  publication/access guards are active and exact.
 
 It does not modify content, aliases, access, Views, Webforms, Commerce,
 generated sitemap tables, queues, or cron settings, and it never runs a cache
@@ -340,6 +368,10 @@ policy anywhere.
 
 ## Later runtime matrix
 
+PR #81 exclusively owns DDEV and the runtime toolchain. This matrix is the next
+phase only after that ownership is explicitly released; this rebase performs
+none of it.
+
 Capture commands, timestamps, environment identity, relevant fingerprints, and
 redacted outputs in the PR before it leaves draft. Never include credentials or
 private submission data.
@@ -370,9 +402,11 @@ rollback; never weaken the guard.
 - For every custom alias, require exactly one PathAlias targeting one published
   `page` node, anonymous view access, HTTP 200 without an unexpected redirect,
   and a matching canonical URL.
-- Before PR #78, `/blog` and `/forum` must be explicitly reported deferred and
-  absent from generated XML. After PR #78, both must pass the same checks and
-  both must be present.
+- The PR #78 sources are merged. In the runtime under test, `/blog` and `/forum`
+  must both pass these checks and both be present. If the merged installer has
+  not yet made them active, the diagnostic may report both deferred, but the
+  policy must not be applied or generated. If PR #80 is active while the pair
+  is absent, the diagnostic must fail rather than defer it.
 
 ### 3. Publication and canonical matrix
 
@@ -386,15 +420,15 @@ private content.
 | Unpublished Basic page, even on a known path | Excluded. |
 | Published Article | Included by non-numeric canonical alias. |
 | Unpublished Article | Excluded. |
-| Published future Blog Article | Included and discoverable from `/blog`. |
+| Published Blog Article | Included and discoverable from `/blog`. |
 | Published Stage with future dates | Included. |
 | Published Stage with past dates | Included while it remains a public archive. |
 | Unpublished Stage | Excluded. |
 | Published Concert with future dates | Included. |
 | Published Concert with past dates | Included while it remains a public archive. |
 | Unpublished Concert | Excluded. |
-| Published Forum Topic after PR #80 | Included by non-numeric canonical alias. |
-| Unpublished Forum Topic after PR #80 | Excluded and inaccessible anonymously. |
+| Published Forum Topic | Included by non-numeric canonical alias. |
+| Unpublished Forum Topic | Excluded and inaccessible anonymously. |
 | Any dynamic node with `/node/<id>` canonical | Blocking failure; do not generate/promote. |
 
 For every included URL, require HTTP 200, no redirect chain, one self-consistent
@@ -406,18 +440,21 @@ Assert that the generated `<loc>` set contains none of:
 
 - `/user` or account/order/payment-method descendants;
 - `/admin` descendants;
-- `/cart`, `/checkout`, order, payment, return, cancel, or notify routes;
+- `/cart`, `/checkout`, order, payment, `/commerce-paypal`, return, cancel, or
+  notify routes;
 - `/form` or `/webform` pages, drafts, confirmations, submissions, or results;
 - the private `forum_blog_proposal` direct, draft, submission, confirmation, or
   administration routes;
-- `/reservation-cours`, `/reserver`, or reservation step/query variants;
+- `/reservation-cours`, `/reserver`, reservation step/query variants,
+  `/get-days/`, `/get-slots/`, `/webform_booking/`, or
+  `/webform-booking-calendar-data/` endpoints;
 - Commerce product or product-variation internals;
 - unpublished nodes;
 - numeric `/node/<id>` paths.
 
-Verify separately that PR #80's proposal block remains authenticated-only, its
-direct Webform is forbidden as designed, and no submission data appears in
-public HTML or XML.
+Verify separately that the merged PR #80 proposal block remains
+authenticated-only, its direct Webform is forbidden as designed, and no
+submission data appears in public HTML or XML.
 
 ### 5. robots and assets
 
@@ -433,7 +470,8 @@ public HTML or XML.
   return their intended status and are not blocked by the policy.
 - Confirm account, admin, Commerce, Webform, reservation, product, and numeric
   node crawl exclusions for clean and `index.php` paths. Test each applicable
-  route root in bare, trailing-slash, and `?query` forms.
+  route root in bare, trailing-slash, and `?query` forms, including all four
+  Webform Booking endpoint prefixes.
 - Remember that a robots exclusion is not an authorization test; repeat direct
   anonymous access checks for private routes.
 
@@ -471,21 +509,24 @@ while preparing this PR.
 
 ## Promotion gates
 
+The source-integration prerequisite is complete: PR #80 merge
+`233896619e6f74904927fbb62073a00962881069` and PR #78 merge
+`625c613dca22301b04a3f1bdc3c93db961fe9132` are ancestors of the rebased branch,
+and the exact PR #82 file set overlaps neither merged change nor PR #81.
+
 This draft remains blocked until all of the following are complete:
 
-1. PR #78 and PR #80 are integrated and this branch is updated without file
-   overlap.
-2. `/blog`, `/forum`, and `forum_topic` pass their conditional guards.
-3. Stage, Concert, Article, and Forum Topic aliases are non-numeric and tested
+1. `/blog`, `/forum`, and `forum_topic` pass their active conditional guards.
+2. Stage, Concert, Article, and Forum Topic aliases are non-numeric and tested
    for published/unpublished access.
-4. The front redirect/canonical/sitemap decision is consistent at runtime.
-5. Active Simple Sitemap bundle settings have no unknown drift and the entity
+3. The front redirect/canonical/sitemap decision is consistent at runtime.
+4. Active Simple Sitemap bundle settings have no unknown drift and the entity
    override table has zero rows.
-6. The Composer scaffold overwrite for `robots.txt` has an approved,
+5. The Composer scaffold overwrite for `robots.txt` has an approved,
    reproducible deployment treatment.
-7. The complete runtime matrix, two generations, rollback, and fingerprint
-   restoration pass in the environment owned by PR #80.
-8. A separate production change window explicitly authorizes any later active
+6. After PR #81 releases DDEV, the complete runtime matrix, two generations,
+   rollback, and fingerprint restoration pass in that approved environment.
+7. A separate production change window explicitly authorizes any later active
    apply and generation. This PR itself performs neither.
 
 ## Static validation for this change
@@ -498,7 +539,7 @@ access:
 - PHP lint for its embedded PHP program;
 - config dependency and Simple XML Sitemap 4.2.3 schema-shape checks;
 - repository-wide UUID uniqueness;
-- exact changed-file allowlist guard, including no PR #78/#80 filename;
+- exact changed-file allowlist guard, including no PR #78/#80/#81 filename;
 - checks that no private/transactional custom route or numeric node ID entered
   sitemap config;
 - checks that no import, sitemap generation, production command, or credential

@@ -90,6 +90,10 @@ Disallow: /webform/
 Disallow: /form$
 Disallow: /form?
 Disallow: /form/
+Disallow: /get-days/
+Disallow: /get-slots/
+Disallow: /webform_booking/
+Disallow: /webform-booking-calendar-data/
 Disallow: /reservation-cours
 Disallow: /reserver
 Disallow: /product$
@@ -134,6 +138,10 @@ Disallow: /index.php/webform/
 Disallow: /index.php/form$
 Disallow: /index.php/form?
 Disallow: /index.php/form/
+Disallow: /index.php/get-days/
+Disallow: /index.php/get-slots/
+Disallow: /index.php/webform_booking/
+Disallow: /index.php/webform-booking-calendar-data/
 Disallow: /index.php/reservation-cours
 Disallow: /index.php/reserver
 Disallow: /index.php/product$

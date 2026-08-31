@@ -573,7 +573,7 @@ $required_custom_paths = [
 ];
 $optional_custom_paths = ['/blog', '/forum'];
 $all_custom_paths = array_merge($required_custom_paths, $optional_custom_paths);
-$forbidden_path_pattern = '#^(?:/(?:admin|user|cart|checkout|order|payment|webform|form|reserver|product)(?:/|$)|/reservation(?:[-/]|$)|/node/[1-9][0-9]*(?:/|$))#D';
+$forbidden_path_pattern = '#^(?:/(?:admin|user|cart|checkout|order|payment|commerce-paypal|webform|webform_booking|webform-booking-calendar-data|get-days|get-slots|form|reserver|product)(?:/|$)|/reservation(?:[-/]|$)|/node/[1-9][0-9]*(?:/|$))#D';
 
 $settings_source = $read_yaml('simple_sitemap.settings.yml');
 $type_source = $read_yaml('simple_sitemap.type.default_hreflang.yml');
@@ -790,6 +790,7 @@ $inspect_state = static function () use (
   $required_custom_paths,
   $optional_custom_paths,
   $all_custom_paths,
+  $forbidden_path_pattern,
   $forum_feature_config_names,
   $forum_sources,
   $forum_source_count,
@@ -1081,6 +1082,9 @@ $inspect_state = static function () use (
     }
     $future_routes_ready = TRUE;
   }
+  if ($forum_ready && !$future_routes_ready) {
+    $fail('Active PR #80 Forum/Blog configuration requires active canonical /blog and /forum pages.');
+  }
 
   $override_count = (int) $database->select('simple_sitemap_entity_overrides', 'o')
     ->countQuery()
@@ -1145,18 +1149,21 @@ $inspect_state = static function () use (
       if (isset($dynamic_aliases[$canonical]) || in_array($canonical, $all_custom_paths, TRUE)) {
         $fail('Published dynamic canonical alias is duplicated or collides with a curated Basic page: ' . $canonical . '.');
       }
+      if (preg_match($forbidden_path_pattern, $canonical)) {
+        $fail('Published dynamic canonical alias uses a private or transactional route family: ' . $canonical . '.');
+      }
       $alias_ids = $alias_storage->getQuery()
         ->accessCheck(FALSE)
         ->condition('alias', $canonical)
-        ->condition('path', '/node/' . $node->id())
         ->execute();
-      if (count($alias_ids) !== 1
-        || $alias_manager->getAliasByPath('/node/' . $node->id(), $default_language) !== $canonical) {
-        $fail('Published dynamic canonical must be backed by exactly one active PathAlias: ' . $canonical . '.');
+      if (count($alias_ids) !== 1) {
+        $fail('Published dynamic canonical alias must have exactly one PathAlias entity: ' . $canonical . '.');
       }
       $canonical_alias = $alias_storage->load(reset($alias_ids));
-      if (!$canonical_alias) {
-        $fail('Canonical PathAlias disappeared during dynamic-node inspection.');
+      if (!$canonical_alias
+        || $canonical_alias->getPath() !== '/node/' . $node->id()
+        || $alias_manager->getAliasByPath('/node/' . $node->id(), $default_language) !== $canonical) {
+        $fail('Published dynamic canonical must be backed by exactly one active PathAlias: ' . $canonical . '.');
       }
       $alias_uuid = $canonical_alias->uuid();
       $dynamic_aliases[$canonical] = $node->uuid();
@@ -1289,7 +1296,7 @@ echo 'GENERATED current_chunks=' . count($current_state['generated_chunks'])
   . ' (separate diagnostic; this script never regenerates or changes it)' . PHP_EOL;
 echo 'GENERATED_FINGERPRINT ' . $current_generated_fingerprint . PHP_EOL;
 echo 'EXCLUDE bundles=page,taxonomy_term,menu_link_content,user,commerce_product,commerce_product_variation,webform' . PHP_EOL;
-echo 'EXCLUDE routes=/user,/admin,/cart,/checkout,/order,/payment,/webform,/form,/reservation*,/reserver,/product' . PHP_EOL;
+echo 'EXCLUDE routes=/user,/admin,/cart,/checkout,/order,/payment,/commerce-paypal,/webform,/form,/reservation*,/reserver,/get-days,/get-slots,/webform_booking,/webform-booking-calendar-data,/product' . PHP_EOL;
 echo 'FINGERPRINT_SCOPE current/planned/backup=policy+routes+nodes+sources generated=separate' . PHP_EOL;
 echo 'CURRENT_FINGERPRINT ' . $current_fingerprint . PHP_EOL;
 
