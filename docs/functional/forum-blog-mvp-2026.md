@@ -8,9 +8,11 @@ Forum MVP. It does not create the Basic pages or menu links for `/blog` and
 and the proposal form are blocks whose request-path visibility is limited to
 those existing aliases.
 
-Static preparation was performed without DDEV and without VPS access. Runtime
-validation remains pending while PR #67 owns DDEV. This change must remain a
-draft until the functional matrix below passes with zero residual fixtures.
+Static preparation was followed by the complete local DDEV, Chromium and
+Mailpit matrix on 2026-08-31. The tested checkout was rebased onto
+`54562e22f4025b88ce2b755248db833151d1637b`; no VPS was accessed. All test
+entities and local route fixtures were removed, the named baseline snapshot and
+public files were restored, and DDEV was stopped and unlisted after validation.
 
 No public View page route, path alias, main-menu item, external email handler,
 theme global CSS, taxonomy discriminator, Article, comment, proposal submission,
@@ -191,6 +193,17 @@ administrator must review it manually.
 
 ## Targeted deployment
 
+### Repository deployment automation
+
+Merging this change does **not** activate the new configuration through any
+tracked deployment automation. `scripts/deploy-staging.sh` performs the Git and
+Composer update, database updates, and cache rebuild, but contains neither a
+config import nor this targeted installer. `infra/README-staging.md` documents
+config import as a separate operator action, and no tracked GitHub workflow or
+Composer deploy hook runs the helper. The tracked configuration files therefore
+arrive with the code, but an operator must run the reviewed dry-run/apply path
+below. Unversioned infrastructure outside this repository was not inspected.
+
 ### Preconditions
 
 - Use a reviewed commit from this repository; the wrapper rejects untracked or
@@ -368,88 +381,184 @@ blocks while either reviewed Forum FieldConfig UUID remains in
 feature tombstones does not require or imply removing unrelated internal
 metadata.
 
-## DDEV functional matrix (pending PR #67 handoff)
+## DDEV runtime validation record (2026-08-31)
 
-Use disposable fixtures with a unique test prefix and record every entity ID.
-Do not invent or retain production-looking Articles. Mailpit is used only for
-the existing registration-verification message; the proposal form has no mail
-handler.
+### Isolation and local prerequisites
 
-- [ ] Record the exclusive test window: maintenance active, scheduled
-  cron/queue workers stopped, and no external administrator UI, CLI, config, or
-  content writes during each dry-run/apply/rollback sequence. Invalidate and
-  repeat any sequence whose quiescence was breached.
-- [ ] Confirm stored/effective registration is `visitors` with
-  `verify_mail=true`; complete a member signup through Mailpit.
-- [ ] As a normal member editing their own `/user/{uid}/edit` form, verify all
-  three lesson-credit widgets are absent. Forge each field in the self-edit
-  POST and confirm the stored values remain unchanged; treat any mutation as a
-  launch blocker.
-- [ ] Anonymous `/blog` renders only published Article fixtures, newest first,
-  with title/date/summary/canonical link and the useful empty state.
-- [ ] Anonymous `/forum` renders only published `forum_topic` fixtures and the
-  useful empty state.
-- [ ] As anonymous, `authenticated`, `content_editor`, and another representative
-  non-admin account, request an unpublished Forum topic directly at
-  `/node/{nid}`, its `/node/{nid}/revisions` overview, and a direct
-  `/node/{nid}/revisions/{vid}/view` revision URL. Require access denial even
-  for the topic author and for roles with `view own unpublished content` or
-  `view all revisions`.
-- [ ] As `content_editor` and the representative non-admin, verify the same
-  unpublished topic is absent from `/admin/content`, `/admin/content/recent`,
-  and every relevant generic node View. Repeat after warming caches and after
-  publish/unpublish saves.
-- [ ] Confirm unpublished Article and Forum fixtures never appear in feature
-  listings, rendered caches, feeds, search, or other recent-content surfaces
-  relevant to the test.
-- [ ] Authenticated verified member sees and submits all three proposal types.
-- [ ] Anonymous and ordinary member requests to
-  `/webform/forum_blog_proposal` both return `403` and do not render the form;
-  the authenticated member can submit only through the `/forum` block.
-- [ ] Verify no PathAlias entity uses any underscore
-  `/webform/forum_blog_proposal{suffix}` internal source or exact
-  `/form/forum-blog-proposal{suffix}` default alias for the empty,
-  `/confirmation`, `/submissions`, and `/drafts` suffixes. Do not require an
-  absolute HTTP `404` if an unrelated pre-existing Redirect entity handles a
-  public alias; confirm the feature neither creates nor modifies that redirect.
-- [ ] If the member confirmation route is reachable, confirm it exposes neither
-  the proposal form nor any own/other submission data; do not treat route
-  existence alone as a failure.
-- [ ] Member cannot view, edit or delete own/other proposal submissions.
-- [ ] Administrator can review the private submission, create an unpublished
-  topic, and publish it explicitly.
-- [ ] On the Forum-topic create and edit forms, confirm the author (`uid`)
-  widget is hidden.
-- [ ] Authenticated member can comment with `basic_html`; comment is immediately
-  visible under the retained `skip comment approval` policy.
-- [ ] Anonymous comment POST is rejected; authenticated user cannot select or
-  forge `webform_default` as the comment format.
-- [ ] Administrator can unpublish/delete the test comment; unpublishing the
-  topic removes listing/direct anonymous access.
-- [ ] Verify role permissions, including no authenticated Article/Forum create
-  or publication grant and no non-admin Forum publication bypass.
-- [ ] Create/publish/unpublish fixtures around warmed caches; verify listing and
-  direct-page cache invalidation after `cache:rebuild` and normal entity saves.
-- [ ] Run install dry-run a second time and require only `MATCH`/`NOOP` target
-  state.
-- [ ] Exercise rollback on an empty disposable fixture state, then reinstall
-  only after any reported Forum FieldConfig tombstones are purged and a new
-  install dry-run accepts `feature_entries=0`; recheck both listings/form.
-- [ ] Delete every test Node, comment, user and submission; run reviewed
-  cron/queue work only for generated field-purge metadata or other known test
-  work; verify zero residual fixture IDs/files/mail and zero feature tombstones.
+The exclusive test window used DDEV 1.25.3, PHP 8.3.31, Drupal 11.3.3,
+Webform 6.3.0-beta7, Chromium/Playwright 1.55.0, MariaDB 10.11, and local
+Mailpit 1.30.3. A database snapshot named
+`pr80-forum-blog-runtime-baseline-20260831T0805Z` was taken before the first
+local write. The baseline contained no Nodes, comments, or Webform submissions;
+users were IDs 0–6, PathAlias IDs 1–16, and there were no content menu links.
+The active-config inventory contained 314 items. The public-files baseline was
+245 files/838,007 bytes with fingerprint
+`3e414f9bd88e393d0ceb2a57c010938bea83815e655b111b9d359f401280c6a6`;
+the preserved tar had SHA-256
+`46edb97fa0b27cae731e8b6a5ea1b9fe062bbf20cbc7ca9835300f04654d350b`.
+
+All missing prerequisites were local fixtures, created through Drupal entity or
+config APIs after the snapshot: the custom default theme; the reviewed site
+UUID/registration settings; the existing legacy comment field; the Language
+module; and published Basic pages `Blog` (`/blog`, Node 37, PathAlias 17) and
+`Forum` (`/forum`, Node 38, PathAlias 18). No menu fixture was created. The
+local active date timezone had drifted to `Etc/UTC`, which Drupal 11 rejects as
+the hidden registration timezone choice; it was set to the repository value
+`Europe/Paris` only for the signup test. Every local prerequisite was later
+removed by snapshot restoration.
+
+### Installer, rollback, and guards
+
+- The first successful dry-run was read-only: active config, entity IDs, and
+  public-file fingerprints were identical before/after.
+- The initial apply transaction revealed that the forum form-display entity is
+  normalized when core Language is disabled. The feature transaction rolled
+  back. The required-module preflight now includes `language`; after enabling
+  that prerequisite, apply created exactly 14 allowlisted config entities.
+- The post-apply dry-run reported all 14 entities `MATCH`; a second apply
+  reported 14 `NOOP` results. No config import was used.
+- Rollback dry-run/apply removed the 14 entities only, retained the hardened
+  shared comment FieldConfig, removed the Webform tracking row, and reported
+  `DELETED FIELD STATE OK feature_entries=0`. A clean dry-run/reinstall then
+  recreated exactly the same 14 entities, and its post-apply dry-run again
+  reported only `MATCH`.
+- Reversible negative tests all failed closed: default-theme mismatch, missing
+  `/blog` alias, missing Language module, a conflicting target label, changed
+  target UUID metadata, forbidden authenticated `create article content`, and
+  moved route alias. Each altered prerequisite was restored and the next
+  dry-run returned `MATCH`.
+- With three `forum_topic` Nodes and three private proposals present, rollback
+  dry-run exited nonzero with
+  `ROLLBACK CONTENT GUARD forum_topic_nodes=3 proposal_submissions=3` and made
+  no change.
+- After fixture deletion, final rollback dry-run plan
+  `2b6db7db55d15a65cd3a5221b672cca3f79f1aecb332e2b8816e0b43f03c4925`
+  passed, apply deleted exactly 14 entities, and the post-rollback dry-run
+  reported 14 `MISSING`, zero content, zero Webform runtime artifacts, and
+  `feature_entries=0` (plan
+  `a6c468911debf3d2b23f4f7e9accaf8d6745e7e269fc4da7113052e0f57c48a8`).
+
+### Blog and Forum behavior
+
+- Empty anonymous `/blog` and `/forum` responses were `200` and rendered the
+  exact useful empty states. With fixtures, `/blog` rendered only published
+  Articles 40 then 39, proving newest-first order, and exposed linked title,
+  submitted date, explicit summary, and canonical `/node/{nid}` links.
+- Unpublished Article 41 was absent from the listing, RSS, search, and warmed
+  caches. Anonymous canonical and JSON requests returned `403` without its
+  title/body. Publishing through an entity save inserted it at the top without
+  a manual cache rebuild; unpublishing removed it and restored direct `403`.
+- `/forum` rendered only published topic 42 with title/date/summary/canonical
+  link. Unpublished topic 43 was absent from the feature and generic Views;
+  canonical, JSON, revision overview, and direct revision requests returned
+  `403` for anonymous, an ordinary member, and the authoring `content_editor`
+  account even though that role has generic revision permissions.
+- The content editor saw `/admin/content` but not unpublished Forum rows on two
+  warmed passes. `/admin/content/recent` does not exist in this installation
+  (`404`) and exposed no content. RSS/search checks also contained no draft
+  title or body.
+- Publishing topic 43 made its listing and canonical page public immediately;
+  unpublishing removed both without a manual cache rebuild. An administrator
+  also created topic 44 through Chromium: Published was unchecked by default,
+  the author widget was absent, explicit publish exposed it, and unpublish
+  returned its canonical page to `403`.
+
+### Proposals, comments, permissions, and registration
+
+- Anonymous and member direct requests to `/webform/forum_blog_proposal`
+  returned `403`; only the authenticated `/forum` block exposed the form. The
+  form included build and CSRF tokens, produced three server-side required-field
+  validation errors, and missing-token posts created nothing.
+- Verified member 7 submitted `idea`, `discussion_topic`, and `article_theme`.
+  The three submissions retained owner 7, stored no remote address, created no
+  Node, had no handler, and were inaccessible to the member for view/update/
+  delete. The confirmation route exposed neither form nor submission data. An
+  administrator reviewed the private values in the Webform results UI.
+- Anonymous lacked comment form/route/POST access. Member 7 posted on published
+  topic 42 and the comment was public immediately (`status=1`) because the
+  existing authenticated role deliberately retains `skip comment approval`.
+  The widget had only hidden `basic_html`; a forged `webform_default` value was
+  stored as `basic_html`, not honored. Administrator Chromium forms successfully
+  unpublished and deleted the test comment.
+- Anonymous/authenticated/content-editor permission inspection found no
+  Article grant on authenticated, no Forum create/edit/publish grant on any
+  non-admin, no Node administration/access bypass, and no proposal
+  administration grant. Administrator remains `is_admin`. The authenticated
+  role already has Webform's global `use text format webform_default`
+  permission; this PR adds no text-format permission, and the shared comment
+  FieldConfig plus tested server-side normalization prevents that unfiltered
+  format from being used for Article or Forum comments.
+- The three lesson-credit widgets were absent from member self-edit. A CSRF-
+  valid forged POST for all three fields left all stored values empty.
+- With stored/effective registration temporarily set to `visitors` and
+  `verify_mail=true`, anonymous Chromium registration created active user 11,
+  Mailpit alone received its verification message, and Chromium completed the
+  one-time login/password flow. No external SMTP was used. The proposal form
+  emitted no email. Registration was restored to the snapshot's original
+  `admin_only` value; `verify_mail=true` remained unchanged.
+
+### Browser and operational evidence
+
+Chromium rendered empty and populated Blog/Forum pages at 1440×1000 and
+390×844. Each page had exactly its intended block, correct cards/links, no
+horizontal overflow (scroll width exactly 1440/390), no public proposal block,
+no external request, no page/console error, and no `5xx`. Authenticated proposal
+and comment forms and administrator review/publication/moderation were exercised
+with screenshots retained only under `/tmp`. A final isolated web-container log
+window for public Blog/Forum renders contained no PHP warning or fatal error.
+
+The Webform administrator results page references existing third-party CDN
+assets from the installed Webform UI; the test interceptor blocked those assets,
+which produced expected admin-only `ERR_FAILED` console entries. Public and
+member feature pages made no such request. No Google or PayPal request occurred,
+no production credential was used, and no VPS/public production endpoint was
+accessed.
+
+### Cleanup and restoration
+
+Drupal storage APIs deleted the exact eight Nodes, one comment, three
+submissions, five temporary users, and two PathAlias fixtures. Mailpit was
+cleared. Before snapshot restoration there were zero Nodes/comments/
+submissions, users were again 0–6, aliases were again 16, menu links were zero,
+all 14 feature configs were absent, and rollback reported no field tombstone or
+Webform artifact.
+
+The named physical database snapshot and preserved public-files tar were then
+restored. Final state was: 314 active configs; zero Nodes/comments/submissions;
+users 0–6; 16 aliases; zero content menu links; `admin_only` plus
+`verify_mail=true`; Olivero/Claro; front page `/node`; maintenance off; and
+Mailpit empty. The final deterministic active-config `readMultiple()` fingerprint
+was `5dc5f088dd497e83c5991257ff17dcd7da0039457ebfe79859dc3afdd5235f56`;
+the physical snapshot is the authoritative pre-write comparison artifact. The
+public files exactly returned to 245 files/838,007 bytes and the recorded
+`3e414f9b…` fingerprint. The main serving checkout is clean on `release/prod`,
+the temporary root DDEV config is absent, DDEV has no registered project or
+running container, and all fixture helpers/evidence remain outside the
+repository under `/tmp` only.
 
 ## Static validation record
 
-The initial static phase must include:
+The final post-runtime static phase passed:
 
 ```bash
 bash -n scripts/apply-forum-blog-mvp-2026.sh
 shellcheck scripts/apply-forum-blog-mvp-2026.sh
 php -l scripts/forum-blog-mvp-config.php
+php -l web/modules/custom/unisonges_structure/unisonges_structure.module
 git diff --check
 ```
 
-YAML must also be parsed and the exact semantic invariants checked before the
-draft PR is handed over. Drupal entity/schema validation remains pending until
-the locked PHP 8.3 Drupal runtime is available through the PR #67 DDEV handoff.
+Both PHP files were linted with PHP 8.3.31. Symfony YAML parsed all 15 changed
+config files; the complete sync directory contained 451 parseable config files
+and 396 globally unique UUIDs. Every changed config dependency resolved.
+Assertions passed for block-only Views, published-only filters, newest-first
+sorts, empty states, unpublished/unpromoted Forum defaults, hidden author,
+`basic_html`, the authenticated-only handler-free Webform, exact route scopes,
+access hooks, permission guards, rollback content guards, and the Language
+dependency.
+
+The diff contains exactly the 19 reviewed Forum/Blog files. Forbidden-file,
+role/menu, Commerce/reservation, config-import, credential-file,
+high-confidence secret, and new external-integration scans passed. There is no
+untracked fixture/helper in the repository. Runtime apply/dry-run exact matching
+also supplied Drupal config-entity/schema validation under the locked runtime.
