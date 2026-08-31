@@ -2,6 +2,90 @@ _core:
   default_config_hash: 25hWeYa4sasuJtHqKKcEN_nYiuEC1lMPYHsn5dawJEw
 links:
   -
-    path: /
+    path: /accueil
     priority: '1.0'
-    changefreq: daily
+    changefreq: ''
+  -
+    path: /cours-et-stages
+    priority: '0.5'
+    changefreq: ''
+  -
+    path: /cours
+    priority: '0.5'
+    changefreq: ''
+  -
+    path: /cours/didgeridoo
+    priority: '0.5'
+    changefreq: ''
+  -
+    path: /cours/guimbarde
+    priority: '0.5'
+    changefreq: ''
+  -
+    path: /cours/meditation-improvisation
+    priority: '0.5'
+    changefreq: ''
+  -
+    path: /stages
+    priority: '0.5'
+    changefreq: ''
+  -
+    path: /stages/didgeridoo
+    priority: '0.5'
+    changefreq: ''
+  -
+    path: /stages/musique-improvisee-meditation
+    priority: '0.5'
+    changefreq: ''
+  -
+    path: /stages/speciaux
+    priority: '0.5'
+    changefreq: ''
+  -
+    path: /concerts
+    priority: '0.5'
+    changefreq: ''
+  -
+    path: /ateliers
+    priority: '0.5'
+    changefreq: ''
+  -
+    path: /djam
+    priority: '0.5'
+    changefreq: ''
+  -
+    path: /orchestre-des-reveurs
+    priority: '0.5'
+    changefreq: ''
+  -
+    path: /a-propos
+    priority: '0.5'
+    changefreq: ''
+  -
+    path: /association
+    priority: '0.5'
+    changefreq: ''
+  -
+    path: /les-artistes-de-l-asso
+    priority: '0.5'
+    changefreq: ''
+  -
+    path: /origine
+    priority: '0.5'
+    changefreq: ''
+  -
+    path: /services-prestations-artistiques
+    priority: '0.5'
+    changefreq: ''
+  -
+    path: /contact
+    priority: '0.5'
+    changefreq: ''
+  -
+    path: /blog
+    priority: '0.5'
+    changefreq: ''
+  -
+    path: /forum
+    priority: '0.5'
+    changefreq: ''
