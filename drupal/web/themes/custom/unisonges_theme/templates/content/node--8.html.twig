@@ -1,78 +1,43 @@
 {% set portal = unisonges_reservation_portal|default({}) %}
-{% set portal_status = portal.status|default('anonymous') %}
-{% set body_markup = content.body|render %}
+{% set is_anonymous = portal.is_anonymous is defined ? portal.is_anonymous : true %}
+{% set can_use_existing_right = (not is_anonymous) and (portal.can_book|default(false)) %}
+{% set tunnel_url = portal.tunnel_url|default('/reservation-cours') %}
+{% set login_url = portal.login_url|default('/user/login?destination=/reservation-cours') %}
+{% set register_url = portal.register_url|default('/user/register?destination=/reservation-cours') %}
+{% set reservation_form = unisonges_reservation_form|default([]) %}
 
 <article class="unisonges-node-page reservation-portal">
   {% include '@unisonges_theme/includes/_hero.html.twig' with {
     title: 'Réserver un cours',
-    intro: 'Identifiez-vous, choisissez le cours, le créneau, puis les détails. Le paiement se décide ensuite, en ligne ou sur place.'
+    intro: 'Le parcours présente les étapes dans cet ordre : compte, cours, créneau, détails, paiement, puis confirmation.'
   } only %}
 
-  <section class="reservation-portal__intro">
-    <p>Les disponibilités restent consultables avant confirmation. Le parcours cible suit l’ordre : compte, cours, créneau, détails, paiement, confirmation.</p>
+  <section class="reservation-portal__intro" aria-labelledby="reservation-primary-title">
+    <h2 id="reservation-primary-title">Commencer ma réservation</h2>
+    <p>Pour un paiement en ligne, le créneau choisi n’est pas réservé.</p>
     <div class="reservation-portal__actions">
-      <a class="btn btn--cta" href="{{ portal.tunnel_url|default('/reservation-cours') }}">Démarrer le parcours guidé</a>
+      <a class="btn btn--cta" href="{{ tunnel_url }}">Commencer ma réservation</a>
     </div>
   </section>
 
-  <section class="reservation-portal__summary reservation-portal__summary--{{ portal_status }}" aria-labelledby="reservation-access-title" aria-describedby="reservation-access-message">
-    <div class="reservation-portal__account">
-      <h2 id="reservation-access-title">Votre parcours</h2>
-      <p class="reservation-portal__status">{{ portal.status_label }}</p>
-      <p id="reservation-access-message">{{ portal.message }}</p>
-
-      {% if portal.is_anonymous %}
+  {% if is_anonymous %}
+    <section class="reservation-portal__intro" aria-labelledby="reservation-account-title">
+      <div class="reservation-portal__account">
+        <h2 id="reservation-account-title">Se connecter ou créer un compte</h2>
+        <p>Un compte est nécessaire pour confirmer une réservation.</p>
         <div class="reservation-portal__actions">
-          <a class="btn btn--cta" href="{{ portal.login_url }}">Se connecter pour réserver</a>
-          <a class="btn" href="{{ portal.register_url }}">Créer un compte</a>
+          <a class="btn" href="{{ login_url }}">Se connecter pour réserver</a>
+          <a class="btn" href="{{ register_url }}">Créer un compte pour réserver</a>
         </div>
-      {% else %}
-        {% if portal.can_book %}
-          <dl class="reservation-portal__rights">
-            <div>
-              <dt>Confirmations immédiates</dt>
-              <dd>{{ portal.remaining_label }}</dd>
-            </div>
-            {% if portal.expiry_label %}
-              <div>
-                <dt>Validité</dt>
-                <dd>{{ portal.expiry_label }}</dd>
-              </div>
-            {% endif %}
-          </dl>
-
-          <div class="reservation-portal__actions">
-            <a class="btn btn--cta" href="#reservation-form-title">Choisir un créneau</a>
-            <a class="btn" href="{{ portal.tunnel_url|default('/reservation-cours') }}">Parcours guidé</a>
-          </div>
-        {% else %}
-          <div class="reservation-portal__actions">
-            <a class="btn btn--cta" href="{{ portal.tunnel_url|default('/reservation-cours') }}">Choisir cours et créneau</a>
-            <a class="btn" href="{{ portal.purchase_url }}">{{ portal.purchase_label }}</a>
-          </div>
-        {% endif %}
-      {% endif %}
-    </div>
-
-    <div class="reservation-portal__steps" aria-label="Fonctionnement">
-      <h2>Comment ça se passe</h2>
-      <ol>
-        <li>Compte ou identification.</li>
-        <li>Choix du cours.</li>
-        <li>Choix du créneau.</li>
-        <li>Détails du cours.</li>
-        <li>Paiement en ligne ou sur place.</li>
-        <li>Confirmation.</li>
-      </ol>
-    </div>
-  </section>
-
-  {% if body_markup|striptags|trim %}
-    <section class="panel node-body">{{ body_markup }}</section>
+      </div>
+    </section>
   {% endif %}
 
-  <section class="reservation-portal__form" aria-labelledby="reservation-form-title">
-    <h2 id="reservation-form-title">Choix du créneau</h2>
-    {{ unisonges_reservation_form }}
-  </section>
+  {% if can_use_existing_right and reservation_form is not empty %}
+    <section class="reservation-portal__form" aria-labelledby="reservation-existing-right-title">
+      <h2 id="reservation-existing-right-title">Utiliser un droit déjà disponible</h2>
+      <p>Cette option sert uniquement à utiliser une séance déjà disponible sur votre compte ou un cours à payer déjà enregistré.</p>
+      {{ reservation_form }}
+    </section>
+  {% endif %}
 </article>
