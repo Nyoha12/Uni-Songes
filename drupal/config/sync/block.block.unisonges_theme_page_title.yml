@@ -2,6 +2,8 @@ uuid: 366ae363-dbbd-4256-9db2-bdf5b7d8c74d
 langcode: en
 status: true
 dependencies:
+  module:
+    - system
   theme:
     - unisonges_theme
 _core:
@@ -17,4 +19,18 @@ settings:
   label: 'Page title'
   label_display: '0'
   provider: core
-visibility: {  }
+visibility:
+  request_path:
+    id: request_path
+    negate: true
+    pages: |-
+      /concerts
+      /contact
+      /djam
+      /node/6
+      /node/7
+      /node/8
+      /node/9
+      /node/10
+      /orchestre-des-reveurs
+      /reserver
