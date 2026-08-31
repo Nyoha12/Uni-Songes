@@ -21,8 +21,12 @@ Configuration détenue par ce MVP :
 
 ### Page et placement
 
-L'alias `/contact` désigne actuellement le nœud publié Contact, de type Page de
-base. Son corps actif est vide d'après l'audit versionné. Le gabarit
+Après la fusion de la PR #78, le contrat versionné conserve `/contact` comme
+alias canonique en lecture seule vers le nœud publié Contact de type Page de
+base. La validation consignée par cette PR retrouve `/contact` vers le nœud 7,
+et son script refuse un alias absent, ambigu ou pointant vers un autre type de
+nœud. Le présent rafraîchissement reste statique et ne réinterroge donc pas la
+base active. Son corps actif est vide d'après l'audit versionné. Le gabarit
 `node--7.html.twig` rend un bandeau, le corps lorsqu'il existe et des actions ;
 il n'est pas modifié. Le bloc suit la convention des blocs propres au thème
 `unisonges_theme` et utilise la région `content` avec la condition native
@@ -45,6 +49,33 @@ doublon.
 
 Le dépôt comporte aussi le Webform de réservation de cours. Il est hors
 périmètre et reste inchangé.
+
+### Intégration statique des PR #78 et #80 fusionnées
+
+Ce changement est rebasé après les fusions de la PR #80 (Forum/Blog) et de la
+PR #78 (architecture de contenu). La PR #78 ne possède ni configuration
+Webform ni bloc Contact ; elle conserve `/contact` parmi quatre pages de
+référence et ne modifie ni son corps, ni son alias, ni son identifiant.
+
+La PR #80 ajoute un espace de proposition distinct du Contact :
+
+| Fonction | Webform | Bloc | Placement et création |
+| --- | --- | --- | --- |
+| Contact | `contact`, UUID `c76dd154-d2cd-4b04-92c9-fe61536beabe` | `unisonges_contact_form`, UUID `fd67a4c0-e06a-46f0-af88-acc5c0b28f8f` | `/contact`, région `content`, poids 50 ; `anonymous` et `authenticated` |
+| Proposition Forum/Blog | `forum_blog_proposal`, UUID `f07292df-ffe6-4fe6-8a81-b2b6378e6ed6` | `unisonges_forum_blog_proposal`, UUID `01f58684-8fde-4544-850b-09d380361c22` | `/forum`, région `content`, poids 30 ; `authenticated` uniquement |
+
+Les IDs et UUID sont distincts. Les deux blocs partagent la région native
+`content`, mais leurs chemins sont disjoints et ils référencent chacun leur
+propre Webform ; il n'existe donc ni collision de placement ni formulaire
+croisé. Les deux Webforms stockent leurs résultats sous leur propre
+`webform_id`, n'ont aucun gestionnaire et laissent vides tous les accès de
+consultation, modification ou suppression. Le Contact conserve en plus ses
+limites propres, qui ne s'appliquent pas aux propositions Forum/Blog.
+
+Le helper Contact prend une empreinte de toutes les soumissions Webform, pas
+seulement de celles de `contact`, avant et après une application. Une
+modification ou un reclassement d'une proposition Forum/Blog ferait donc
+échouer la vérification au lieu d'être silencieusement accepté.
 
 ### JavaScript historique
 
@@ -283,21 +314,54 @@ Les contrôles hors runtime exécutés sur le diff comprennent :
   limites anti-abus ;
 - vérification indépendante du préflight, de la transaction, du rollback, de
   l'idempotence et des caches du helper ;
+- comparaison avec les configurations Forum/Blog fusionnées : IDs, UUID,
+  dépendances, accès, blocs, chemins et séparation des soumissions ;
+- contrôle du contrat fusionné de la PR #78 qui conserve `/contact` comme Page
+  de base canonique en lecture seule ;
 - `bash -n` et ShellCheck sur le lanceur ;
 - `php -l` sur le helper ;
 - `git diff --check`, garde de cinq fichiers, recherche de secrets et contrôle
   de non-chevauchement avec les PR concurrentes.
 
-Le parser YAML utilisé pour ces contrôles est `yaml@2.8.1`, épinglé et exécuté
-depuis un cache temporaire supprimé après validation. Les contrôles de runtime
-Drupal restent ceux de la matrice ci-dessous.
+Le parser YAML utilisé pour ces contrôles est `yaml@2.8.1`, épinglé via
+`npm exec` sans ajouter de dépendance au dépôt. Les contrôles de runtime Drupal
+restent ceux de la matrice ci-dessous.
 
 ## Matrice d'exécution différée
 
-La PR #80 a été fusionnée pendant la préparation de ce changement. Conformément
-à la contrainte explicite de cette tâche, aucun test DDEV, Docker, Drush,
-Chromium ou Mailpit n'est néanmoins exécuté ici. La PR doit rester en brouillon
-jusqu'à une passe autorisée exécutant la matrice complète sur staging.
+Les PR #80 puis #78 sont désormais fusionnées dans `release/prod` et le présent
+changement est rebasé sur leur état commun. La PR #81 reste le prérequis runtime
+explicite pour la validation complète des messages : dans la base actuelle,
+l'unique bloc de messages Drupal est encore placé dans la région `header`, que
+les shells publics ne rendent pas. La PR #81 le déplace seule dans `content`,
+avant le contenu principal.
+
+La confirmation de succès `inline` du Contact et les erreurs attachées aux
+champs sont rendues dans le formulaire par Webform ; la PR #81 ne les crée pas.
+Elle est néanmoins requise avant la matrice complète pour que les messages
+Drupal globaux de statut, d'erreur ou d'avertissement aient eux aussi un chemin
+de rendu, puis pour vérifier leur coexistence sans perte ni doublon avec les
+messages propres au formulaire.
+
+La PR #81 possède exclusivement DDEV, Docker, Drush, Chromium et Mailpit pendant
+ce rafraîchissement. Aucun de ces outils, aucun navigateur et aucun VPS n'est
+utilisé ici. La PR #85 reste en brouillon jusqu'à une passe autorisée exécutant
+la matrice complète sur staging.
+
+### Ordre runtime restant
+
+1. terminer et intégrer la PR #81 dans `release/prod` ;
+2. rebaser à nouveau la PR #85 sur cette base et répéter les gardes statiques ;
+3. sur le staging autorisé, exécuter le dry-run puis l'application Contact
+   ciblée, sans import complet ou partiel ;
+4. exécuter les scénarios visiteur, utilisateur, administrateur et affichage,
+   y compris la confirmation inline, les erreurs de champ et les éventuels
+   messages Drupal globaux rendus grâce au placement de la PR #81 ;
+5. exécuter le second dry-run, la seconde application idempotente, le rollback,
+   la réapplication et le nettoyage des soumissions de test.
+
+Mailpit doit rester inutilisé pendant toute cette matrice, puisque le Contact
+ne possède aucun gestionnaire d'e-mail.
 
 ### Visiteur anonyme
 
@@ -326,7 +390,9 @@ jusqu'à une passe autorisée exécutant la matrice complète sur staging.
 ### Affichage et intégration
 
 - le formulaire apparaît uniquement sur `/contact`, sans doublon ;
-- après intégration de la PR #81, ses messages Drupal s'affichent correctement ;
+- la PR #81 est intégrée avant le test, puis les erreurs de champ, la
+  confirmation inline et les messages Drupal globaux s'affichent correctement
+  et une seule fois ;
 - rendu desktop et mobile sous Chromium ;
 - navigation intégrale au clavier ;
 - erreurs et confirmation accessibles ;
