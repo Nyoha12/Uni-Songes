@@ -663,24 +663,33 @@ HTML,
 HTML,
   ],
   'artistes' => [
-    'title' => 'Les Artistes de l’asso',
+    'title' => 'Artistes et partenaires',
     'alias' => '/les-artistes-de-l-asso',
     'create_if_missing' => FALSE,
     'body' => <<<'HTML'
 <section class="unisonges-page-intro">
-  <p>Cette page présente les artistes partenaires de l'association Uni-Songes, leurs univers et les formes de collaboration possibles.</p>
-  <p>Elle sert de point d'entrée pour découvrir les parcours, les propositions artistiques et les services portés par les membres ou partenaires de l'association.</p>
+  <p>Cette page présente l’environnement artistique et collaboratif autour d’Uni-Songes.</p>
+  <p>Elle propose des repères généraux sur les pratiques, les approches et les formes de projets possibles.</p>
 </section>
 
 <section class="unisonges-detail-section">
-  <h2>Biographies d'artistes</h2>
-  <p>Section à compléter avec les biographies, photos, instruments, démarches artistiques et liens de chaque artiste partenaire.</p>
+  <h2>Pratiques et approches</h2>
+  <p>Les pratiques abordées autour d’Uni-Songes comprennent le didgeridoo, la guimbarde, l’écoute et l’improvisation musicale. La pratique collective et la transmission artistique et pédagogique complètent ces approches.</p>
 </section>
 
 <section class="unisonges-detail-section">
-  <h2>Services proposés</h2>
-  <p>Section à compléter avec les prestations, ateliers, concerts, accompagnements et formats pédagogiques portés par chaque artiste.</p>
-  <p><a href="/services-prestations-artistiques">Voir les services et prestations artistiques</a></p>
+  <h2>Projets et collaborations</h2>
+  <p>Selon les projets, les activités d’Uni-Songes peuvent prendre la forme de concerts, de projets collectifs, d’ateliers ou d’interventions pédagogiques, ainsi que de prestations artistiques et sonores.</p>
+</section>
+
+<section class="unisonges-detail-section">
+  <h2>Découvrir et prendre contact</h2>
+  <ul>
+    <li><a href="/concerts">Consulter les concerts</a></li>
+    <li><a href="/ateliers">Découvrir les projets collectifs</a></li>
+    <li><a href="/services-prestations-artistiques">Voir les services et prestations artistiques</a></li>
+    <li><a href="/contact">Contacter Uni-Songes</a></li>
+  </ul>
 </section>
 HTML,
   ],

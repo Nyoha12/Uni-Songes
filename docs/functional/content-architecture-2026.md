@@ -25,7 +25,7 @@ menu principal. La mise en place est portée par
 | À propos | `/a-propos` | Hub d'orientation vers l'association, les artistes et partenaires, l'origine, le Blog et les services et activités artistiques. |
 | Blog | `/blog` | Point d'entrée pour les actualités de l'association, les articles artistiques et pédagogiques, les réflexions et les ressources ; après activation ciblée, la PR #80 rend la liste dynamique dans un bloc séparé de la région Drupal de contenu. |
 | L’Association | `/association` | Mission et activités musicales, pédagogiques et collectives, avec orientation vers les cours, stages, concerts, artistes, prestations et pages dédiées de D’Jam et de l'Orchestre des Rêveurs. |
-| Les Artistes de l'asso | `/les-artistes-de-l-asso` | Page de présentation des artistes partenaires, avec sections à compléter. |
+| Artistes et partenaires | `/les-artistes-de-l-asso` | Repères sur l'environnement artistique et collaboratif d'Uni-Songes, ses pratiques et les formes possibles de projets, sans annuaire biographique ni liste de partenaires. |
 | Origine | `/origine` | Racines de la démarche dans le souffle, le didgeridoo, l'improvisation, l'écoute, la pratique collective et la transmission. |
 | Services et prestations artistiques | `/services-prestations-artistiques` | Page des services artistiques, pédagogiques et sonores avec CTA contact. |
 
@@ -49,6 +49,10 @@ menu principal. La mise en place est portée par
 - La page Origine ne fournit aucune date fondatrice, aucun nom de fondateur,
   jalon juridique, chronologie, statistique ou partenaire non documenté. Elle
   reste dans le périmètre factuel de la pratique et de la transmission.
+- La page Artistes et partenaires ne constitue ni un annuaire biographique ni
+  une liste de collaborations en cours. Elle présente seulement les pratiques
+  confirmées, les formes possibles de projets et quatre destinations
+  canoniques, sans nom, affiliation, qualification ni parcours individuel.
 - Toutes les pages publiques et tous les alias existants sont conservés.
   `/ateliers` reste l'alias stable du hub renommé « Projets collectifs ». Les
   seules pages et alias que le script peut créer sont `/cours-et-stages`,
@@ -262,6 +266,15 @@ processus restent limitées au cache mémoire d'entités.
 - La page `/origine` reste limitée aux racines dans le souffle, le didgeridoo,
   l'improvisation, l'écoute et la pratique collective, à la transmission
   artistique et pédagogique, puis aux activités actuelles déjà documentées.
+- La page `/les-artistes-de-l-asso`, titrée « Artistes et partenaires »,
+  suit quatre sections : une introduction, « Pratiques et approches »,
+  « Projets et collaborations » et « Découvrir et prendre contact ». Elle
+  présente le didgeridoo, la guimbarde, l'écoute, l'improvisation musicale, la
+  pratique collective et la transmission artistique et pédagogique. Les
+  concerts, projets collectifs, ateliers ou interventions pédagogiques et
+  prestations artistiques et sonores y sont décrits uniquement comme des
+  formes possibles d'activité. Ses quatre liens mènent à `/concerts`,
+  `/ateliers`, `/services-prestations-artistiques` et `/contact`.
 - Cours d'essai : 10 EUR, réservation via
   `/reservation-cours?discipline=essai`.
 - Cours de didgeridoo : 25 EUR / heure, 15 EUR / heure étudiant, réservation
@@ -322,6 +335,13 @@ CTA et la cohérence des panneaux de contenu.
 - Vérifier `/association` : mission et activités restent concises, les cinq
   destinations demandées sont présentes et D’Jam comme l'Orchestre renvoient à
   leurs pages dédiées.
+- Vérifier `/les-artistes-de-l-asso` : le titre Drupal est « Artistes et
+  partenaires » ; les intertitres « Pratiques et approches », « Projets et
+  collaborations » et « Découvrir et prendre contact » sont présents ; les
+  quatre liens mènent à `/concerts`, `/ateliers`,
+  `/services-prestations-artistiques` et `/contact`. Aucun texte d'attente,
+  annuaire, biographie, identité, affiliation, qualification ou partenariat en
+  cours n'est affirmé.
 - Vérifier `/cours` : les trois cartes restent visibles, le CTA principal
   « Réserver un cours » mène à `/reservation-cours` et les cartes mènent aux
   pages de discipline.
@@ -349,12 +369,123 @@ CTA et la cohérence des panneaux de contenu.
   accessibles, titres et prix lisibles sur le fond Uni-Songes ; valider en
   particulier la typographie et le comportement du menu avec ses neuf enfants.
 
+### État rebasé et validation locale de la PR #87 — 2 septembre 2026
+
+La fusion de la PR #95 a été vérifiée sur GitHub puis par ascendance Git : son
+commit de fusion `2ffa2538204f0705dadf6faebceef8c77ebcbfc2` est la base
+`release/prod` de la PR #87. Le rebase n'a produit aucun conflit. Le diff reste
+strictement limité aux deux fichiers suivants :
+
+- `drupal/scripts/apply-content-architecture-2026.sh` ;
+- `docs/functional/content-architecture-2026.md`.
+
+Dans le script, seuls le titre et le corps de la définition résolue par
+`/les-artistes-de-l-asso` diffèrent de cette base. La définition complète de
+`/accueil`, son titre, son corps, le format de texte commun et la conservation
+de son résumé restent identiques. Les définitions de `/blog`, `/forum`, de
+toutes les autres pages, du menu, des listes de création et des gardes de
+transaction restent elles aussi byte-for-byte identiques.
+
+Les PR #99 et #100 sont incluses dans cette base. La PR #87 reste compatible
+avec leur présentation des comptes, leurs titres sémantiques et leur cycle de
+vie des messages : elle ne modifie aucun fichier de thème, d'authentification
+ou de compte, n'ajoute aucun message et ne crée aucun second chemin de message
+système. Le corps Artistes et partenaires ne contient aucun H1 : le bloc de
+titre de page reste son unique source H1, puis les trois sections de contenu
+utilisent des H2 logiques.
+
+La PR #103 reste non fusionnée et son périmètre de dix-sept fichiers demeure
+indépendant : aucun n'est touché. Comme la définition `/accueil` et toute
+l'architecture de menu restent strictement identiques à `release/prod`, la PR
+#87 n'invalide pas le pré-état exact que le futur installeur de la PR #103
+reconnaît pour cette page. L'ordre compatible est de livrer la PR #87 avant la
+première installation de la PR #103. En effet, le contrat de rollback de cet
+installeur retient aussi l'empreinte du script d'architecture complet : si la
+PR #103 avait déjà été appliquée, la modification ultérieure du seul bloc
+Artistes ferait échouer volontairement la revalidation de ce contrat, bien que
+le corps `/accueil` soit inchangé, et imposerait une nouvelle revue de son état
+retenu.
+
+Les affirmations suivantes sont délibérément absentes du contenu Artistes et
+partenaires : nom d'artiste ou de partenaire, biographie, portrait, annuaire,
+appartenance ou affiliation, instrument attribué à une personne, qualification,
+prix ou récompense, expérience professionnelle, date, lieu, collaboration
+nommée, contrat ou accord, tarif, horaire, disponibilité, partenariat actuel et
+URL externe. Les formats d'activité restent généraux et modalisés ; aucune
+relation avec une personne ou un partenaire non documenté n'est sous-entendue.
+
+### Validation locale représentative — Artistes et partenaires
+
+La PR #87 a disposé d'une fenêtre runtime exclusive pour cette validation.
+Aucun VPS n'a été utilisé, aucune donnée de production n'a été importée, aucun
+appel externe applicatif n'a été déclenché par la fixture ou le site testé et
+aucune entité Commerce n'a été créée.
+Le script testé avait l'empreinte SHA-256
+`9c92531dbde7141ac80107d0202e419cfd2695f027c44369207a4fe164980cdb`.
+Avant toute écriture, le snapshot nommé
+`pr87-artists-pre-runtime-20260902T132158Z` a été créé et son archive contrôlée
+avec l'empreinte
+`7fffb7decc95d13a6bb048ac30c8c68ad4702ba7feaef40c9b053f8cbdded01f`.
+
+La base locale standard ne contenant aucun nœud, une fixture jetable a été
+créée uniquement avec les API d'entités Drupal et des marqueurs uniques. Elle a
+d'abord reproduit l'état historique requis, puis le script exact de la base
+`2ffa2538204f0705dadf6faebceef8c77ebcbfc2` l'a fait converger vers
+l'architecture représentative : 22 pages, 38 alias au total, 15 liens de menu
+principal dont 14 actifs et le lien Services conservé désactivé. Toutes les
+pages sans rapport avec Artistes correspondaient byte-for-byte à la base ; le
+corps `/accueil` de 2 385 octets avait l'empreinte
+`e0ceb05c22f5bdbcc05bb949bb37e2258965261376271cdc1ca60b5898ce2817`,
+le format `full_html` et un résumé nul, soit le pré-état attendu par la PR #103.
+
+| Contrôle local exécuté | Résultat |
+| --- | --- |
+| Premier dry-run | Sortie 0, phase A complète et plan immuable `6bc10f75e7458d6e68168cbfd53317ef617624a261b1e80ed558546d70d98953` : exactement une opération `page_update` pour `/les-artistes-de-l-asso`, zéro création de page ou d'alias, zéro mutation de menu, de configuration ou de Commerce. Les corps actuel et prévu ont été capturés intégralement. |
+| Première application | Sortie 0 et exactement une mise à jour du titre et du corps du nœud cible dans la transaction. Une seule révision a été ajoutée ; bundle, publication, propriétaire, langue, alias, format et résumé ont été conservés. Aucun autre nœud ni aucune autre révision existante n'a changé. |
+| Alias et menu | Les 38 alias et les 15 liens sont restés identiques. « Partenaires » reste actif, de poids 10, sous le parent `/a-propos`, vers `/les-artistes-de-l-asso` ; toutes les autres définitions sont inchangées. |
+| Idempotence | Le second dry-run et la seconde application ont chacun terminé avec la sortie 0, le plan vide `be964804613d200c23fca76d918fda400c4880dc78ba496110a5236e660f4f7f`, zéro mutation et aucune révision supplémentaire. |
+| Rollback tardif | Un trigger temporaire, limité à l'insertion de la révision Artistes, a fait échouer la phase B avec la sortie 1 et `ROLLBACK_CONFIRMED`. L'état complet, les configurations et l'empreinte normalisée durable `925e43307361cffd98d60d2a7ac0ec401a254cae60316b411348c0e2c0fc17a5` sont restés identiques ; aucun message de mutation ni aucune révision partielle n'a été validé. Le trigger a été supprimé. |
+| Entité résultante | Le titre est exactement « Artistes et partenaires », l'alias reste `/les-artistes-de-l-asso`, le corps reste en `full_html`, ne contient aucun H1 et comprend l'introduction puis les trois H2 documentés et les quatre liens canoniques exacts. |
+| Navigateur | Playwright 1.62.1 et Chromium 151 ont validé les profils bureau 100 %, tablette, mobile 390, mobile 320, reflow 150 % et reflow 200 %, puis un membre local et l'administrateur local. Les quatre liens répondent en 200, le H1 est unique, les trois H2 sont ordonnés, le menu mobile, le clavier, les couleurs forcées, le mouvement réduit, le cycle des messages et l'absence de débordement ou de texte masqué sont validés. Aucun appel externe, erreur de page, 5xx ou message console attribuable n'a été observé. |
+| Fond autonome | Le fichier servi correspond au source, d'empreinte `7dba25e81613ca6c45d9f0920db5656f20b89db30605112c23f94dc0bcde33f0`, sans couplage au défilement. Une trace de 90,5 s a mesuré 359 échantillons, une excursion de 13,965 px, un écart de phase de 0,003 px entre 44 s et 88 s et aucun saut ; la période reste 44 000 ms. |
+| Journaux | La passe navigateur finale ne produit aucune entrée Drupal de sévérité erreur, aucun avertissement ou fatal PHP dans le journal web et aucune télémétrie navigateur en échec. |
+| Nettoyage | La fixture, le trigger, les helpers, les paquets et profils Chromium/Playwright, les agrégats publics temporaires et le snapshot représentatif ont été supprimés. Le snapshot initial a été restauré une seconde fois après les contrôles ; la checkout de service est revenue propre sur `release/prod@2ffa253`, puis DDEV a été arrêté et la fenêtre runtime libérée. |
+
+Après restauration, les empreintes correspondent exactement au baseline :
+
+- base de données normalisée :
+  `161ef10fa5a32b0075cc19c4abd9a3ec8b9d8e0039be392db83f676397134b4b` ;
+- configuration active brute :
+  `07ec23fcbcbab78e48b746283be7ffb12fda49b5c59264fdf0fea31e0ec32702` ;
+- configuration active canonique :
+  `afbb00cf0ab8f303c2e0d1cf133eb35f2fe3b31003ebd1f5b06120b488011d6b` ;
+- manifeste et arborescence des fichiers publics :
+  `b79f7d91d5b07e1112de44d3f5bcf792be013e2ef34e3aa2acd64fa552298645`
+  et `b2da5f8ecc26524ecd92508fc57d1153225ef671062f15229fb170e0aa82deb2` ;
+- 43 entrées DDEV ignorées :
+  `f7debf29b6f48b28b8c6ab510a24b97a8682df380a1561b342abac2f5c3110a2` ;
+- état des comptes, thèmes, page d'accueil et nombres d'entités :
+  `0015a5f732c4cffbfafe17b9b223a847063c3d0e5cbf9dbaed0a6a38d460c990`.
+
+### Matrice encore différée au déploiement
+
+La validation ci-dessus est locale et représentative ; elle ne vaut pas
+validation de production. Sans accès au VPS, les contrôles suivants restent à
+exécuter dans la procédure de déploiement autorisée :
+
+| Contrôle différé | Résultat attendu |
+| --- | --- |
+| Dry-run sur l'état représentatif de production | Une seule différence de titre et de corps pour `/les-artistes-de-l-asso`, sans création ni opération d'alias, de menu, de configuration ou de Commerce. |
+| Application et idempotence | Une seule première mise à jour, puis un second dry-run et une seconde application sans opération ni révision supplémentaire. |
+| Alias et menu | Tous les alias et liens restent inchangés ; « Partenaires » demeure actif, de poids 10, sous À propos, vers `/les-artistes-de-l-asso`. |
+| Contrôle public | Titre, H1/H2, quatre liens, rendu bureau/mobile et absence de texte d'attente sont vérifiés sur le site déployé. |
+| Restauration | Les fingerprints avant/après et la procédure de rollback sont conservés afin de pouvoir rétablir exactement l'état préalable en cas d'échec. |
+
 ## Contenu manuel restant
 
 - Publier les dates réelles des stages comme contenus `Stage`.
 - Relier les prochaines dates depuis les pages de catégories si l'équipe veut
   des liens explicites en plus de la liste automatique.
-- Compléter les biographies, photos, liens et prestations des artistes.
 - Finaliser les textes commerciaux et les contraintes techniques des prestations.
 
 ## Préservation des hubs existants
@@ -365,12 +496,13 @@ automatiquement les contenus `Stage` sur `/stages`.
 
 La page `/concerts` et son comportement existant ne sont pas touchés.
 
-## Exécution locale
+## Archive des validations locales de l'architecture
 
-La présente évolution a été validée dans le projet DDEV local contre une base
-représentative minimale, puis entièrement restaurée. Aucun VPS ni aucune donnée
-de production n'ont été utilisés. Les commandes d'exploitation ci-dessous
-restent documentées pour une opération ultérieure distinctement autorisée.
+Les validations DDEV consignées ci-dessous concernent les anciennes PR #78 et
+#72 ; la validation actuelle de la PR #87 est consignée séparément ci-dessus.
+Aucun VPS ni aucune donnée de production n'ont été utilisés pour la PR #87.
+Les anciennes commandes restent documentées comme références historiques pour
+une opération ultérieure distinctement autorisée.
 
 Dry-run local, sans écriture :
 
