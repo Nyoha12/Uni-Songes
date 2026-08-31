@@ -128,7 +128,9 @@ Pages:
 - /stages/musique-improvisee-meditation
 - /stages/speciaux
 - /ateliers
+- /forum
 - /a-propos
+- /blog
 - /association
 - /les-artistes-de-l-asso
 - /origine
@@ -144,30 +146,32 @@ Main menu links (weight, label -> destination):
 Top level:
 - 0 Cours & Stages -> /cours-et-stages
 - 10 Concerts & Événements -> /concerts
-- 20 Ateliers -> /ateliers
+- 20 Projets collectifs -> /ateliers
 - 30 À propos -> /a-propos
 - 40 Contact -> /contact
 Children of Cours & Stages:
 - 0 Cours particuliers -> /cours
 - 10 Stages -> /stages
-Children of Ateliers:
+Children of Projets collectifs:
 - 0 D’Jam -> /djam
 - 10 Orchestre -> /orchestre-des-reveurs
+- 20 Forum -> /forum
 Children of À propos:
 - 0 L’Asso -> /association
 - 10 Partenaires -> /les-artistes-de-l-asso
 - 20 Origine -> /origine
+- 30 Blog -> /blog
 Disabled in place, retained and not deleted:
 - /services-prestations-artistiques
 
 Guards:
 - dry-run by default; writes require --apply
 - all managed existing pages are resolved strictly by alias
-- only /cours-et-stages, /ateliers, /a-propos and /origine may be created
+- only /cours-et-stages, /ateliers, /forum, /a-propos, /blog and /origine may be created
 - dry-run prints exact current and planned bodies when a body would change
 - menu links are matched by normalized destination
 - child parents use UUID-backed Drupal menu-link plugin identifiers
-- only the four new menu destinations may be created
+- only the six allowlisted menu destinations may be created
 - the existing services menu link is disabled in place, never deleted
 - no drush config:import
 - no config/sync edits
@@ -510,12 +514,12 @@ HTML,
 HTML,
   ],
   'ateliers' => [
-    'title' => 'Ateliers',
+    'title' => 'Projets collectifs',
     'alias' => '/ateliers',
     'create_if_missing' => TRUE,
     'body' => <<<'HTML'
 <section class="unisonges-page-intro">
-  <p>Les ateliers Uni-Songes ouvrent des espaces de pratique musicale collective, d'écoute, d'improvisation et de partage.</p>
+  <p>Les projets collectifs d'Uni-Songes réunissent des espaces de pratique, de création, d'écoute, d'improvisation et d'échange autour de la musique et des projets de l'association.</p>
 </section>
 
 <div class="unisonges-card-grid">
@@ -530,11 +534,33 @@ HTML,
     <p class="unisonges-offer-card__cta"><a href="/orchestre-des-reveurs">Découvrir l'Orchestre des Rêveurs</a></p>
   </article>
   <article class="unisonges-offer-card">
+    <h2 class="unisonges-offer-card__title">Forum</h2>
+    <p class="unisonges-offer-card__text">Un espace pour échanger des idées autour de la musique, des pratiques collectives et des projets de l'association.</p>
+    <p class="unisonges-offer-card__cta"><a href="/forum">Découvrir le Forum</a></p>
+  </article>
+  <article class="unisonges-offer-card">
     <h2 class="unisonges-offer-card__title">Services et prestations artistiques</h2>
     <p class="unisonges-offer-card__text">Découvrir les interventions artistiques, pédagogiques et sonores proposées dans différents contextes.</p>
     <p class="unisonges-offer-card__cta"><a href="/services-prestations-artistiques">Voir les services et prestations</a></p>
   </article>
 </div>
+HTML,
+  ],
+  'forum' => [
+    'title' => 'Forum',
+    'alias' => '/forum',
+    'create_if_missing' => TRUE,
+    'body' => <<<'HTML'
+<section class="unisonges-page-intro">
+  <p>Le Forum est un espace d'échange d'idées autour de la musique, des pratiques collectives et des projets de l'association.</p>
+  <p>Les membres peuvent proposer des sujets de discussion, des idées d'articles ou des thèmes pour le Blog. Les contributions sont modérées avant leur publication.</p>
+</section>
+
+<section class="unisonges-detail-section" id="forum-mvp" aria-labelledby="forum-mvp-title">
+  <h2 id="forum-mvp-title">Participer au Forum</h2>
+  <p>L'espace de participation sera intégré dans cette zone par l'implémentation fonctionnelle dédiée. Aucune fonctionnalité de compte, de publication ou de réponse n'est annoncée tant qu'elle n'est pas disponible.</p>
+  <p class="unisonges-offer-card__cta"><a href="/contact">Proposer un sujet à l'association</a></p>
+</section>
 HTML,
   ],
   'a_propos' => [
@@ -543,7 +569,7 @@ HTML,
     'create_if_missing' => TRUE,
     'body' => <<<'HTML'
 <section class="unisonges-page-intro">
-  <p>Cette page oriente vers l'association Uni-Songes, les artistes et partenaires qu'elle présente, les origines de sa démarche et ses activités artistiques et pédagogiques.</p>
+  <p>Cette page oriente vers l'association Uni-Songes, les artistes et partenaires qu'elle présente, les origines de sa démarche, son Blog et ses activités artistiques et pédagogiques.</p>
 </section>
 
 <div class="unisonges-card-grid">
@@ -563,11 +589,31 @@ HTML,
     <p class="unisonges-offer-card__cta"><a href="/origine">Découvrir l'origine</a></p>
   </article>
   <article class="unisonges-offer-card">
+    <h2 class="unisonges-offer-card__title">Blog</h2>
+    <p class="unisonges-offer-card__text">Retrouver les actualités de l'association, des articles artistiques et pédagogiques, des réflexions et des ressources.</p>
+    <p class="unisonges-offer-card__cta"><a href="/blog">Découvrir le Blog</a></p>
+  </article>
+  <article class="unisonges-offer-card">
     <h2 class="unisonges-offer-card__title">Services et activités artistiques</h2>
     <p class="unisonges-offer-card__text">Explorer les interventions artistiques, pédagogiques et sonores.</p>
     <p class="unisonges-offer-card__cta"><a href="/services-prestations-artistiques">Voir les services et prestations</a></p>
   </article>
 </div>
+HTML,
+  ],
+  'blog' => [
+    'title' => 'Blog',
+    'alias' => '/blog',
+    'create_if_missing' => TRUE,
+    'body' => <<<'HTML'
+<section class="unisonges-page-intro">
+  <p>Le Blog accueillera les actualités de l'association, des articles artistiques et pédagogiques, ainsi que des réflexions et des ressources autour de ses pratiques et de ses projets.</p>
+</section>
+
+<section class="unisonges-detail-section" id="blog-articles" aria-labelledby="blog-articles-title">
+  <h2 id="blog-articles-title">Articles</h2>
+  <p>Les futurs articles publiés seront listés dynamiquement dans cette zone par l'implémentation Blog dédiée. Ce contenu introductif ne liste aucun article.</p>
+</section>
 HTML,
   ],
   'association' => [
@@ -704,7 +750,7 @@ $main_menu_links = [
     'create_if_missing' => FALSE,
   ],
   [
-    'title' => 'Ateliers',
+    'title' => 'Projets collectifs',
     'path' => '/ateliers',
     'weight' => 20,
     'parent_path' => NULL,
@@ -760,6 +806,14 @@ $main_menu_links = [
     'create_if_missing' => FALSE,
   ],
   [
+    'title' => 'Forum',
+    'path' => '/forum',
+    'weight' => 20,
+    'parent_path' => '/ateliers',
+    'enabled' => TRUE,
+    'create_if_missing' => TRUE,
+  ],
+  [
     'title' => 'L’Asso',
     'path' => '/association',
     'weight' => 0,
@@ -779,6 +833,14 @@ $main_menu_links = [
     'title' => 'Origine',
     'path' => '/origine',
     'weight' => 20,
+    'parent_path' => '/a-propos',
+    'enabled' => TRUE,
+    'create_if_missing' => TRUE,
+  ],
+  [
+    'title' => 'Blog',
+    'path' => '/blog',
+    'weight' => 30,
     'parent_path' => '/a-propos',
     'enabled' => TRUE,
     'create_if_missing' => TRUE,
@@ -1000,9 +1062,19 @@ function build_change_plan(
     }
   }
 
-  $expected_creatable_pages = ['/cours-et-stages', '/ateliers', '/a-propos', '/origine'];
+  $expected_creatable_pages = [
+    '/cours-et-stages',
+    '/ateliers',
+    '/forum',
+    '/a-propos',
+    '/blog',
+    '/origine',
+  ];
   if ($declared_creatable_pages !== $expected_creatable_pages) {
-    $blockers[] = 'page create allowlist differs from the exact four canonical new pages.';
+    $blockers[] = 'page create allowlist differs from the exact six canonical pages.';
+  }
+  if (count($page_specs) !== 18) {
+    $blockers[] = 'canonical managed page plan must contain exactly eighteen pages.';
   }
 
   $validation_node_id = NULL;
@@ -1473,12 +1545,19 @@ function discover_menu_change_plan(
     }
   }
 
-  $expected_creatable_paths = ['/cours-et-stages', '/ateliers', '/a-propos', '/origine'];
+  $expected_creatable_paths = [
+    '/cours-et-stages',
+    '/ateliers',
+    '/a-propos',
+    '/forum',
+    '/origine',
+    '/blog',
+  ];
   if ($declared_creatable_paths !== $expected_creatable_paths) {
-    $blockers[] = 'menu create allowlist differs from the exact four canonical new destinations.';
+    $blockers[] = 'menu create allowlist differs from the exact six canonical destinations.';
   }
-  if (count($specs) !== 12) {
-    $blockers[] = 'canonical active menu plan must contain exactly twelve links.';
+  if (count($specs) !== 14) {
+    $blockers[] = 'canonical active menu plan must contain exactly fourteen links.';
   }
   if ($paths_to_disable !== ['/services-prestations-artistiques']) {
     $blockers[] = 'menu disable allowlist must contain only /services-prestations-artistiques.';
