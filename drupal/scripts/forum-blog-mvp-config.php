@@ -578,6 +578,7 @@ $required_modules = [
   'block',
   'comment',
   'filter',
+  'language',
   'node',
   'path',
   'system',
