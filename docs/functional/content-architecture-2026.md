@@ -21,9 +21,9 @@ menu principal. La mise en place est portée par
 | Musique improvisée / méditation | `/stages/musique-improvisee-meditation` | Page des stages musique improvisée / méditation, tarif 20 EUR, réservation via les pages Stage publiées. |
 | Stages spéciaux | `/stages/speciaux` | Page des stages gong, guimbarde, éveil musical, etc., publiés via le système existant de pages Stage et billets. |
 | Projets collectifs | `/ateliers` | Hub des projets collectifs avec cartes vers D’Jam, l'Orchestre des Rêveurs, le Forum et les services et prestations artistiques. L'alias historique est conservé pour compatibilité. |
-| Forum | `/forum` | Espace éditorial d'échange d'idées autour de la musique, des pratiques collectives et des projets de l'association, avec une région identifiée pour l'implémentation fonctionnelle parallèle. |
+| Forum | `/forum` | Espace éditorial d'échange d'idées autour de la musique, des pratiques collectives et des projets de l'association, avec un repère éditorial identifié ; après activation ciblée, la PR #80 ajoute ses blocs fonctionnels séparément dans la région Drupal de contenu. |
 | À propos | `/a-propos` | Hub d'orientation vers l'association, les artistes et partenaires, l'origine, le Blog et les services et activités artistiques. |
-| Blog | `/blog` | Point d'entrée pour les actualités de l'association, les articles artistiques et pédagogiques, les réflexions et les ressources ; la liste dynamique sera fournie par l'implémentation parallèle. |
+| Blog | `/blog` | Point d'entrée pour les actualités de l'association, les articles artistiques et pédagogiques, les réflexions et les ressources ; après activation ciblée, la PR #80 rend la liste dynamique dans un bloc séparé de la région Drupal de contenu. |
 | L’Association | `/association` | Mission et activités musicales, pédagogiques et collectives, avec orientation vers les cours, stages, concerts, artistes, prestations et pages dédiées de D’Jam et de l'Orchestre des Rêveurs. |
 | Les Artistes de l'asso | `/les-artistes-de-l-asso` | Page de présentation des artistes partenaires, avec sections à compléter. |
 | Origine | `/origine` | Racines de la démarche dans le souffle, le didgeridoo, l'improvisation, l'écoute, la pratique collective et la transmission. |
@@ -40,10 +40,9 @@ menu principal. La mise en place est portée par
   que leurs pages dédiées restent les sources de détail.
 - Les hubs, la page Origine, le Forum et le Blog utilisent les mêmes classes
   éditoriales que les pages existantes. Ils ne modifient ni thème, ni template,
-  ni CSS, ni JavaScript, ni configuration synchronisée. Le rendu dynamique des
-  sous-menus et les fonctionnalités Forum/Blog appartiennent à des
-  implémentations séparées ; cette architecture ne fournit que les données de
-  pages et de menu.
+  ni CSS, ni JavaScript, ni configuration synchronisée. La PR #78 fournit les
+  données de pages et de menu ; les blocs Forum/Blog de la PR #80 apparaissent
+  seulement après activation de son installeur ciblé.
 - Les résumés de D’Jam et de l'Orchestre restent limités aux pratiques
   collectives, au didgeridoo, à l'écoute et à l'improvisation déjà documentés.
   Ils n'ajoutent ni horaire, ni règle d'adhésion, ni nom, ni tarif.
@@ -66,9 +65,10 @@ menu principal. La mise en place est portée par
 - Le corps des pages Drupal est la source de vérité pour les contenus Accueil,
   Association, Cours, Stages, les hubs, Origine, Forum et Blog. Les templates de
   thème ne doivent pas injecter de sections éditoriales hardcodées qui
-  réintroduisent l'ancienne structure. Les régions `#forum-mvp` et
-  `#blog-articles` constituent les points d'intégration documentés des
-  implémentations parallèles, sans prétendre qu'elles sont déjà installées.
+  réintroduisent l'ancienne structure. `#forum-mvp` et `#blog-articles` sont des
+  repères éditoriaux documentés de ces Basic pages. Après activation ciblée, les
+  blocs de la PR #80 coexistent comme éléments frères dans la même région Drupal
+  de contenu ; ces repères ne prétendent pas que cette configuration est active.
 
 ## Parcours de réservation des cours
 
@@ -251,12 +251,14 @@ processus restent limitées au cache mémoire d'entités.
 - Le hub `/a-propos` oriente vers les cinq sources canoniques : association,
   artistes et partenaires, origine, Blog, services et activités artistiques.
 - La page `/forum` présente le cadre éditorial des échanges et leur modération.
-  La région `#forum-mvp` reste un point d'intégration pour la PR fonctionnelle ;
-  aucun compte, formulaire de publication ou fil de discussion n'est déclaré
-  disponible par ce contenu.
-- La page `/blog` annonce seulement les catégories de contenus prévues. La
-  région `#blog-articles` recevra la liste dynamique de la PR fonctionnelle ;
-  aucun article n'est inventé ni présenté comme déjà publié.
+  `#forum-mvp` reste son repère éditorial ; après activation ciblée, le bloc
+  fonctionnel de la PR #80 apparaît séparément dans la même région Drupal de
+  contenu. Aucun compte, formulaire de publication ou fil de discussion n'est
+  déclaré disponible par le contenu de la Basic page.
+- La page `/blog` annonce seulement les catégories de contenus prévues. Le
+  repère `#blog-articles` reste identifié ; après activation ciblée,
+  la PR #80 rend la liste dynamique dans un bloc frère séparé. Aucun article
+  n'est inventé ni présenté comme déjà publié par le contenu de la Basic page.
 - La page `/origine` reste limitée aux racines dans le souffle, le didgeridoo,
   l'improvisation, l'écoute et la pratique collective, à la transmission
   artistique et pédagogique, puis aux activités actuelles déjà documentées.
@@ -365,10 +367,10 @@ La page `/concerts` et son comportement existant ne sont pas touchés.
 
 ## Exécution locale
 
-Pour la présente évolution Forum/Blog, aucune commande DDEV, aucune commande
-VPS et aucune application `--apply` n'ont été exécutées. Les validations de
-cette PR restent statiques ; les commandes d'exploitation ci-dessous sont
-documentées pour une opération ultérieure distinctement autorisée.
+La présente évolution a été validée dans le projet DDEV local contre une base
+représentative minimale, puis entièrement restaurée. Aucun VPS ni aucune donnée
+de production n'ont été utilisés. Les commandes d'exploitation ci-dessous
+restent documentées pour une opération ultérieure distinctement autorisée.
 
 Dry-run local, sans écriture :
 
@@ -383,6 +385,113 @@ Application locale :
 cd ~/Uni-Songes/repo/drupal
 ./scripts/apply-content-architecture-2026.sh --apply
 ```
+
+### Validation locale PR #78 et intégration PR #80 — 31 août 2026
+
+La validation a porté sur le commit rebasé `1e585eb` de la PR #78, au-dessus de
+`release/prod` au commit `233896619e6f74904927fbb62073a00962881069`, qui
+contient la PR #80. Avant toute écriture Drupal, le snapshot DDEV nommé
+`pr78-content-architecture-baseline-20260831T1027Z` a été créé. La base locale
+standard ne contenant aucun nœud, une fixture représentative strictement
+limitée aux seize pages, seize alias et neuf liens de menu historiques requis a
+été créée avec les API d'entités Drupal, avec marqueurs et manifeste dédiés.
+Aucune écriture SQL brute de contenu et aucun import de configuration n'ont été
+effectués. Les journaux et captures de cette exécution ont été conservés sous
+`/tmp/pr78-content-runtime.Zzs65h`.
+
+Le comportement fermé et l'atomicité ont été contrôlés avant l'application
+valide :
+
+- sur l'état sans prérequis, `--apply` a terminé avec le statut 1 et 31 blockers,
+  avant la phase B, avec `transaction_started=FALSE; writes=0` et l'état
+  canonique des nœuds, alias et liens de menu inchangé ;
+- avec deux liens normalisés vers `/concerts`, `--apply` a terminé avec le
+  statut 1 et a affiché les deux plugin IDs en conflit,
+  `menu_link_content:fe10325a-86e0-4126-be61-1637264f5483` et
+  `menu_link_content:e5778993-82b0-4af2-a6a5-0ee54fd7c8f0`, sans écriture ;
+- un défaut tardif local injecté sur la première insertion de lien de menu a
+  produit `ROLLBACK_CONFIRMED` après le début de la phase B. Aucun message de
+  mutation n'a été libéré et les empreintes avant/après sont restées identiques.
+
+Le dry-run représentatif a été entièrement en lecture seule. Son plan immuable,
+d'empreinte
+`6bcbf60362e42716736832c6a4a3a87f7eda70107c340329e6e9c6cfb1248831`,
+contenait exactement 39 opérations : 12 mises à jour de pages, 6 créations de
+pages, 6 créations d'alias, 8 mises à jour de liens, 6 créations de liens et la
+désactivation sur place du lien Services. Le plan de la première application,
+d'empreinte
+`cdb0fafc5697f1856e4402bf79c38cc4119e25c1dd704a91daf99d9670797660`,
+a exécuté ces 39 opérations dans une transaction puis a vérifié 22 pages, 38
+alias et 15 liens de menu, dont 14 actifs et le lien Services conservé et
+désactivé. Les identifiants des seize pages et alias historiques, dont les
+quatre pages de référence, sont restés inchangés ; les corps des quatre
+références sont eux aussi restés identiques. Un second dry-run puis une seconde
+application ont produit le même plan sans opération, uniquement des constats
+`OK`, sans marqueur de mutation ni variation des empreintes d'entités, de base
+durable ou de configuration :
+`96ba6c0c4dce113d7da0e7de7c693d2eb65a6c840154a576826f11342d1eec19`.
+
+L'arbre obtenu correspond exactement aux tableaux de ce document : cinq
+racines, Cours particuliers et Stages sous Cours & Stages, D’Jam, Orchestre et
+Forum sous le plugin parent UUID de `/ateliers`, puis L’Asso, Partenaires,
+Origine et Blog sous le plugin parent UUID de `/a-propos`. Le chemin public
+final reste `/ateliers`, créé dans cette fixture locale où il était absent ;
+aucun alias `/projets-collectifs` n'a été créé. Le titre Drupal et le libellé de
+menu visible sont « Projets collectifs ». Les pages `/forum`, `/blog` et
+Services répondaient en HTTP 200 ; le lien Services restait absent du menu
+visible.
+
+Après la création de `/blog` et `/forum`, l'installeur ciblé
+`apply-forum-blog-mvp-2026.sh` de la PR #80 a été exécuté dans l'ordre prévu. Son
+premier dry-run était sans écriture. L'application a créé exactement les
+quatorze configurations attendues et a limité le format autorisé de la
+configuration existante `field.field.comment.comment.comment_body` à
+`basic_html` dans la transaction indépendante de durcissement prévue. Le
+dry-run suivant a signalé ce réglage et les quatorze cibles `MATCH`. Les nœuds,
+alias, corps et identifiants des deux Basic pages sont restés identiques. Aucun
+`config:import` n'a été lancé. Les contrôles intégrés ont confirmé :
+
+- les introductions Basic page, les repères éditoriaux et les blocs
+  dynamiques Blog/Forum coexistent une seule fois ;
+- les états vides « Aucun article publié pour le moment. » et « Aucun sujet de
+  discussion publié pour le moment. » s'affichent correctement ;
+- deux articles publiés apparaissent du plus récent au plus ancien avec leurs
+  liens canoniques ; l'article non publié reste absent de la liste et son
+  canonique retourne 403 à l'anonyme ;
+- un sujet Forum publié apparaît avec son lien canonique, tandis qu'un sujet
+  non publié reste absent et son canonique retourne 403 à l'anonyme comme au
+  membre de test ;
+- la proposition est visible pour un membre authentifié, absente pour un
+  visiteur anonyme, et son accès direct anonyme retourne 403.
+
+Chromium/Playwright a validé les six pages ciblées sur desktop, tablette et
+tiroir mobile, chacune à 100 %, 150 % et 200 % de reflow effectif, soit neuf
+profils. Les destinations exactes des liens parents et enfants, la navigation
+par clic vers `/ateliers` et `/forum`, l'accès 200 à `/blog`, les bascules de
+sous-menu, le tiroir, les libellés `É`, `À`, `é`, `&` et `’`, l'alignement du
+logo à droite du titre et l'absence de collision, débordement horizontal, ID
+dupliqué ou menu dupliqué ont tous été confirmés. Aucun avertissement PHP ni
+aucune erreur de console attribuable à cette PR n'a été observé.
+
+Les cinq nœuds fonctionnels temporaires et l'utilisateur de test ont ensuite
+été supprimés par leur manifeste ; aucun commentaire ni aucune soumission
+n'avaient été créés. Les quatorze configurations PR #80 ont été retirées par
+son rollback ciblé ; le durcissement du format de commentaire est resté en
+place comme prévu jusqu'à la restauration finale du snapshot, qui a rétabli
+l'ensemble de la configuration de référence. Les preuves finales montrent zéro
+nœud, alias ou lien de fixture, zéro commentaire, soumission ou utilisateur de
+test, et le retour exact aux références suivantes :
+
+- base normalisée :
+  `161ef10fa5a32b0075cc19c4abd9a3ec8b9d8e0039be392db83f676397134b4b` ;
+- configuration active :
+  `314:0c24d19541a7cc33d5ea118e715fe62f3515c8dcf848aaa62cf66f2e259de1be` ;
+- fichiers publics, 245 fichiers et 838007 octets :
+  `4b9fcb5393cc709f13690da12854baa5be2931836e2bdacf6448e9bf218d0dcd`.
+
+Le checkout DDEV principal a été rendu propre sur `release/prod` au commit
+`233896619e6f74904927fbb62073a00962881069`, les thèmes Olivero/Claro et la page
+d'accueil `/node` ont été restaurés, et DDEV a été arrêté et libéré.
 
 ### Archive PR #72 — dry-run Codespaces du 30 août 2026
 
@@ -598,9 +707,10 @@ configuration pour cette opération.
 
 ### Ordonnancement intentionnel du déploiement
 
-Le déploiement de cette architecture reste intentionnellement en attente de la
-PR fonctionnelle Forum/Blog et de la validation conjointe de la typographie et
-du menu sur desktop, tablette et mobile. La PR d'architecture reste en brouillon
-pendant cette coordination. Ne pas lancer `--apply` et ne pas déployer tant que
-ces deux conditions ne sont pas satisfaites et qu'une opération d'écriture
-séparée n'a pas été explicitement autorisée.
+La dépendance fonctionnelle Forum/Blog est désormais présente dans
+`release/prod`. L'ordre validé localement reste intentionnel : appliquer d'abord
+l'architecture de contenu de la PR #78, puis l'installeur ciblé de la PR #80,
+qui exige que `/blog` et `/forum` existent déjà. Le déploiement attend encore la
+validation conjointe de la typographie et du menu dans l'environnement ciblé,
+ainsi qu'une autorisation d'écriture distincte. Cette PR ne déploie et ne
+fusionne rien.
