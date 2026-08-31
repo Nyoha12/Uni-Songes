@@ -10,8 +10,8 @@ _core:
   default_config_hash: VZDxR0xdW-n-VWQRlRQjsiN-dgDS3-1Es-s1vXLfgsI
 id: unisonges_theme_messages
 theme: unisonges_theme
-region: header
-weight: -6
+region: content
+weight: -8
 provider: null
 plugin: system_messages_block
 settings:
