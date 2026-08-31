@@ -1,0 +1,29 @@
+uuid: 9e57e805-3d44-45bf-a9eb-bf8d74fedf89
+langcode: fr
+status: true
+dependencies:
+  config:
+    - views.view.forum_topics
+  module:
+    - system
+    - views
+  theme:
+    - unisonges_theme
+id: unisonges_forum_topics
+theme: unisonges_theme
+region: content
+weight: 20
+provider: null
+plugin: 'views_block:forum_topics-block_1'
+settings:
+  id: 'views_block:forum_topics-block_1'
+  label: 'Sujets de discussion'
+  label_display: visible
+  provider: views
+  views_label: ''
+  items_per_page: null
+visibility:
+  request_path:
+    id: request_path
+    negate: false
+    pages: /forum

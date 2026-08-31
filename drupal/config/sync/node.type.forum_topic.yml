@@ -1,0 +1,11 @@
+uuid: 7fb2b679-9bf6-42da-b2f1-9756669b20ae
+langcode: fr
+status: true
+dependencies: {  }
+name: 'Sujet du forum'
+type: forum_topic
+description: 'Sujet de discussion publié par un administrateur après examen d’une proposition.'
+help: 'Enregistrez d’abord le sujet non publié, puis publiez-le explicitement après relecture.'
+new_revision: true
+preview_mode: 1
+display_submitted: true
