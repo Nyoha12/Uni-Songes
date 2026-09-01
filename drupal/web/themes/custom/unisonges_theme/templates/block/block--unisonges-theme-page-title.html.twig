@@ -1,0 +1,33 @@
+{#
+/**
+ * @file
+ * Theme override for the active UniSonges page-title block.
+ *
+ * Hero routes exclude this block in configuration. On other node routes, the
+ * dedicated outer class keeps the title visible despite the legacy global
+ * selector that targets .block-page-title-block.
+ */
+#}
+{%
+  set classes = [
+    'block',
+    'block-' ~ configuration.provider|clean_class,
+    'unisonges-page-title-block',
+  ]
+%}
+{% set rendered_content = content|render %}
+<div{{ attributes.removeClass('block-page-title-block').addClass(classes) }}>
+  {{ title_prefix }}
+  {% if label %}
+    <h2{{ title_attributes }}>{{ label }}</h2>
+  {% endif %}
+  {{ title_suffix }}
+  <div{{ content_attributes.addClass('content') }}>
+    {% if rendered_content|striptags|trim %}
+      {{ rendered_content }}
+    {% else %}
+      {# Core's /node frontpage View has an empty title outside the front route. #}
+      <h1 class="title">{{ 'Content'|t }}</h1>
+    {% endif %}
+  </div>
+</div>
