@@ -1,15 +1,21 @@
-{% if cards %}
-  <section class="card-grid">
-    {% for card in cards %}
-      <article class="card">
-        <h2>{{ card.title }}</h2>
-        {% if card.text %}
-          <p>{{ card.text }}</p>
+{% set rendered_cards %}
+  {% for card in cards|default([]) %}
+    {% if card.title|default('') %}
+      <article class="card unisonges-offer-card">
+        <h2 class="unisonges-offer-card__title">{{ card.title }}</h2>
+        {% if card.text|default('') %}
+          <p class="unisonges-offer-card__text">{{ card.text }}</p>
         {% endif %}
-        {% if card.url and card.link_label %}
-          <a href="{{ card.url }}">{{ card.link_label }}</a>
+        {% if (card.url|default('')) and (card.link_label|default('')) %}
+          <a class="unisonges-offer-card__cta" href="{{ card.url }}">{{ card.link_label }}</a>
         {% endif %}
       </article>
-    {% endfor %}
-  </section>
+    {% endif %}
+  {% endfor %}
+{% endset %}
+
+{% if rendered_cards|striptags|trim %}
+  <div class="card-grid unisonges-card-grid">
+    {{ rendered_cards }}
+  </div>
 {% endif %}

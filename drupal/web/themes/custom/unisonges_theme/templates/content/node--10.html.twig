@@ -1,9 +1,15 @@
 <article class="unisonges-node-page">
   {% include '@unisonges_theme/includes/_hero.html.twig' with { title: label, intro: 'Session jam conviviale avec didgeridoo à l’honneur, ouverte à tous les instruments.' } only %}
-  {% if content.body %}
-    <section class="panel node-body">{{ content.body }}</section>
+
+  {% set rendered_body = content.body|default(null)|render %}
+  {% set meaningful_body_tags = '<img><video><audio><iframe><svg><object><embed><canvas><drupal-media><drupal-render-placeholder>' %}
+  {% set body_text = rendered_body|striptags(meaningful_body_tags)|replace({'&nbsp;': '', '&#160;': '', '&#xA0;': '', '&#xa0;': '', "\xC2\xA0": ''})|trim %}
+  {% if body_text %}
+    <div class="panel node-body unisonges-detail-section">{{ rendered_body }}</div>
   {% endif %}
-  {% include '@unisonges_theme/includes/_actions-row.html.twig' with {
+
+  {% include '@unisonges_theme/includes/_public-hub-actions.html.twig' with {
+    aria_label: label,
     actions: [
       { url: '/concerts', label: 'Voir les concerts' },
       { url: '/contact', label: 'Participer à une prochaine jam' }
