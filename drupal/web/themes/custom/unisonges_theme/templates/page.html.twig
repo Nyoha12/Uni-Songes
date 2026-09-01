@@ -7,20 +7,14 @@
 
 {% include '@unisonges_theme/partials/site-header.html.twig' %}
 
-<main id="main-content" class="layout" role="main">
-  <div class="container">
-    {% if page.highlighted %}{{ page.highlighted }}{% endif %}
-    {% if page.help %}{{ page.help }}{% endif %}
-    <div id="unisonges-scrollframe" class="scrollframe">
+<div id="unisonges-scrollframe" class="scrollframe">
   <div class="scrollframe__inner">
-    {{ page.content }}
+    <main id="main-content" class="d-flex flex-column" role="main">
+      {% if page.highlighted %}{{ page.highlighted }}{% endif %}
+      {% if page.help %}{{ page.help }}{% endif %}
+      {{ page.content }}
+    </main>
+
+    {% include '@unisonges_theme/includes/_footer.html.twig' with { 'footer_region': page.footer } only %}
   </div>
 </div>
-  </div>
-</main>
-
-{% if page.footer %}
-  <footer class="site-footer">
-    <div class="container">{{ page.footer }}</div>
-  </footer>
-{% endif %}

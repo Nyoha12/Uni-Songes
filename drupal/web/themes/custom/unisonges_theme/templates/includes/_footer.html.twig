@@ -1,7 +1,19 @@
-<footer class="site-footer" role="contentinfo">
-  <div class="container footer-links">
-    <a href="/mentions-legales">Mentions légales</a>
-    <a href="/politique-confidentialite">Politique de confidentialité</a>
-    <a href="/contact">Contact</a>
+<footer class="site-footer">
+  <div class="container">
+    <p>Uni-Songes</p>
+
+    {% if footer_region %}
+      {{ footer_region }}
+    {% else %}
+      <nav aria-label="Navigation de pied de page">
+        <ul>
+          <li><a href="/cours-et-stages">Cours &amp; Stages</a></li>
+          <li><a href="/ateliers">Projets collectifs</a></li>
+          <li><a href="/a-propos">À propos</a></li>
+          <li><a href="/blog">Blog</a></li>
+          <li><a href="/contact">Contact</a></li>
+        </ul>
+      </nav>
+    {% endif %}
   </div>
 </footer>

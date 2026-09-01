@@ -8,10 +8,12 @@
 
 {{ include('@unisonges_theme/partials/site-header.html.twig') }}
 
-<main id="main-content" role="main">
-  <div id="unisonges-scrollframe" class="scrollframe">
-    <div class="scrollframe__inner">
+<div id="unisonges-scrollframe" class="scrollframe">
+  <div class="scrollframe__inner">
+    <main id="main-content" class="d-flex flex-column" role="main">
       {{ page.content }}
-    </div>
+    </main>
+
+    {% include '@unisonges_theme/includes/_footer.html.twig' with { 'footer_region': page.footer } only %}
   </div>
-</main>
+</div>
