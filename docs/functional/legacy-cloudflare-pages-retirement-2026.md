@@ -17,8 +17,9 @@ avant l'approbation explicite du propriétaire du site sur la table de redirecti
 les cinq routes préservées, le retrait du sitemap historique et la procédure de
 mise en production.**
 
-Audit effectué le 31 août 2026 sur la base
-`625c613dca22301b04a3f1bdc3c93db961fe9132` de `origin/release/prod`.
+Audit initial effectué le 31 août 2026, puis branche rebasée et validation de
+preview effectuée le 1er septembre 2026 sur la base
+`a8582ad691673c4096193bf3fb0f2a741739792c` de `origin/release/prod`.
 
 ## Nature des preuves
 
@@ -136,16 +137,15 @@ vers l'origine historique ou vers une autre redirection connue.
 | `/djam`, `/djam/`, `/djam/index`, `/djam/index/`, `/djam/index.html` | `https://unisonges.fr/djam` | Page Drupal du même projet |
 | `/orchestre-des-reveurs`, `/orchestre-des-reveurs/`, `/orchestre-des-reveurs/index`, `/orchestre-des-reveurs/index/`, `/orchestre-des-reveurs/index.html` | `https://unisonges.fr/orchestre-des-reveurs` | Page Drupal du même projet |
 | `/contact`, `/contact/`, `/contact/index`, `/contact/index/`, `/contact/index.html` | `https://unisonges.fr/contact` | Contact canonique et retrait du formulaire historique |
-| `/reserver-un-cours`, `/reserver-un-cours/`, `/reserver-un-cours/index`, `/reserver-un-cours/index/`, `/reserver-un-cours/index.html` | `https://unisonges.fr/reservation-cours` | Tunnel Drupal actuel, sans Google Schedule historique |
+| `/reserver-un-cours`, `/reserver-un-cours/`, `/reserver-un-cours/index`, `/reserver-un-cours/index/`, `/reserver-un-cours/index.html` | `https://unisonges.fr/reservation-cours?utm_source=legacy-pages` | Tunnel Drupal actuel; la query fixe remplace les anciens paramètres au lieu de les transmettre |
 
-Les règles n'encodent aucune réécriture particulière de query string. Le moteur
-de normalisation Pages actuel conserve les queries, mais cela ne prouve pas le
-comportement des nouvelles règles. Une attribution non sensible ou une sélection
-de discipline reconnue peut être utile; un paramètre inconnu, sensible ou de
-redirection ne doit pas être transmis aveuglément. La preview doit démontrer le
-comportement exact. Si les règles de réservation conservent une query inconnue,
-créent un saut Drupal supplémentaire ou permettent une `Location` externe, le
-merge est bloqué jusqu'à une stratégie explicite de suppression/allowlist.
+Pages conserve les queries entrantes lorsqu'une destination n'en définit pas.
+Cette conservation est acceptée pour les pages informatives. Les cinq règles de
+réservation définissent au contraire la query fixe, non sensible,
+`utm_source=legacy-pages` : la preview corrigée confirme qu'elle remplace toute
+query entrante, y compris un paramètre inconnu ou de redirection synthétique.
+Le target contrôlé répond directement `200`; aucun paramètre de réservation
+historique n'est transmis à Drupal.
 
 ## Stratégie de désindexation
 
@@ -251,6 +251,60 @@ dashboard Cloudflare :
 
 Une preview verte sans ces contrôles runtime n'autorise pas le merge.
 
+### Résultats de la validation de preview — 1er septembre 2026
+
+GitHub a associé la preview immuable
+`https://fc32e04e.uni-songes.pages.dev` au head fonctionnel de la PR #88
+`dbc371194b3cb7c4082447503cef962fedeea93a` et au déploiement Pages
+`fc32e04e-0a24-41ee-add9-fa69be73f456`. Les requêtes étaient des GET/HEAD sans
+cookie, authentification, soumission ni chargement de sous-ressource. Le commit
+de documentation qui consigne ces résultats ne modifie pas la surface Pages;
+sa propre preview doit néanmoins être recontrôlée et son head final consigné
+dans la PR avant approbation.
+
+| Contrôle | Résultat observé |
+| --- | --- |
+| Redirects déclarés | `64/64` passés, `0` échec; chaque source répond `301` avec un unique `Location` absolu HTTPS exactement conforme à la table |
+| Destinations Drupal | `12/12` répondent directement `200` en HTML UTF-8, sans second `Location`, boucle ni chaîne |
+| Queries informatives | Le paramètre bénin testé est conservé et le target répond directement `200` |
+| Queries de réservation | Les cinq variantes remplacent les queries reconnue, inconnue et de redirection synthétiques par la seule query fixe `utm_source=legacy-pages`; target direct `200` |
+| Headers des `301` | `64/64` portent `X-Robots-Tag: noindex, nofollow, noarchive`, `Referrer-Policy: strict-origin-when-cross-origin` et `X-Content-Type-Options: nosniff` |
+| Routes préservées | `5/5` répondent `200`, HTML UTF-8, avec les mêmes headers de retrait/sécurité; les corps correspondent octet pour octet aux fichiers non modifiés |
+| Robots | `200 text/plain` UTF-8, corps exact `User-agent: *` + `Allow: /`, aucun `Disallow: /`, aucune directive `Sitemap:` |
+| Sitemap historique | `/sitemap.xml` répond `404` avec le fallback HTML 404 et les headers de retrait/sécurité; aucun XML ni ancienne liste d'URLs |
+| Route inconnue | `404`, aucun `Location`, fallback 404 et headers attendus; aucun wildcard vers l'accueil ou Drupal |
+| Cookies et confidentialité | Aucun `Set-Cookie`; aucune donnée réelle, aucun formulaire et aucun endpoint externe appelé |
+
+Les cinq routes temporairement disponibles restent exactement :
+
+- `/cours-bien-etre-respiration/`;
+- `/masterclass-avancee/`;
+- `/videos/`;
+- `/mentions-legales/`;
+- `/politique-confidentialite/`.
+
+Leurs HTML individuels n'ont pas changé : la PR ne leur ajoute ni prix, ni
+achat, ni lien Google Schedule. Leur contenu historique reste publiquement
+lisible mais globalement noindexé, dans l'attente des décisions déjà décrites.
+
+Deux comportements Pages sont consignés sans les masquer :
+
+- des variantes synthétiques avec caractères percent-encodés ne correspondent
+  pas toujours aux règles exactes; certaines normalisent d'abord par `308`,
+  d'autres servent le HTML historique en `200`. Toutes les réponses testées
+  portaient le noindex et Referrer-Policy; les `200` portaient aussi `nosniff`,
+  contrairement aux `308` générés par la plateforme. Sans preuve de liens
+  entrants encodés ni mapping fini, aucune règle synthétique arbitraire n'est
+  ajoutée;
+- `/404.html` normalise par `308` vers `/404`. Ce `308` porte X-Robots-Tag et
+  Referrer-Policy mais ni `nosniff` ni Content-Type; `/404` répond `200` avec
+  `Content-Type: text/html; charset=utf-8`, tous les headers, et reste noindexé.
+  Les routes réellement inconnues répondent bien `404` avec tous les headers.
+
+Ces deux limites, les cinq préservations et la table corrigée restent soumises à
+l'approbation explicite du propriétaire; une réussite de preview ne rend pas la
+PR prête à merger.
+
 ## Procédure de rollout production
 
 Cette procédure est un runbook pour le propriétaire; elle n'est pas exécutée
@@ -263,10 +317,16 @@ par cette PR.
 3. confirmer que les PR parallèles, notamment #82, ne modifient pas ce périmètre
    et qu'aucun changement DNS/custom-domain n'est nécessaire;
 4. merger seulement la PR approuvée dans `release/prod` selon le processus
-   GitHub normal et laisser l'intégration Pages existante construire la version;
-5. ne promouvoir aucun autre domaine et ne modifier ni Drupal ni le dashboard
+   GitHub normal, consigner le SHA du merge approuvé et laisser l'intégration
+   Pages existante construire la version;
+5. avant tout contrôle fonctionnel, vérifier dans les métadonnées GitHub que le
+   check/déploiement Pages de production annonce exactement ce SHA; un check
+   vert rattaché à un autre commit bloque le rollout;
+6. ne promouvoir aucun autre domaine et ne modifier ni Drupal ni le dashboard
    Cloudflare dans ce rollout;
-6. exécuter immédiatement la vérification publique post-rollout ci-dessous.
+7. exécuter immédiatement la matrice publique complète : 64 sources et 12
+   targets, queries de réservation, cinq préservations, headers, robots,
+   sitemap, 404 et route inconnue.
 
 ## Rollback
 
@@ -275,12 +335,23 @@ retirer ou corriger toutes et uniquement les règles qui la ciblent dans une PR
 dédiée, en conservant le noindex et le retrait du sitemap.
 
 Pour une régression globale du moteur de redirects, des headers ou de la 404,
-créer un revert GitHub du commit de retrait et faire repasser ce revert par le
-même pipeline Pages. Ne pas réécrire l'historique, ne pas toucher au DNS et ne
-pas compenser par une redirection globale. Ce revert atomique restaure aussi le
-sitemap historique et retire le header noindex : cette réexposition temporaire
-doit être explicitement acceptée par le propriétaire, puis vérifiée sur
-l'origine avant d'ouvrir une correction réduite.
+créer un revert GitHub du SHA de merge/squash enregistré pour l'ensemble de
+cette PR et faire repasser ce revert par le même pipeline Pages. Ne pas réécrire
+l'historique, ne pas toucher au DNS et ne pas compenser par une redirection
+globale. Ce revert atomique restaure aussi le sitemap historique, retire le
+header noindex et réexpose les anciens parcours Google présents dans les HTML
+Contact/Réservation : cette réexposition temporaire doit être explicitement
+acceptée par le propriétaire, puis vérifiée sur l'origine avant d'ouvrir une
+correction réduite.
+
+Consigner le SHA du revert, attendre un check/déploiement Pages GitHub rattaché
+exactement à ce SHA, puis vérifier au minimum la racine, une réservation, une
+route préservée, robots.txt, sitemap.xml et une route inconnue. En cas de revert
+global, confirmer explicitement l'état attendu du sitemap restauré et la perte
+du noindex plutôt que de déclarer le rollback réussi sur le seul check vert.
+La réservation doit inclure une query inconnue/de redirection entièrement
+synthétique : consigner le statut et le `Location` attendus, et refuser toute
+transmission inattendue, destination externe ou chaîne supplémentaire.
 
 Un `301` peut rester mémorisé par les navigateurs et les robots après le revert.
 Le rollback rétablit le serveur, mais ne garantit pas un retour immédiat pour
@@ -293,6 +364,8 @@ sur `https://uni-songes.pages.dev` et `https://unisonges.fr` uniquement :
 
 - contrôler les 64 sources, leur `301`, leur `Location` exacte, le nombre de
   sauts et le `200` final;
+- confirmer que chaque query entrante sur les cinq sources de réservation est
+  remplacée par la seule attribution fixe et ne crée aucun saut supplémentaire;
 - contrôler les cinq routes conservées, la 404, le header X-Robots et les deux
   en-têtes de sécurité observés avant rollout;
 - contrôler robots.txt et confirmer l'absence du sitemap historique;
@@ -302,6 +375,10 @@ sur `https://uni-songes.pages.dev` et `https://unisonges.fr` uniquement :
   route privée;
 - consigner l'heure UTC, le commit Pages annoncé par GitHub et les résultats
   exacts dans le ticket de rollout.
+
+Rejouer aussi les observations percent-encodées consignées ci-dessus. Une
+différence par rapport à la preview, ou l'apparition d'une réponse indexable,
+bloque la poursuite et demande une décision ciblée plutôt qu'un catch-all.
 
 Le retrait définitif des cinq pages préservées, des actifs statiques et du projet
 Pages lui-même exige une décision ultérieure distincte, ainsi que la validation
