@@ -275,6 +275,9 @@ if ($raw_config_names !== $cached_config_names
 echo 'ACTIVE STORAGE OK (cached and raw database-backed default collection match)' . PHP_EOL;
 
 $target_names = array_fill_keys(array_column($targets, 'name'), TRUE);
+$editorial_home_block_name = 'block.block.unisonges_editorial_home';
+$editorial_home_module_name = 'unisonges_editorial_home';
+$editorial_home_state_key = 'unisonges_editorial_home.rollback.v1';
 $sources = [];
 $source_hashes = [];
 
@@ -375,22 +378,49 @@ if (!is_array($comment_field_source)
 $source_hashes[$comment_field_name] = hash_file('sha256', $resolved_comment_field_path);
 echo 'SOURCE ' . $comment_field_name . ' sha256=' . $source_hashes[$comment_field_name] . PHP_EOL;
 
+$matches_string_set = static function ($actual, array $expected): bool {
+  if (!is_array($actual) || !array_is_list($actual)) {
+    return FALSE;
+  }
+  foreach ($actual as $item) {
+    if (!is_string($item)) {
+      return FALSE;
+    }
+  }
+  sort($actual, SORT_STRING);
+  sort($expected, SORT_STRING);
+  return $actual === $expected;
+};
+
 // Assert the security and routing properties that must not be weakened by a
 // seemingly innocuous YAML edit.
-$assert_view = static function (array $view, string $bundle, string $name) use ($fail): void {
+$assert_view = static function (array $view, string $bundle, string $name) use (
+  $canonicalize,
+  $matches_string_set,
+  $fail
+): void {
   $expected_id = substr($name, strlen('views.view.'));
-  $options = $view['display']['default']['display_options'] ?? NULL;
-  $block_options = $view['display']['block_1']['display_options'] ?? NULL;
+  $displays = $view['display'] ?? NULL;
+  $expected_display_ids = $name === 'views.view.blog_posts'
+    ? ['default', 'block_1', 'editorial_home']
+    : ['default', 'block_1'];
+  $options = is_array($displays)
+    ? ($displays['default']['display_options'] ?? NULL)
+    : NULL;
+  $block_options = is_array($displays)
+    ? ($displays['block_1']['display_options'] ?? NULL)
+    : NULL;
   $status_filter = $options['filters']['status'] ?? NULL;
   $bundle_filter = $options['filters']['type'] ?? NULL;
   if (($view['status'] ?? NULL) !== TRUE
     || ($view['id'] ?? NULL) !== $expected_id
     || ($view['module'] ?? NULL) !== 'views'
-    || array_keys($view['display'] ?? []) !== ['default', 'block_1']
-    || ($view['display']['default']['id'] ?? NULL) !== 'default'
-    || ($view['display']['default']['display_plugin'] ?? NULL) !== 'default'
-    || ($view['display']['block_1']['id'] ?? NULL) !== 'block_1'
-    || ($view['display']['block_1']['display_plugin'] ?? NULL) !== 'block'
+    || !is_array($displays)
+    || array_keys($displays) !== $expected_display_ids
+    || ($displays['default']['id'] ?? NULL) !== 'default'
+    || ($displays['default']['display_plugin'] ?? NULL) !== 'default'
+    || ($displays['block_1']['id'] ?? NULL) !== 'block_1'
+    || ($displays['block_1']['display_plugin'] ?? NULL) !== 'block'
     || !is_array($block_options)
     || array_keys($block_options) !== [
       'block_description',
@@ -410,33 +440,215 @@ $assert_view = static function (array $view, string $bundle, string $name) use (
     || ($bundle_filter['field'] ?? NULL) !== 'type'
     || ($bundle_filter['plugin_id'] ?? NULL) !== 'bundle'
     || ($bundle_filter['value'] ?? NULL) !== [$bundle => $bundle]
+    || array_keys($options['filters'] ?? []) !== ['status', 'type']
+    || ($options['pager']['type'] ?? NULL) !== 'mini'
+    || ($options['pager']['options']['offset'] ?? NULL) !== 0
+    || ($options['pager']['options']['items_per_page'] ?? NULL) !== 10
+    || ($options['sorts']['created']['table'] ?? NULL) !== 'node_field_data'
+    || ($options['sorts']['created']['field'] ?? NULL) !== 'created'
+    || ($options['sorts']['created']['plugin_id'] ?? NULL) !== 'date'
     || ($options['sorts']['created']['order'] ?? NULL) !== 'DESC'
     || ($options['access']['type'] ?? NULL) !== 'perm'
     || ($options['access']['options']['perm'] ?? NULL) !== 'access content'
     || ($options['cache']['type'] ?? NULL) !== 'tag'
     || ($options['row']['type'] ?? NULL) !== 'entity:node'
     || ($options['row']['options']['view_mode'] ?? NULL) !== 'teaser'
-    || ($options['query']['options']['disable_sql_rewrite'] ?? NULL) !== FALSE) {
+    || ($options['query']['options']['disable_sql_rewrite'] ?? NULL) !== FALSE
+    || ($options['query']['options']['distinct'] ?? NULL) !== FALSE) {
     $fail($name . ' must render published ' . $bundle . ' teasers newest-first.');
   }
   if (trim((string) ($options['empty']['area_text_custom']['content'] ?? '')) === '') {
     $fail($name . ' must retain a non-empty empty state.');
   }
-  foreach (($view['display'] ?? []) as $display) {
+
+  if ($name === 'views.view.blog_posts') {
+    if (!$matches_string_set($view['dependencies']['config'] ?? NULL, [
+      'core.entity_view_mode.node.teaser',
+      'node.type.article',
+      'taxonomy.vocabulary.tags',
+    ]) || !$matches_string_set($view['dependencies']['module'] ?? NULL, [
+      'node',
+      'taxonomy',
+      'user',
+    ])) {
+      $fail('views.view.blog_posts must depend exactly on the Article teaser and Tags taxonomy stack.');
+    }
+
+    $expected_editorial_display = [
+      'id' => 'editorial_home',
+      'display_title' => 'Accueil éditorial',
+      'display_plugin' => 'embed',
+      'position' => 2,
+      'display_options' => [
+        'arguments' => [
+          'tid' => [
+            'id' => 'tid',
+            'table' => 'taxonomy_index',
+            'field' => 'tid',
+            'relationship' => 'none',
+            'group_type' => 'group',
+            'admin_label' => '',
+            'plugin_id' => 'taxonomy_index_tid',
+            'default_action' => 'default',
+            'exception' => [
+              'value' => 'all',
+              'title_enable' => FALSE,
+              'title' => 'Tout',
+            ],
+            'title_enable' => FALSE,
+            'title' => '',
+            'default_argument_type' => 'fixed',
+            'default_argument_options' => [
+              'argument' => 'all',
+            ],
+            'summary_options' => [
+              'base_path' => '',
+              'count' => TRUE,
+              'override' => FALSE,
+              'items_per_page' => 25,
+            ],
+            'summary' => [
+              'sort_order' => 'asc',
+              'number_of_records' => 0,
+              'format' => 'default_summary',
+            ],
+            'specify_validation' => TRUE,
+            'validate' => [
+              'type' => 'entity:taxonomy_term',
+              'fail' => 'not found',
+            ],
+            'validate_options' => [
+              'bundles' => ['tags' => 'tags'],
+              'access' => TRUE,
+              'operation' => 'view',
+              'multiple' => 0,
+            ],
+            'break_phrase' => FALSE,
+            'add_table' => FALSE,
+            'require_value' => FALSE,
+            'reduce_duplicates' => FALSE,
+          ],
+        ],
+        'query' => [
+          'type' => 'views_query',
+          'options' => [
+            'query_comment' => '',
+            'disable_sql_rewrite' => FALSE,
+            'distinct' => TRUE,
+            'replica' => FALSE,
+            'query_tags' => [],
+          ],
+        ],
+        'defaults' => [
+          'query' => FALSE,
+          'arguments' => FALSE,
+        ],
+        'display_extenders' => [],
+      ],
+      'cache_metadata' => [
+        'max-age' => -1,
+        'contexts' => [
+          'languages:language_interface',
+          'url',
+          'url.query_args',
+          'user.node_grants:view',
+          'user.permissions',
+        ],
+        'tags' => [],
+      ],
+    ];
+    if ($canonicalize($displays['editorial_home'] ?? NULL)
+      !== $canonicalize($expected_editorial_display)) {
+      $fail(
+        'views.view.blog_posts editorial_home must be the exact reviewed Tags-TID embed override.'
+      );
+    }
+  }
+
+  foreach ($displays as $display) {
     if (($display['display_plugin'] ?? NULL) === 'page' || isset($display['display_options']['path'])) {
       $fail($name . ' must expose blocks only, never a View page URL.');
     }
+    foreach (($display['display_options']['filters'] ?? []) as $filter) {
+      if (($filter['exposed'] ?? FALSE) === TRUE) {
+        $fail($name . ' must not expose a filter.');
+      }
+    }
     $contexts = $display['cache_metadata']['contexts'] ?? [];
     if (!is_array($contexts)
+      || !in_array('languages:language_interface', $contexts, TRUE)
+      || !in_array('url.query_args', $contexts, TRUE)
       || !in_array('user.node_grants:view', $contexts, TRUE)
       || !in_array('user.permissions', $contexts, TRUE)) {
-      $fail($name . ' must retain node-grant and permission cache contexts on every display.');
+      $fail($name . ' must retain language, query, grant, and permission cache contexts.');
     }
   }
 };
 
 $assert_view($sources['views.view.blog_posts'], 'article', 'views.view.blog_posts');
 $assert_view($sources['views.view.forum_topics'], 'forum_topic', 'views.view.forum_topics');
+
+// Forum/Blog owns the two-display collection baseline. The editorial-home
+// feature adds and removes its third display with its own exact installer.
+// Select one variant from the complete active feature state so a fresh Forum
+// install never creates a partial editorial-home deployment, and Forum
+// rollback remains possible after editorial-home is rolled back first.
+\Drupal::state()->resetCache();
+$editorial_state_sentinel = new stdClass();
+$editorial_state = \Drupal::state()->get(
+  $editorial_home_state_key,
+  $editorial_state_sentinel
+);
+$core_extension = $config_storage->read('core.extension');
+$editorial_module_in_config = is_array($core_extension)
+  && array_key_exists($editorial_home_module_name, $core_extension['module'] ?? []);
+$editorial_module_in_handler = \Drupal::moduleHandler()->moduleExists(
+  $editorial_home_module_name
+);
+if ($editorial_module_in_config !== $editorial_module_in_handler) {
+  $fail('Editorial-home module state disagrees between core.extension and the module handler.');
+}
+$editorial_block_exists = $config_storage->exists($editorial_home_block_name);
+$editorial_state_exists = $editorial_state !== $editorial_state_sentinel;
+$editorial_signal_count = count(array_filter([
+  $editorial_module_in_config,
+  $editorial_block_exists,
+  $editorial_state_exists,
+]));
+if (!in_array($editorial_signal_count, [0, 3], TRUE)) {
+  $fail('Editorial-home is partial; exact absent or complete ownership state required.');
+}
+$editorial_home_active = $editorial_signal_count === 3;
+if ($action === 'rollback' && $editorial_home_active) {
+  $fail('Rollback editorial-home first, then rerun the Forum/Blog rollback dry-run.');
+}
+
+$blog_view_baseline = $sources['views.view.blog_posts'];
+unset($blog_view_baseline['display']['editorial_home']);
+$blog_view_baseline['dependencies']['config'] = array_values(array_filter(
+  $blog_view_baseline['dependencies']['config'],
+  static fn (string $name): bool => $name !== 'taxonomy.vocabulary.tags'
+));
+$blog_view_baseline['dependencies']['module'] = array_values(array_filter(
+  $blog_view_baseline['dependencies']['module'],
+  static fn (string $name): bool => $name !== 'taxonomy'
+));
+if (array_keys($blog_view_baseline['display']) !== ['default', 'block_1']
+  || $blog_view_baseline['dependencies']['config'] !== [
+    'core.entity_view_mode.node.teaser',
+    'node.type.article',
+  ]
+  || $blog_view_baseline['dependencies']['module'] !== ['node', 'user']) {
+  $fail('Could not derive the exact Forum-owned Blog View baseline.');
+}
+$blog_view_variant = $editorial_home_active
+  ? 'editorial_home_three_displays'
+  : 'forum_blog_two_displays';
+if (!$editorial_home_active) {
+  $sources['views.view.blog_posts'] = $blog_view_baseline;
+}
+echo 'BLOG VIEW SOURCE VARIANT ' . $blog_view_variant
+  . ' sha256=' . $normalized_hash($sources['views.view.blog_posts']) . PHP_EOL;
 
 if (($sources['core.base_field_override.node.forum_topic.status']['default_value'][0]['value'] ?? NULL) !== 0) {
   $fail('New forum topics must default to unpublished.');
@@ -1300,7 +1512,53 @@ $assert_install_data_namespace = static function (array $states, array $record_c
   }
 };
 
+$assert_editorial_home_block = static function (array $block, string $variant) use (
+  $canonicalize,
+  $matches_string_set,
+  $fail
+): void {
+  $dependencies = $block['dependencies'] ?? NULL;
+  $expected_settings = [
+    'id' => 'unisonges_editorial_home',
+    'label' => 'Accueil éditorial',
+    'label_display' => '0',
+    'provider' => 'unisonges_editorial_home',
+  ];
+  $expected_visibility = [
+    'request_path' => [
+      'id' => 'request_path',
+      'negate' => FALSE,
+      'pages' => '/accueil',
+    ],
+  ];
+  if (($block['status'] ?? NULL) !== TRUE
+    || ($block['id'] ?? NULL) !== 'unisonges_editorial_home'
+    || ($block['theme'] ?? NULL) !== 'unisonges_theme'
+    || ($block['region'] ?? NULL) !== 'content'
+    || ($block['weight'] ?? NULL) !== 0
+    || !array_key_exists('provider', $block)
+    || $block['provider'] !== NULL
+    || ($block['plugin'] ?? NULL) !== 'unisonges_editorial_home'
+    || $canonicalize($block['settings'] ?? NULL) !== $canonicalize($expected_settings)
+    || $canonicalize($block['visibility'] ?? NULL) !== $canonicalize($expected_visibility)
+    || !is_array($dependencies)
+    || !$matches_string_set(array_keys($dependencies), ['config', 'module', 'theme'])
+    || !$matches_string_set($dependencies['config'] ?? NULL, ['views.view.blog_posts'])
+    || !$matches_string_set($dependencies['module'] ?? NULL, [
+      'system',
+      'unisonges_editorial_home',
+    ])
+    || !$matches_string_set($dependencies['theme'] ?? NULL, ['unisonges_theme'])) {
+    $fail(
+      'The ' . $variant . ' editorial homepage block must match its exact reviewed configuration.'
+    );
+  }
+};
+
 $assert_feature_config_namespace = static function () use (
+  $action,
+  $editorial_home_block_name,
+  $assert_editorial_home_block,
   $target_names,
   $config_storage,
   $get_config_entity_storage,
@@ -1314,11 +1572,34 @@ $assert_feature_config_namespace = static function () use (
   );
   $dependency_manager = new ConfigDependencyManager();
   $dependency_manager->setData($raw_entities);
+  $allowed_external_dependents = [];
+  if ($action === 'install' && $config_storage->exists($editorial_home_block_name)) {
+    if (!\Drupal::moduleHandler()->moduleExists('unisonges_editorial_home')) {
+      $fail('The active editorial homepage block requires its enabled custom module.');
+    }
+    $editorial_home_variants = [
+      'raw' => $config_storage->read($editorial_home_block_name),
+      'effective' => \Drupal::config($editorial_home_block_name)->get(),
+    ];
+    foreach ($editorial_home_variants as $variant => $block) {
+      if (!is_array($block)) {
+        $fail(
+          'Could not inspect ' . $variant . ' block config: ' . $editorial_home_block_name . '.'
+        );
+      }
+      $assert_editorial_home_block($block, $variant);
+    }
+    $allowed_external_dependents[$editorial_home_block_name] = TRUE;
+  }
   $dependent_names = [];
   foreach (array_keys($target_names) as $target_name) {
     foreach ($dependency_manager->getDependentEntities('config', $target_name) as $name => $dependency) {
       if (!isset($target_names[$name])) {
-        $fail('Non-allowlisted config depends on the feature namespace: ' . $name . '.');
+        $is_reviewed_editorial_home_block = $target_name === 'views.view.blog_posts'
+          && isset($allowed_external_dependents[$name]);
+        if (!$is_reviewed_editorial_home_block) {
+          $fail('Non-allowlisted config depends on the feature namespace: ' . $name . '.');
+        }
       }
       $dependent_names[] = $name;
     }
@@ -1379,6 +1660,12 @@ $assert_feature_config_namespace = static function () use (
   foreach ($config_storage->listAll('block.block.') as $block_name) {
     if (isset($target_names[$block_name])) {
       continue;
+    }
+    if ($block_name === $editorial_home_block_name) {
+      if (isset($allowed_external_dependents[$block_name])) {
+        continue;
+      }
+      $fail('Non-allowlisted block occupies the editorial homepage block namespace.');
     }
     $block_variants = [
       'raw' => $config_storage->read($block_name),
@@ -1585,6 +1872,10 @@ $plan = [
   'action' => $action,
   'site_origin' => $active_site_origin,
   'sources' => $source_hashes,
+  'blog_view_variant' => $blog_view_variant,
+  'blog_view_effective_source_hash' => $normalized_hash(
+    $sources['views.view.blog_posts']
+  ),
   'states' => $states,
   'comment_formats' => $active_comment_formats,
   'feature_config_namespace' => $feature_config_namespace,

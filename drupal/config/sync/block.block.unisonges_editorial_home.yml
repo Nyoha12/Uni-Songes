@@ -1,0 +1,27 @@
+uuid: 8e6e9ece-878e-4bf8-b09e-a7638827a132
+langcode: fr
+status: true
+dependencies:
+  config:
+    - views.view.blog_posts
+  module:
+    - system
+    - unisonges_editorial_home
+  theme:
+    - unisonges_theme
+id: unisonges_editorial_home
+theme: unisonges_theme
+region: content
+weight: 0
+provider: null
+plugin: unisonges_editorial_home
+settings:
+  id: unisonges_editorial_home
+  label: 'Accueil éditorial'
+  label_display: '0'
+  provider: unisonges_editorial_home
+visibility:
+  request_path:
+    id: request_path
+    negate: false
+    pages: /accueil
