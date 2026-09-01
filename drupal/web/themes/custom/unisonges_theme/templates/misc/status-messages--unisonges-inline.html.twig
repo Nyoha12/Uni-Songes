@@ -1,0 +1,54 @@
+{#
+/**
+ * @file
+ * Renders public-theme system messages in the main-content flow.
+ *
+ * This deliberately avoids Barrio's fixed alert and toast containers while
+ * preserving its severity classes and Drupal's accessible message contract.
+ */
+#}
+<div class="unisonges-system-messages" data-drupal-messages>
+  {# Keep a stable first child for Drupal.Message after alerts are dismissed. #}
+  <div class="messages__wrapper">
+    {% for type, messages in message_list %}
+      {% set classes = [
+        'alert',
+        'alert-dismissible',
+        'fade',
+        'show',
+        'col-12',
+        type == 'status' ? 'alert-success',
+        type == 'warning' ? 'alert-warning',
+        type == 'error' ? 'alert-danger',
+        type == 'info' ? 'alert-info',
+      ] %}
+      {% set roles = {
+        status: 'status',
+        warning: 'alert',
+        error: 'alert',
+        info: 'status',
+      } %}
+      <div
+        class="{{ classes|join(' ') }}"
+        data-drupal-selector="messages"
+        role="{{ roles[type]|default('status') }}"
+        aria-label="{{ status_headings[type] }}"
+        {{ attributes|without('role', 'aria-label', 'class', 'data-drupal-selector') }}
+      >
+        {% if status_headings[type] %}
+          <h2 class="visually-hidden">{{ status_headings[type] }}</h2>
+        {% endif %}
+        {% if messages|length > 1 %}
+          <ul>
+            {% for message in messages %}
+              <li>{{ message }}</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          {{ messages|first }}
+        {% endif %}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ 'Close'|t }}"></button>
+      </div>
+    {% endfor %}
+  </div>
+</div>
