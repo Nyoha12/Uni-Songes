@@ -11,3 +11,7 @@ unisonges-layout:
     js/auto-compact-nav.js: { preprocess: false }
     js/bg-mirror-height.js: { preprocess: false }
     js/bgfx-scroll-11.js: { preprocess: false }
+
+contact:
+  dependencies:
+    - unisonges_theme/unisonges-layout

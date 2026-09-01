@@ -4,7 +4,7 @@ type: theme
 core_version_requirement: ^10 || ^11
 base theme: bootstrap_barrio
 libraries:
-  - unisonges_theme/global
+  - unisonges_theme/unisonges-layout
 regions:
   header: Header
   primary_menu: Primary menu
