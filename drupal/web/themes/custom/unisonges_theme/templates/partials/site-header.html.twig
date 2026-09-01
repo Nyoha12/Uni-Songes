@@ -36,14 +36,14 @@
       
         <span class="nav-toggle__label">Menu</span>
       </button>
-<a class="btn btn--cta" href="/reserver">Reserver</a>
+<a class="btn btn--cta" href="/reserver">Réserver</a>
 
       {% if logged_in %}
         <a class="link" href="{{ path('user.page') }}">Mon compte</a>
         <a class="link" href="{{ path('user.logout') }}">Se déconnecter</a>
       {% else %}
         <a class="link" href="{{ path('user.login') }}">Se connecter</a>
-        <a class="link" href="{{ path('user.register') }}">Creer un compte</a>
+        <a class="link" href="{{ path('user.register') }}">Créer un compte</a>
       {% endif %}
     </div>
   </div>
@@ -58,13 +58,13 @@
     ></nav>
 
     <div class="mobile-drawer__account">
-      <a class="btn btn--cta" href="/reserver">Reserver</a>
+      <a class="btn btn--cta" href="/reserver">Réserver</a>
       {% if logged_in %}
         <a class="link" href="{{ path('user.page') }}">Mon compte</a>
         <a class="link" href="{{ path('user.logout') }}">Se déconnecter</a>
       {% else %}
         <a class="link" href="{{ path('user.login') }}">Se connecter</a>
-        <a class="link" href="{{ path('user.register') }}">Creer un compte</a>
+        <a class="link" href="{{ path('user.register') }}">Créer un compte</a>
       {% endif %}
     </div>
   </aside>
