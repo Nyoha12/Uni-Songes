@@ -9,11 +9,10 @@ publique, ne touche pas Drupal core et ne désactive pas BigPipe en production.
 Les fichiers détenus par d'autres PR, `styles.css`, `page.html.twig` et
 `page--front.html.twig`, restent inchangés.
 
-Aucun VPS, endpoint public de production, DNS ou routage n'a été consulté ou
-modifié. L'état actif de production n'est donc pas présenté comme lu : la
-dérive historique a été prouvée dans Git puis reproduite exactement dans DDEV.
-Le helper suivi permet à un opérateur autorisé de confirmer l'état actif par un
-dry-run avant toute écriture ciblée.
+Codex n'a consulté ni modifié aucun VPS, endpoint public de production, DNS ou
+routage. Après la validation locale, le propriétaire a toutefois exécuté le
+helper en lecture seule sur la production et a communiqué la preuve consignée
+plus bas. Ce dry-run confirme l'état actif sans avoir effectué d'écriture.
 
 ## Cause établie
 
@@ -176,7 +175,61 @@ refusé. Le retour arrière opérationnel est la restauration de la sauvegarde
 prise avant application; ne pas lancer d'import global pour inverser cette
 seule écriture.
 
-Cette procédure n'a pas été exécutée sur le VPS pendant cette correction.
+### Dry-run production fourni par le propriétaire
+
+Le 1er septembre 2026, le propriétaire a exécuté un dry-run en lecture seule
+contre le head exact de cette PR. Codex n'a pas accédé au VPS et ne possède ni
+ne reproduit le jeton opérationnel émis pendant cette exécution.
+
+| Élément | Valeur contrôlée |
+| --- | --- |
+| Branche de production | `release/prod` |
+| HEAD de production | `2bfb2b3b57bffcdbef72306a96a1c7f8a4055002` |
+| HEAD PR #100 testé | `ad917a3972ce6a9e23cd061943bad411e9537b20` |
+| Objet synchronisé | `block.block.unisonges_theme_messages` |
+| Cible synchronisée | activé, thème `unisonges_theme`, plugin `system_messages_block`, région `content`, poids `-8` |
+| État actif production | activé, thème `unisonges_theme`, plugin `system_messages_block`, région `header`, poids `-6` |
+| État de rollback | région `header`, poids `-6` |
+| Plan exact | modifier uniquement la région de `header` vers `content` et le poids de `-6` vers `-8` |
+| Résultat | `DRY_RUN_OK`; aucune configuration active écrite |
+
+L'état actif production `header/-6` correspond exactement à l'état historique
+reproduit localement. Il confirme donc la cause racine diagnostiquée : le bloc
+actif se trouve dans la région que les shells publics ne rendent pas, tandis
+que le sync revu contient déjà la cible `content/-8`.
+
+Pour exécuter le helper avant sa fusion sans modifier durablement le checkout,
+le propriétaire a extrait temporairement depuis le head PR testé les deux
+fichiers du helper à leurs chemins attendus sous `drupal/scripts/`, exécuté
+uniquement le wrapper en mode `--dry-run --allow-vps`, puis supprimé ces deux
+fichiers temporaires. Le checkout production est resté propre et inchangé. Le
+journal opérateur est conservé sur la cible à l'emplacement :
+
+```text
+/tmp/pr100-production-dry-run-20260901-185955.log
+```
+
+Le `PLAN_TOKEN` de cette capture est opérationnel et éphémère. Il ne doit pas
+être copié dans Git, la PR, un ticket ou une commande post-fusion, et ne doit
+jamais être présenté comme réutilisable. Après fusion et déploiement du head
+final, l'opérateur doit obligatoirement :
+
+1. confirmer le commit réellement déployé et l'absence d'écriture concurrente;
+2. prendre une sauvegarde courante et restaurable de la base;
+3. exécuter un nouveau dry-run depuis les fichiers déployés;
+4. relire l'identité, le sync, l'actif, le rollback et le plan;
+5. utiliser uniquement le nouveau jeton avec `--apply --backup-confirmed`;
+6. vérifier le succès du rebuild de cache;
+7. relancer le dry-run et obtenir `ACTIVE ... region=content weight=-8` puis
+   `NO_CHANGE`;
+8. confirmer que le bloc reste activé, sans restriction de visibilité, avec le
+   thème et le plugin attendus, et que le checkout demeure propre;
+9. effectuer le smoke test anonyme : une erreur sur le POST invalide, aucune
+   erreur sur le GET étranger suivant et aucun chevauchement de navigation.
+
+Si l'actif, le sync ou le plan diffère, ou si aucune sauvegarde courante n'est
+disponible, l'application doit être abandonnée et aucun ancien jeton ne doit
+être essayé.
 
 ## Validation Drupal et Chromium
 
@@ -261,7 +314,11 @@ Les scénarios suivants réussissent :
   `git diff --check` réussissent;
 - `composer validate --no-check-publish` réussit avec l'avertissement existant
   `require.twbs/bootstrap: *`; le mode `--strict` échoue uniquement sur ce même
-  avertissement préexistant, sans rapport avec le diff.
+  avertissement préexistant, sans rapport avec le diff;
+- la revue des PR ouvertes vers `release/prod` trouve un seul chemin partagé :
+  la PR #99 modifie aussi `unisonges_theme.theme`. Les hunks sont distincts et
+  `git merge-tree` ne signale aucun conflit textuel entre les heads contrôlés;
+  l'ordre de fusion doit néanmoins déclencher une nouvelle vérification.
 
 Les artefacts JSON, journaux et captures de cette validation sont temporaires
 et restent sous
