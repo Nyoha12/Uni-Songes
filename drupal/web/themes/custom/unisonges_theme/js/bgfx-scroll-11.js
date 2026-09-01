@@ -30,7 +30,6 @@
   const DEFAULT_URL = '/themes/custom/unisonges_theme/images/bgsrc/fontdefault.jpg';
   const AUTONOMOUS_PERIOD_MS = 140000;
   const AUTONOMOUS_MAX_PX = 14;
-  const SCROLL_MAX_PX = 5;
   const EDGE_GUARD_PX = 2;
   const POSITION_EASE_MS = 650;
   const MAX_BLEND_DELTA_MS = 100;
@@ -86,9 +85,6 @@
     anchorY: 0,
     direction: -1,
     autonomousRange: 0,
-    scrollRange: 0,
-    scrollTarget: 0,
-    maxScroll: 0,
   };
 
   const listen = (target, type, handler, options) => {
@@ -152,18 +148,12 @@
   };
 
   const writeTransform = (value) => {
-    const rounded = Math.abs(value) < 0.0005 ? 0 : Math.round(value * 1000) / 1000;
-    if (rounded === writtenY) return;
-    writtenY = rounded;
-    scrollLayer.style.transform = `translate3d(0, ${rounded}px, 0)`;
-  };
-
-  const updateScrollTarget = () => {
-    state.maxScroll = Math.max(0, frame.scrollHeight - frame.clientHeight);
-    const progress = state.maxScroll > 0
-      ? clamp(frame.scrollTop / state.maxScroll, 0, 1)
-      : 0;
-    state.scrollTarget = progress * state.scrollRange;
+    const clamped = clamp(value, state.minY, state.maxY);
+    const rounded = Math.abs(clamped) < 0.0005 ? 0 : Math.round(clamped * 1000) / 1000;
+    const safe = clamp(rounded, state.minY, state.maxY);
+    if (safe === writtenY) return;
+    writtenY = safe;
+    scrollLayer.style.transform = `translate3d(0, ${safe}px, 0)`;
   };
 
   const configureMotionRange = () => {
@@ -183,7 +173,6 @@
       state.anchorY = safeMinY;
       state.direction = 1;
       state.autonomousRange = 0;
-      state.scrollRange = 0;
       return;
     }
 
@@ -193,11 +182,10 @@
 
     const upwardCapacity = state.anchorY - safeMinY;
     const downwardCapacity = safeMaxY - state.anchorY;
-    const fullPreferredRange = AUTONOMOUS_MAX_PX + SCROLL_MAX_PX;
 
-    if (upwardCapacity >= fullPreferredRange) {
+    if (upwardCapacity >= AUTONOMOUS_MAX_PX) {
       state.direction = -1;
-    } else if (downwardCapacity >= fullPreferredRange) {
+    } else if (downwardCapacity >= AUTONOMOUS_MAX_PX) {
       state.direction = 1;
     } else {
       state.direction = upwardCapacity >= downwardCapacity ? -1 : 1;
@@ -205,7 +193,6 @@
 
     const directionalCapacity = state.direction < 0 ? upwardCapacity : downwardCapacity;
     state.autonomousRange = Math.min(AUTONOMOUS_MAX_PX, directionalCapacity * 0.45);
-    state.scrollRange = Math.min(SCROLL_MAX_PX, directionalCapacity * 0.15);
   };
 
   const canAnimate = () => (
@@ -214,7 +201,7 @@
     !document.hidden &&
     motionAllowed &&
     state.ready &&
-    (state.autonomousRange > 0.01 || state.scrollRange > 0.01)
+    state.autonomousRange > 0.01
   );
 
   const stopMotionLoop = () => {
@@ -235,9 +222,7 @@
     const phase = (state.elapsedMs / AUTONOMOUS_PERIOD_MS) * Math.PI * 2;
     const autonomousProgress = 0.5 - (0.5 * Math.cos(phase));
     const desiredY = clamp(
-      state.anchorY + state.direction * (
-        state.autonomousRange * autonomousProgress + state.scrollTarget
-      ),
+      state.anchorY + state.direction * state.autonomousRange * autonomousProgress,
       state.minY,
       state.maxY,
     );
@@ -335,7 +320,6 @@
     layer.style.height = `${visibleHeight}px`;
 
     configureMotionRange();
-    updateScrollTarget();
     state.renderedY = clamp(state.renderedY, state.minY, state.maxY);
     state.ready = true;
     writeTransform(state.renderedY);
@@ -362,7 +346,6 @@
       stopMotionLoop();
       return;
     }
-    updateScrollTarget();
     syncMotionLoop();
   };
 
@@ -413,7 +396,6 @@
     destroy,
   };
 
-  listen(frame, 'scroll', updateScrollTarget, { passive: true });
   // Capture runs before bg-mirror-height.js's older non-capture listener. Its
   // probe then sees no URL; this controller's later recalculation rAF restores
   // the CSS route value in the same rendering cycle, before the next paint.

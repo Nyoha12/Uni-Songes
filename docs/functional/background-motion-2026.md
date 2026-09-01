@@ -1,8 +1,10 @@
 # Autonomous background motion — 2026
 
-Status: implemented and validated in local Chromium after PR #67 merged into
-`origin/release/prod`. DDEV was used only for the isolated local validation
-described below. No VPS was accessed.
+Status: the final zero-scroll-coupling behavior is implemented and validated
+with deterministic and real Chromium coverage. PR #84 was merged before the
+runtime phase, releasing its exclusive DDEV and Chromium ownership. The
+recorded runtime was restored, so PR #91 is ready for review. The VPS was not
+accessed.
 
 ## Scope
 
@@ -16,6 +18,13 @@ Drupal configuration, or dependency. The implementation is confined to:
 The outer `#unisonges-bgfx` remains the viewport-fixed and pointer-inert
 container. The JavaScript moves only its `#unisonges-bgfx-scroll` child and
 continues to use the existing CSS-owned image selection and sizing variables.
+
+The preceding controller deliberately mapped page progress to as much as `5px`
+of vertical background travel. That influence has now been intentionally
+removed. Although it was subtle and bounded, it made content interaction alter
+the ambient trajectory and therefore read as scroll-linked motion. The final
+product decision is stricter: the background stays fixed relative to the
+viewport while content scrolls, and only time-based ambient drift may move it.
 
 ## Preserved rendering contract
 
@@ -58,20 +67,40 @@ Autonomous movement uses a deterministic cosine interpolation:
 
 - one round trip lasts `140000 ms`;
 - autonomous displacement is at most `14 px`;
-- scroll progress contributes at most `5 px`;
-- scroll targets and in-range recalculation changes settle with a
-  frame-rate-independent `650 ms` exponential blend; a resize that makes the
-  current position unsafe is clamped immediately to prevent a blank edge;
+- the available autonomous amplitude shrinks below `14px`, including to zero,
+  whenever the measured safe travel cannot support the preferred range;
+- in-range target changes settle with a frame-rate-independent `650 ms`
+  exponential blend; a resize that makes the current position unsafe is
+  clamped immediately to prevent a blank edge;
 - the cosine advances from visible `requestAnimationFrame` timestamps; hidden
   time is excluded by clearing the timestamp when the loop stops;
 - only the blend input is capped at `100 ms`, so a visible main-thread stall
-  cannot apply most of the scroll offset in one painted frame while the
-  autonomous timeline still follows elapsed time.
+  cannot cause a large settling step while the autonomous timeline still
+  follows elapsed time.
 
-Scroll progress is read by its event handler, which refreshes the scroll extent
-without writing a transform. It never maps to the full image travel range. The
-continuous animation callback does no layout read; it only advances numeric
-state and writes the wrapper transform.
+At each animation frame, the target is calculated only from the safe anchor,
+autonomous phase, autonomous range, and chosen autonomous direction:
+
+```text
+phase              = elapsedMs / 140000ms * 2π
+autonomousProgress = 0.5 - 0.5 * cos(phase)
+desiredY            = clamp(
+  anchorY + direction * autonomousRange * autonomousProgress,
+  safeMinY,
+  safeMaxY
+)
+```
+
+The cosine has the same value and zero slope at both sides of the `140000ms`
+boundary. Modulo wrap therefore creates no target jump or reset; the existing
+continuous interpolation remains smooth across the boundary.
+
+The controller does not listen for scroll, wheel, or touch motion and does not
+read `frame.scrollTop`, `frame.scrollHeight`, or `frame.clientHeight`.
+Consequently top, middle, bottom, direction changes, and scroll speed have zero
+input into either the desired or rendered transform. The continuous animation
+callback performs no layout read; it only advances numeric state and writes the
+wrapper transform.
 
 ### Real travel bounds
 
@@ -95,10 +124,16 @@ safeMaxY   = -2px - baseTop
 
 The static anchor is zero clamped into that interval. Motion uses whichever
 direction has safe capacity and allocates no more than 45% of that directional
-capacity to autonomous drift and 15% to scroll. The combined target therefore
-leaves unused travel rather than reaching either guarded clipping edge. If an
-extreme viewport cannot fit the rendered image at all, the controller aligns
-the lower edge and disables motion for that geometry.
+capacity to autonomous drift, capped at the preferred `14px`. The target
+therefore leaves unused travel rather than reaching either guarded clipping
+edge. A final post-rounding clamp keeps every emitted transform inside the
+measured interval, including when its endpoints are fractional. If a geometry
+has no directional travel, the range becomes zero and the controller remains
+static rather than expose an edge.
+
+```text
+autonomousRange = min(14px, directionalCapacity * 0.45)
+```
 
 ## Lifecycle and resource contract
 
@@ -116,9 +151,9 @@ the lower edge and disables motion for that geometry.
 - `prefers-reduced-motion: reduce` and `navigator.connection.saveData` prevent
   the continuous loop. Preference/connection changes are handled when the
   browser exposes change events.
-- Resize and `document.fonts.ready` schedule one recalculation frame. The
-  scroll extent is refreshed on scroll events, while the continuous animation
-  callback performs no layout measurement.
+- Resize and `document.fonts.ready` schedule one recalculation frame. No content
+  scroll, wheel, or touch listener participates in background motion. The
+  continuous animation callback performs no layout measurement.
 - A capture-phase resize hook temporarily hides `--bg-once` from the older
   `bg-mirror-height.js` resize probe. The controller restores the route-owned
   value during its recalculation in the same rendering cycle, preventing a
@@ -155,6 +190,22 @@ npx --yes --package=eslint@8.57.1 eslint \
   --rule 'no-redeclare:error' \
   --rule 'no-unreachable:error' \
   "$bg_js"
+
+if rg -n \
+  '\b(SCROLL_MAX_PX|scrollTarget|scrollRange|maxScroll|updateScrollTarget)\b' \
+  "$bg_js"
+then
+  echo "Obsolete scroll-motion identifier remains" >&2
+  exit 1
+fi
+
+if rg -n \
+  "frame\\.(scrollTop|scrollHeight|clientHeight)|listen\\([^,]+,[[:space:]]*['\"]scroll['\"]" \
+  "$bg_js"
+then
+  echo "Background scroll coupling remains" >&2
+  exit 1
+fi
 
 git diff --check "$bg_base_ref" --
 test -z "$(git diff --no-index --check /dev/null "$bg_doc" 2>&1 || true)"
@@ -200,7 +251,7 @@ Review lifecycle and layout access locations explicitly:
 
 ```bash
 rg -n \
-  'requestAnimationFrame|cancelAnimationFrame|visibilitychange|document\.hidden|pagehide|pageshow|matchMedia|saveData|addEventListener|removeEventListener|getBoundingClientRect|getComputedStyle|scrollHeight|clientHeight|setInterval|setTimeout' \
+  'requestAnimationFrame|cancelAnimationFrame|visibilitychange|document\.hidden|pagehide|pageshow|matchMedia|saveData|addEventListener|removeEventListener|getBoundingClientRect|getComputedStyle|setInterval|setTimeout' \
   "$bg_js"
 ```
 
@@ -208,7 +259,191 @@ The final pre-commit pass must stage only the two guarded files before
 `git diff --cached --check`; after commit, also run
 `git diff --check "$bg_base_ref"...HEAD`.
 
-### Results — 30 August 2026
+### Scroll-decoupling results — 1 September 2026
+
+The existing PR #91 branch was fetched and rebased onto `origin/release/prod`
+at `a673a078430501d29f1631b96edf57cb65ec4c19`, the merge commit for PR #84.
+The exact rebased controller tested in Drupal was commit
+`8a12a508926adba94b14133f916cf5fecb2090c8`, with source SHA-256
+`13e268738655b2cc911c9b90642c1504b27b6a63bf3571ca26018d6d8dc6754f`.
+
+A deterministic Node harness executed that production controller in isolated
+mocked DOM worlds with an explicitly stepped `requestAnimationFrame` queue.
+Test-only instrumentation was inserted into the in-memory source to observe
+`desiredY`, state, and raw safe bounds; no production test API or harness file
+is tracked.
+
+At the frozen `35000ms` autonomous phase, independent worlds at top, 25%, 50%,
+75%, and bottom all produced exactly the same `desiredY`
+(`-6.999999999999999`), rendered state, and serialized transform
+(`translate3d(0, -0.998px, 0)`). Frozen-time scroll, wheel, touch-start,
+touch-move, and touch-end sequences caused no state change, transform write, or
+next-frame difference from an untouched control.
+
+| Check | Result |
+| --- | --- |
+| `node --check` with Node `v24.20.0` | Pass |
+| Targeted ESLint `8.57.1` (`no-undef`, `no-unused-vars`, `no-redeclare`, `no-unreachable`) | Pass |
+| Obsolete scroll-motion identifiers and frame scroll-position reads | Absent |
+| Background-motion scroll, wheel, or touch listener | Absent |
+| Equal-phase top/25%/50%/75%/bottom desired and rendered transforms | Exactly identical |
+| Frozen scroll, wheel, and touch-style event isolation | No motion-state change or direct transform write |
+| Autonomous progression on still content | 825 distinct transforms over 16s; maximum 16ms step `0.004px` |
+| Full-cycle continuity | Desired position returned exactly at `140000ms`; phase-aligned rendered transforms after warm-up were both `-0.006px` |
+| Abundant, 10px, 1.5px, and zero safe travel | Ranges reduced to `14px`, `4.5px`, `0.675px`, and `0px` |
+| Extreme landscape and tall-mobile sizing | Non-empty guarded intervals; Pass |
+| Every emitted transform, including fractional endpoints | Inside measured `safeMinY … safeMaxY`; Pass |
+| Resize, repeated resize, delayed fonts, and header measurement | Pass |
+| Hidden/visible and persisted pagehide/pageshow bfcache paths | Phase preserved; Pass |
+| Five repeated evaluations and explicit destruction | One motion loop; zero leaked listeners, frames, observer, or owner style |
+| Reduced motion and Save-Data, including live policy changes | Static after sizing with no autonomous loop; Pass |
+| Image selection, Accueil fallback, and dimension cache reuse | Pass; no post-ready cache-busted request |
+| Timer, dependency, and continuous layout-read guards | Pass |
+| Exact two-file scope, PR-overlap, secret, whitespace, animation, and edge reviews | Pass |
+| Chromium `151.0.7922.34` matrix | Pass |
+
+## Chromium validation
+
+Playwright `1.62.1` and Chromium `151.0.7922.34` loaded the exact rebased PR
+source into the local DDEV serving checkout. The tracked serving tree matched
+the PR commit while the ignored `drupal/.ddev` inputs retained their original
+fingerprint. The VPS was not accessed.
+
+The controlled browser harness froze the autonomous timestamp at `35000ms`.
+Top, 25%, 50%, 75%, and bottom positions across a `4975px` content scroll
+range all returned the same desired value (`-7px`), rendered state, and exact
+inline transform (`translate3d(0px, -0.998px, 0px)`). Mouse wheel,
+trackpad-style wheel sequences, touch scrolling, PageDown, PageUp, Home, End,
+and scripted `scrollTop` changes all moved the content while producing zero
+background transform writes and zero changes to anchor, direction, amplitude,
+phase, target, or velocity. A separate headed X11 probe dragged the actual
+native Chromium thumb on the production scrollframe from `scrollTop 0` to
+`4736`, generating nine trusted scroll events. At the same frozen `35000ms`
+phase, its complete observed motion tuple and exact transform remained
+byte-identical, with zero transform mutation during the drag.
+
+Two accelerated cycles sampled the production callback every `100ms` while a
+control world remained idle and a second world scrolled continuously. All
+`2800` paired samples matched exactly. Travel was `13.997px`, the maximum
+sampled step was `0.032px`, and the serialized transforms immediately before
+and at both `140000ms` and `280000ms` boundaries were continuously `-0.006px`.
+
+A separate native-clock trace ran for `142149ms`, collected `282` samples, and
+measured `13.996px` of travel. At `140135ms` the transform was `-0.003px`,
+demonstrating the approximately 140-second return without a boundary jump.
+
+### Edge and route matrix
+
+Thirty-three production-DOM cases covered desktop, tablet, tall mobile, short
+landscape, extreme landscape, long and very short content, and 100%, 150%, and
+200% reflow. They covered Accueil, Cours, Stages, Concerts, Association,
+D'Jam, Orchestre, and the default image. Accueil retained `accueil.jpg` on
+desktop and selected the existing `fontdefault.jpg` fallback on tall mobile.
+
+Every sampled transform remained inside its directly captured safe interval.
+Across the natural route/device matrix, the smallest observed bottom guard was
+exactly `2px`, the smallest top guard was greater than `3.7px`, and horizontal
+overflow was zero. Additional CSS-constrained production-DOM cases supplied
+directional capacities of `6px`, `1.5px`, and `0px`; the production controller
+reduced their amplitudes to `2.7px`, `0.675px`, and `0px`. No top or bottom edge
+was uncovered, including after transform rounding.
+
+### Lifecycle and resource matrix
+
+- resize bursts, a native post-ready resize sequence, delayed font readiness,
+  duplicate script evaluation, explicit destruction, and clean recreation
+  passed with one controller and one animation owner;
+- reduced motion and Save-Data completed sizing but scheduled no autonomous
+  animation frame and stayed static;
+- native post-ready resize and font windows issued no image request and no
+  cache-busted request. The older `bg-mirror-height.js` still makes its
+  pre-existing initial `?v=` probe before controller readiness; PR #91 creates
+  no such URL, and no post-ready probe remained;
+- a genuine headed Chrome tab was hidden through the browser UI for `2.5s`
+  with automation disconnected. BGFX callbacks stayed `67 → 67`, the
+  transform stayed exactly `-0.005px`, the first visible transform was
+  unchanged, and autonomous movement then resumed;
+- a genuine headed history navigation emitted `pagehide.persisted = true` and
+  `pageshow.persisted = true`. It retained document identity, one controller,
+  one owner style, and the exact `-0.088px` suspended transform before
+  resuming.
+
+No controller exception, failed background request, HTTP 5xx, external
+dependency, continuous-frame layout read, duplicate loop, listener leak, blank
+edge, or horizontal overflow was observed. Independent lifecycle and
+image-edge reviews found no source issue.
+
+### Observational integration notes
+
+The unrelated `/accueil`, `/cours-et-stages`, `/reservation-cours`, `/reserver`,
+`/ateliers`, and `/a-propos` observations made no code change. Navigation text
+visibly rendered `É`, `é`, `À`, `&`, and `’` on every route. Lowercase `à` is
+not present in the canonical labels, which is source-text absence rather than a
+glyph failure. Top-level and submenu labels both compute to
+`system-ui, "Segoe UI", Arial, sans-serif`; Chromium selected DejaVu Sans
+bold for top-level labels and DejaVu Sans regular for submenu labels.
+
+All 11 primary CTAs were visible in default, actual visited-history, hover,
+keyboard-focus, and active states; none was invisible before hover or became
+visible only on hover. The header `Réserver` CTA has an unrelated low-contrast
+hover/active state: `a:hover` changes its text from white to amber
+`rgb(245, 158, 11)` while `.btn--cta` keeps the teal
+`rgb(15, 118, 110)` background, reducing measured contrast from `5.4733:1` to
+`2.5485:1`. This PR intentionally does not repair that separate stylesheet
+defect.
+
+Machine-readable results and screenshots are outside the repository under
+`/tmp/pr91-background-no-scroll-runtime-20260901T103129Z`. The principal files
+are `logs/chromium-background-results.json`,
+`logs/chromium-real-hidden-tab.json`,
+`logs/chromium-headed-native-scrollbar.json`,
+`integration-observations.json`, and the `screenshots/` tree.
+
+## PR #91 runtime restoration
+
+Before any Drupal/runtime write, DDEV snapshot
+`pr91-background-no-scroll-prechromium-20260901T103129Z` was created. The
+baseline recorded:
+
+- normalized database SHA-256
+  `161ef10fa5a32b0075cc19c4abd9a3ec8b9d8e0039be392db83f676397134b4b`;
+- 314 canonical active-config entries with SHA-256
+  `d007925159064df3cdfa907ed7faf53ebc37215b74fa3185d5145f84dbbb2b38`;
+- 314 raw config rows with SHA-256
+  `0045e74f9223c99b7a48f1c7009717ac0f46fe2c35885cf91db935b6b3eb5bb4`;
+- 370 public-file entries, 245 files, and 838007 bytes with SHA-256
+  `51e4eb31f850df8f0f88b3406c0257c5c9f085fcb76c6bee7556acc26fa87d9b`;
+- Olivero as the default theme, Claro as the admin theme, front page `/node`,
+  zero nodes, 16 path aliases, and zero content menu links.
+
+After the browser matrix, the named snapshot was restored. The normalized SQL
+was byte-identical to the baseline after excluding only the dump-completion
+timestamp. Canonical and raw config fingerprints matched exactly, as did the
+theme/front-page state and all recorded entity counts. A second final snapshot
+restore removed the cache effects of those Drupal bootstrap checks; the final
+raw config and normalized SQL fingerprints again matched exactly.
+
+The public-file baseline was restored to the exact validated
+`drupal/web/sites/default/files` path. Its fingerprint matched exactly, and a
+checksum-aware `rsync --dry-run --delete` reported no difference. The serving
+checkout was returned to clean `release/prod` at
+`a673a078430501d29f1631b96edf57cb65ec4c19`. Temporary container and host
+helpers, browser packages, and test profiles were removed while the JSON logs
+and screenshots were retained under `/tmp`. DDEV was stopped with no remaining
+`ddev-unisonges-*` container, explicitly releasing its ownership.
+
+The historical Chromium evidence below validated the superseded implementation
+with a deliberate `5px` scroll contribution. It is retained only as historical
+context and is not the evidence for this zero-scroll-coupling correction.
+
+## Historical evidence for the superseded controller
+
+The records below are retained as evidence for the sizing, lifecycle, image,
+and autonomous-motion architecture inherited by this change. They exercised
+the earlier controller with a deliberate `5px` scroll contribution and do not
+validate the final zero-scroll-coupling decision.
+
+### Historical results — 30 August 2026
 
 PR #67 was verified merged, `origin` was fetched, and the PR branch was rebased
 onto `origin/release/prod` at `fe419c2`. The local `release/prod` branch was not
@@ -230,7 +465,7 @@ reruns is commit `b288f80f4c64a098441463bc8e66b7734913e238` (SHA-256
 | DDEV | Used locally after taking a snapshot; original state restored |
 | VPS | Not accessed |
 
-## Chromium validation
+### Historical Chromium validation
 
 The matrix ran against local DDEV with Playwright `1.55.0` and Chromium
 `140.0.7339.16`, in both headless and headed Xvfb sessions. Viewports included
@@ -239,8 +474,8 @@ desktop `1440 × 900`, tablet `1024 × 768`, tall tablet `820 × 1180`, and mobi
 long-scroll content; `/user/login` exercised the default image. The fixtures
 were local only and were removed by snapshot restoration.
 
-The 145-second motion trace exercised the same autonomous-motion core as the
-final commit. The two defects found afterward were confined to resize/font
+The 145-second motion trace exercised the autonomous-motion core inherited by
+this correction. The two defects found afterward were confined to resize/font
 interop with `bg-mirror-height.js`; all affected resize, font, resource,
 singleton, bfcache, reduced-motion, and Save-Data cases were rerun against the
 final JavaScript before the correction was committed.
