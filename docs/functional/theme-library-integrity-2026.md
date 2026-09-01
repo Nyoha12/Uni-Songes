@@ -2,11 +2,11 @@
 
 ## Périmètre et statut
 
-Cette modification est exclusivement statique. Elle répare les déclarations
-de bibliothèques du thème Uni-Songes sans modifier les templates, les feuilles
-de style, les scripts, PHP, la configuration synchronisée ou une URL publique.
-La base contrôlée est `origin/release/prod` au commit
-`a673a078430501d29f1631b96edf57cb65ec4c19`.
+Le diff de cette modification est exclusivement statique. Il répare les
+déclarations de bibliothèques du thème Uni-Songes sans modifier les templates,
+les feuilles de style, les scripts, PHP, la configuration synchronisée ou une
+URL publique. La base contrôlée est `origin/release/prod` au commit de fusion
+de la PR #91, `894f054f6c1ffe6a75d43dc04889fbaeea0a157d`.
 
 La stratégie A est retenue : la bibliothèque globale du thème devient
 directement `unisonges_theme/unisonges-layout`, et `contact` est une petite
@@ -16,11 +16,12 @@ sur chaque page sans supprimer un niveau de résolution ni une attache
 redondante. La stratégie A donne donc le graphe le plus court et la surface de
 maintenance la plus petite.
 
-La PR #84 a été fusionnée pendant l'audit ; la branche a alors été réalignée
-sur son commit de fusion. Cette phase reste néanmoins statique et ne suppose
-pas que ses ressources DDEV, Docker, Drush ou Chromium ont déjà été libérées.
-La présente PR doit rester en brouillon jusqu'à la validation de la matrice
-d'exécution différée.
+Après les fusions des PR #84 puis #91, la branche existante a été réalignée sur
+la dernière base avec conservation de la stratégie A. La source runtime exacte
+était le commit rebasé `f5dbbe9326eca2cb88bfa0c616da7eff97d58d55`.
+La matrice DDEV/Drupal/Chromium a ensuite réussi dans les quatre combinaisons
+agrégation/cache. Les ressources runtime ont été restaurées, arrêtées et
+libérées avant la validation statique finale.
 
 ## Audit initial complet
 
@@ -113,10 +114,10 @@ suivant :
   récursion. Le graphe livré est donc contrôlé explicitement comme acyclique.
 
 La déduplication est ainsi un comportement vérifié dans le code et les tests
-de la version verrouillée, pas une hypothèse. La correction ne s'appuie toutefois
-pas sur des listes copiées : les neuf actifs restent déclarés physiquement une
-seule fois. Le comptage des requêtes réelles restera une validation runtime
-obligatoire.
+de la version verrouillée, pas une hypothèse. La correction ne s'appuie
+toutefois pas sur des listes copiées : les neuf actifs restent déclarés
+physiquement une seule fois. Le comptage des requêtes réelles a ensuite été
+confirmé par la validation runtime ci-dessous.
 
 ## Graphe avant et après
 
@@ -191,8 +192,10 @@ résolvent donc. Le graphe de dépendances interne contient une seule arête,
 
 ## Validation statique
 
-Tous les contrôles sont exécutés depuis la racine de ce worktree, sans DDEV,
-Docker, Drush, navigateur ou accès VPS.
+Tous les contrôles statiques finaux sont exécutés depuis la racine de ce
+worktree et restent indépendants de DDEV, Docker, Drush et Chromium. La matrice
+runtime documentée plus bas a été menée séparément dans le checkout de service
+local. Aucun accès VPS n'a eu lieu.
 
 Le parsing strict porte sur les deux fichiers YAML modifiés avec Symfony YAML
 7.4.6, version verrouillée par `composer.lock`. Une revue structurelle
@@ -245,36 +248,194 @@ Résultats du contrôle statique final :
       ajouté ;
 - [x] revue indépendante du contrat de bibliothèque et du graphe Drupal.
 
-Le premier inventaire comptait 11 PR ouvertes, dont la PR #84. Celle-ci a été
-fusionnée pendant l'audit et ses quatre fichiers ont été intégrés à la nouvelle
-base avant la validation finale. L'inventaire final compte 10 autres PR
-ouvertes (#23, #82 et #85 à #92), toutes dirigées vers `release/prod`. Aucune
-ne modifie l'un des trois fichiers de cette PR. La PR #85 ne touche que son
-document, deux configurations et ses deux scripts Contact. Les PR #91 et #23
-modifient respectivement `bgfx-scroll-11.js` et `styles.css`, dont cette PR
-conserve seulement les déclarations existantes. L'intersection de noms de
+L'inventaire final compte 10 autres PR ouvertes vers `release/prod` : #82,
+#85 à #90, #92, #94 et #95. Aucune ne modifie l'un des trois fichiers de cette
+PR. La PR #85 ne touche que son document, deux configurations et ses deux
+scripts Contact. Les PR #94 et #95 touchent respectivement les templates de
+page et `styles.css`, que cette PR ne modifie pas. L'intersection de noms de
 fichiers reste vide.
 
-## Matrice runtime différée
+## Validation runtime réalisée
 
-Cette matrice doit être exécutée dès que la PR #84 libère ses ressources. Elle
-doit couvrir l'agrégation CSS/JS désactivée puis activée, et pour chaque mode un
-cache froid après reconstruction puis un cache chaud.
+### Récupération sûre et état initial
 
-| Cas                              | Vérification attendue                                                                     | Statut  |
-| -------------------------------- | ----------------------------------------------------------------------------------------- | ------- |
-| Reconstruction des caches Drupal | aucune erreur de découverte ou de dépendance de bibliothèque                              | différé |
-| Page d'accueil anonyme           | rendu complet ; feuilles, navigation et arrière-plan présents                             | différé |
-| Page ordinaire anonyme           | rendu complet ; aucun changement de shell ou de défilement                                | différé |
-| Page Contact anonyme             | rendu complet ; comportement Webform standard ; aucune exception de bibliothèque          | différé |
-| Page réservation anonyme         | tunnel et interactions inchangés                                                          | différé |
-| Navigation desktop               | menu, sous-menus, compactage et clavier inchangés                                         | différé |
-| Navigation mobile                | drawer, sous-menus, focus et fermeture inchangés                                          | différé |
-| Arrière-plan autonome            | hauteur, miroir et mouvement autonomes inchangés                                          | différé |
-| Comptage des requêtes CSS        | chacun des 4 chemins du thème exactement une fois ; aucun doublon avec ou sans agrégation | différé |
-| Comptage des requêtes JS         | chacun des 5 chemins du thème exactement une fois ; aucun doublon avec ou sans agrégation | différé |
-| Contact obsolète                 | aucune requête vers le `contact-form.js` du thème                                         | différé |
-| Journaux et console              | aucune `unknown library`, erreur PHP/JS ou requête d'actif en échec                       | différé |
+Le worktree de la PR était propre, sans travail suivi non validé. Le commit de
+la PR #91 a été prouvé ancêtre de `origin/release/prod`, puis la branche
+existante a été rebasée et poussée avec `--force-with-lease`. Aucun autre
+worktree, branche ou PR n'a été modifié.
 
-La PR reste en brouillon jusqu'à réussite de toutes les cellules dans les
-quatre combinaisons agrégation activée/désactivée et cache chaud/froid.
+Avant toute écriture DDEV, le snapshot nommé
+`pr93-theme-library-integrity-pre-runtime-20260901T145232Z` a été créé. Les
+empreintes et états de référence étaient :
+
+| Élément                                    | Référence avant test                                                                        |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| Base de données normalisée                 | `161ef10fa5a32b0075cc19c4abd9a3ec8b9d8e0039be392db83f676397134b4b`                          |
+| Configuration active brute, 314 lignes     | `07ec23fcbcbab78e48b746283be7ffb12fda49b5c59264fdf0fea31e0ec32702`                          |
+| Configuration active canonique, 314 objets | `90913af66f81a020108e9f093fb874f3c7b02d782f0e0b77a9ff2c3a5ce4c46c`                          |
+| Fichiers publics canoniques, 245 fichiers  | `4b1c467c828f6cececfa1245a8de996263476b7d9297f542552c1bc9407d2cac`                          |
+| Thèmes                                     | actifs `olivero`, `claro` ; défaut `olivero` ; administration `claro`                       |
+| Page d'accueil                             | `/node`                                                                                     |
+| Agrégation initiale                        | `css.preprocess=true`, `js.preprocess=true`                                                 |
+| Entités                                    | 0 nœud, 16 alias, 0 lien de menu, 7 utilisateurs, 0 soumission Webform, 0 commande Commerce |
+| Checkout de service                        | branche `release/prod`, commit `a673a078430501d29f1631b96edf57cb65ec4c19`                   |
+
+Le checkout de service a ensuite été placé en HEAD détachée sur la source PR
+exacte. L'empreinte canonique des fichiers ignorés `drupal/.ddev` est restée
+identique avant et après ce chargement (`cc889773a4fc5371436b423610dbf4f1fda259ca61c47de5a13db5dbbb2795e3`).
+Le thème a été activé localement par les API Drupal/Drush. Aucun import de
+configuration complet ou partiel n'a été utilisé.
+
+La base locale ne contenait aucun nœud et le module Commerce Cart était
+désactivé. Des fixtures étroites, marquées et réversibles ont donc été créées
+par les API d'entités : nœuds 7 et 8 pour exercer les templates Contact et
+réservation, pages aliasées pour les routes requises, une page ordinaire
+longue, un menu français représentatif et une page locale `/cart`. La position
+du bloc de titre a été alignée par l'API d'entité sur la configuration fusionnée
+de la PR #84. Aucun utilisateur, paiement, appel PayPal/Google ou soumission de
+formulaire n'a été créé.
+
+### Quatre modes agrégation/cache
+
+Chromium 151.0.7922.34 a exécuté les dix routes dans chaque mode. « Froid »
+signifie une reconstruction des caches Drupal juste avant le mode ; « chaud »
+réutilise ensuite ces caches. Le cache réseau du navigateur était désactivé
+pour rendre chaque comptage de requête explicite.
+
+| Mode | CSS        | JavaScript | Cache Drupal               | Résultat |
+| ---- | ---------- | ---------- | -------------------------- | -------- |
+| 1    | non agrégé | non agrégé | froid après reconstruction | réussi   |
+| 2    | non agrégé | non agrégé | chaud                      | réussi   |
+| 3    | agrégé     | agrégé     | froid après reconstruction | réussi   |
+| 4    | agrégé     | agrégé     | chaud                      | réussi   |
+
+Les 40 navigations principales ont renvoyé HTTP 200. Les empreintes du document
+HTML et les listes normalisées de balises CSS/JS sont identiques entre modes 1
+et 2, puis entre modes 3 et 4, pour les dix routes. Il n'existe donc ni erreur
+du premier accès, ni disparition après réchauffement.
+
+### Routes et comptages réseau
+
+Les valeurs suivantes sont les nombres totaux de requêtes de feuilles de style
+et de scripts par page. Elles incluent Drupal, le thème de base et les actifs
+propres à la route.
+
+| Route                                   | Modes 1/2 : CSS / JS | Modes 3/4 : CSS / JS | Résultat fonctionnel                            |
+| --------------------------------------- | -------------------: | -------------------: | ----------------------------------------------- |
+| `/accueil`                              |               43 / 9 |                7 / 6 | accueil, header et navigation visibles          |
+| page ordinaire `/pr93-library-ordinary` |               44 / 9 |                7 / 6 | contenu long visible, défilement disponible     |
+| `/contact`                              |               43 / 9 |                7 / 6 | contenu et deux actions visibles et navigables  |
+| `/reservation-cours`                    |               45 / 9 |                7 / 6 | formulaire et feuille spécifique visibles       |
+| `/reserver`                             |              54 / 35 |                7 / 8 | portail, formulaire et actions visibles         |
+| `/ateliers`                             |               43 / 9 |                7 / 6 | contenu visible                                 |
+| `/a-propos`                             |               43 / 9 |                7 / 6 | contenu visible                                 |
+| `/blog`                                 |               43 / 9 |                7 / 6 | contenu visible                                 |
+| `/forum`                                |               44 / 9 |                7 / 6 | contenu visible                                 |
+| `/cart`                                 |               44 / 9 |                7 / 6 | fixture locale visible, sans opération Commerce |
+
+Les totaux par mode sont 446 CSS et 116 JS sans agrégation, puis 70 CSS et
+62 JS avec agrégation. Dans chacun des modes 3/4, les pages cumulent 30
+occurrences de balises pointant vers des agrégats CSS et 11 occurrences de
+balises d'agrégats JS, correspondant à 12 URL CSS et 3 URL JS distinctes. Les
+neuf actifs Uni-Songes, qui conservent `preprocess: false`, restent directs dans
+les quatre modes :
+
+- chaque mode contient exactement 40 requêtes canoniques CSS, soit les quatre
+  chemins attendus une fois sur chacune des dix routes ;
+- chaque mode contient exactement 50 requêtes canoniques JS, soit les cinq
+  chemins attendus une fois sur chacune des dix routes ;
+- toutes répondent 200 ; aucun doublon de balise, de requête, d'URL effective,
+  de contenu CSS ou de contrôleur JavaScript n'est observé sur une même page ;
+- aucun actif CSS/JS ne répond 404 et aucune URL d'actif obsolète `global` ou
+  `contact` n'est demandée ;
+- `contact-form.js` compte 0 balise, 0 entrée Resource Timing et 0 requête dans
+  les 40 pages.
+
+Le journal Drupal a été borné au `wid` 178 avant la matrice : aucune entrée
+ultérieure n'a été créée. Le scan des journaux web, des consoles Chromium, des
+exceptions de page et des réponses ne trouve aucune bibliothèque inconnue ou
+manquante, aucun avertissement/fatal PHP, aucune erreur JavaScript et aucune
+réponse CSS/JS en échec.
+
+### Rendu, navigation et Contact
+
+Sur l'accueil et la page ordinaire, un seul `main#main-content`, un seul H1
+visible, aucun ID dupliqué et aucun débordement horizontal subsistent. Le
+header, le contenu et la navigation sont visibles dans chaque mode. Le drawer
+mobile s'ouvre et se ferme, son état ARIA suit son état visuel et les sous-menus
+desktop/mobile s'ouvrent une seule fois sans collision.
+
+Les libellés `Cours & Stages`, `Concerts & Événements`, `Projets collectifs`,
+`À propos` et `Contact`, ainsi que `É`, `é`, `À`, `&` et `’`, sont rendus sans
+mojibake ni boîte de remplacement. La famille calculée est
+`system-ui, "Segoe UI", Arial, sans-serif` ; Chromium sélectionne DejaVu Sans
+Bold. La revue visuelle des captures desktop/mobile ne montre aucune collision.
+
+Sur Contact, `contact` se résout, charge transitivement `unisonges-layout` une
+fois et n'active aucun formulaire ou contrôleur Contact obsolète. Dans un
+contrôle complémentaire de chacun des quatre modes, les deux liens ont été
+réellement suivis : `/stages` et `/reserver` répondent 200, le contenu attendu
+reste visible et aucune soumission n'est effectuée.
+
+### Régression arrière-plan PR #91
+
+Dans chaque mode, le contrôleur `window.__unisongesBgfxScroll11`, son style de
+propriété de mouvement et les trois nœuds d'arrière-plan existent chacun une
+seule fois. La sonde `requestAnimationFrame` observe au maximum un callback
+`animate` en attente, donc aucune deuxième boucle.
+
+Sur 4,5 secondes, le déplacement autonome mesuré varie de 0,171 à 0,178 px.
+Le scrollframe long offre 2 183 px de défilement ; sa mise en bas puis son
+retour en haut laissent la transformation d'arrière-plan strictement identique.
+Les bords haut et bas restent couverts, les trois couches ont
+`pointer-events: none`, et les liens restent cliquables. Avec
+`prefers-reduced-motion: reduce`, la transformation reste statique et aucun
+callback `animate` ne s'exécute. Le graphe de bibliothèques ne duplique, ne
+supprime et ne casse donc pas le contrôleur final fusionné par la PR #91.
+
+### Observation CTA hors périmètre
+
+Une seconde sonde a séparé l'état visité pur des états hover/active. Les ratios
+de contraste sont stables dans les quatre modes. Le champ `visited` de la sonde
+principale a été écarté parce que son pointeur restait sur le lien ; la colonne
+« Visité » ci-dessous provient de la sonde ciblée exécutée sans survol :
+
+| CTA                |   Normal |   Visité |    Hover |    Focus |   Active |
+| ------------------ | -------: | -------: | -------: | -------: | -------: |
+| Header `Réserver`  | 5,4733:1 | 5,4733:1 | 2,5485:1 | 5,4733:1 | 2,5485:1 |
+| CTA de réservation | 5,4733:1 | 5,4733:1 | 5,4733:1 | 5,4733:1 | 5,4733:1 |
+
+La réparation de bibliothèque ne change donc pas le défaut connu de contraste
+hover/active du CTA du header. Il reste la propriété de la PR CSS dédiée ;
+`styles.css` n'est pas modifié ici.
+
+Les formulaires locaux de réservation exposaient aussi des IDs dupliqués
+préexistants (`edit-actions`, puis `edit-submit` sur `/reserver`). L'accueil et
+la page ordinaire satisfont bien la garde d'IDs de ce périmètre ; cette
+observation de formulaire est indépendante du graphe de bibliothèques et n'est
+pas corrigée dans cette PR.
+
+### Nettoyage et restauration
+
+Les 15 nœuds, 15 alias et 11 liens de menu de la matrice principale, puis les
+quatre fixtures étroites de contrôle complémentaire, ont été supprimés par
+leurs IDs et marqueurs exacts avant restauration. Le snapshot nommé a été
+restauré, puis les fichiers publics ont été remis depuis leur copie de
+référence. Les résultats finaux sont identiques aux valeurs initiales :
+
+| Garde après restauration       | Résultat                                                                                                          |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| Base de données normalisée     | `161ef10fa5a32b0075cc19c4abd9a3ec8b9d8e0039be392db83f676397134b4b`                                                |
+| Configuration active brute     | `07ec23fcbcbab78e48b746283be7ffb12fda49b5c59264fdf0fea31e0ec32702`                                                |
+| Configuration active canonique | `90913af66f81a020108e9f093fb874f3c7b02d782f0e0b77a9ff2c3a5ce4c46c`                                                |
+| Fichiers publics canoniques    | `4b1c467c828f6cececfa1245a8de996263476b7d9297f542552c1bc9407d2cac`, archive avant/après identique octet par octet |
+| Entités                        | 0 fixture, 0 nœud, 16 alias, 0 lien de menu, 7 utilisateurs, 0 soumission, 0 commande                             |
+| Thèmes et accueil              | `olivero`/`claro`, défaut `olivero`, administration `claro`, accueil `/node`                                      |
+| Agrégation                     | valeurs initiales `true`/`true` restaurées                                                                        |
+| Checkout de service            | `release/prod` propre au commit initial `a673a078430501d29f1631b96edf57cb65ec4c19`                                |
+
+Les helpers et paquets navigateur temporaires ont été retirés. Les preuves JSON,
+les synthèses, les archives d'empreinte et 12 captures représentatives ont été
+conservées sous
+`/tmp/pr93-theme-library-integrity-20260901T145232Z`. DDEV et son routeur sont
+arrêtés ; la propriété runtime est libérée.
