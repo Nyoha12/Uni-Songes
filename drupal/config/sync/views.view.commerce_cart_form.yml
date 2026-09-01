@@ -36,7 +36,7 @@ display:
           entity_type: commerce_order_item
           entity_field: purchased_entity
           plugin_id: field
-          label: Item
+          label: Article
           exclude: false
           alter:
             alter_text: false
