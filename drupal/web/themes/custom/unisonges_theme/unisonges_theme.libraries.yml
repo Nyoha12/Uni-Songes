@@ -15,3 +15,10 @@ unisonges-layout:
 contact:
   dependencies:
     - unisonges_theme/unisonges-layout
+
+auth-account:
+  css:
+    theme:
+      css/auth-account.css: { preprocess: false }
+  dependencies:
+    - unisonges_theme/unisonges-layout
