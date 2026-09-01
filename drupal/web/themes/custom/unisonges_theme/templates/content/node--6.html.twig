@@ -8,7 +8,10 @@
     ]
   } only %}
 
-  {% if content.body %}
-    <section class="panel node-body">{{ content.body }}</section>
+  {% set rendered_body = content.body|default(null)|render %}
+  {% set meaningful_body_tags = '<img><video><audio><iframe><svg><object><embed><canvas><drupal-media><drupal-render-placeholder>' %}
+  {% set body_text = rendered_body|striptags(meaningful_body_tags)|replace({'&nbsp;': '', '&#160;': '', '&#xA0;': '', '&#xa0;': '', "\xC2\xA0": ''})|trim %}
+  {% if body_text %}
+    <div class="panel node-body unisonges-detail-section">{{ rendered_body }}</div>
   {% endif %}
 </article>

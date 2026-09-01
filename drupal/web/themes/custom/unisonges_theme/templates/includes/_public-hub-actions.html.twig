@@ -1,0 +1,13 @@
+{% set rendered_actions %}
+  {% for action in actions|default([]) %}
+    {% if (action.url|default('')) and (action.label|default('')) %}
+      <a class="btn unisonges-offer-card__cta" href="{{ action.url }}">{{ action.label }}</a>
+    {% endif %}
+  {% endfor %}
+{% endset %}
+
+{% if rendered_actions|striptags|trim %}
+  <nav class="actions-row unisonges-detail-section" aria-label="{{ aria_label|default('Actions principales') }}">
+    {{ rendered_actions }}
+  </nav>
+{% endif %}
