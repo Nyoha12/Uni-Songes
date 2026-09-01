@@ -71,8 +71,10 @@
 /contact/index/ https://unisonges.fr/contact 301
 /contact/index.html https://unisonges.fr/contact 301
 
-/reserver-un-cours https://unisonges.fr/reservation-cours 301
-/reserver-un-cours/ https://unisonges.fr/reservation-cours 301
-/reserver-un-cours/index https://unisonges.fr/reservation-cours 301
-/reserver-un-cours/index/ https://unisonges.fr/reservation-cours 301
-/reserver-un-cours/index.html https://unisonges.fr/reservation-cours 301
+# A fixed non-sensitive query replaces legacy booking parameters instead of
+# forwarding potentially sensitive values to the Drupal reservation flow.
+/reserver-un-cours https://unisonges.fr/reservation-cours?utm_source=legacy-pages 301
+/reserver-un-cours/ https://unisonges.fr/reservation-cours?utm_source=legacy-pages 301
+/reserver-un-cours/index https://unisonges.fr/reservation-cours?utm_source=legacy-pages 301
+/reserver-un-cours/index/ https://unisonges.fr/reservation-cours?utm_source=legacy-pages 301
+/reserver-un-cours/index.html https://unisonges.fr/reservation-cours?utm_source=legacy-pages 301
