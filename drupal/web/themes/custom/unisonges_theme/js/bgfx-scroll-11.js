@@ -28,7 +28,7 @@
   if (!body || !bgfx || !scrollLayer || !layer || !frame) return;
 
   const DEFAULT_URL = '/themes/custom/unisonges_theme/images/bgsrc/fontdefault.jpg';
-  const AUTONOMOUS_PERIOD_MS = 140000;
+  const AUTONOMOUS_PERIOD_MS = 44000;
   const AUTONOMOUS_MAX_PX = 14;
   const EDGE_GUARD_PX = 2;
   const POSITION_EASE_MS = 650;

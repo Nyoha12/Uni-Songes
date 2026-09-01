@@ -1,16 +1,16 @@
 # Autonomous background motion — 2026
 
-Status: the final zero-scroll-coupling behavior is implemented and validated
-with deterministic and real Chromium coverage. PR #84 was merged before the
-runtime phase, releasing its exclusive DDEV and Chromium ownership. The
-recorded runtime was restored, so PR #91 is ready for review. The VPS was not
-accessed.
+Status: the speed-only follow-up is implemented and deterministically validated.
+It preserves the zero-scroll-coupling behavior merged in PR #91. Real Chromium
+validation remains deferred until the system-message task releases DDEV. DDEV,
+Docker, Drush, Chromium, and the VPS are not used for this follow-up.
 
 ## Scope
 
-This change restores a slow, continuous drift to the existing fixed BGFX
-background. It changes no public URL, template, stylesheet, route data, image,
-Drupal configuration, or dependency. The implementation is confined to:
+This follow-up tunes only the cadence of the existing continuous BGFX drift. It
+changes no public URL, template, stylesheet, route data, image, Drupal
+configuration, amplitude, easing, bound calculation, or dependency. The
+implementation is confined to:
 
 - `drupal/web/themes/custom/unisonges_theme/js/bgfx-scroll-11.js`;
 - this validation record.
@@ -65,7 +65,7 @@ compound the bounded drift or continue in static modes.
 
 Autonomous movement uses a deterministic cosine interpolation:
 
-- one round trip lasts `140000 ms`;
+- one round trip lasts `44000 ms`;
 - autonomous displacement is at most `14 px`;
 - the available autonomous amplitude shrinks below `14px`, including to zero,
   whenever the measured safe travel cannot support the preferred range;
@@ -82,7 +82,7 @@ At each animation frame, the target is calculated only from the safe anchor,
 autonomous phase, autonomous range, and chosen autonomous direction:
 
 ```text
-phase              = elapsedMs / 140000ms * 2π
+phase              = elapsedMs / 44000ms * 2π
 autonomousProgress = 0.5 - 0.5 * cos(phase)
 desiredY            = clamp(
   anchorY + direction * autonomousRange * autonomousProgress,
@@ -91,9 +91,21 @@ desiredY            = clamp(
 )
 ```
 
-The cosine has the same value and zero slope at both sides of the `140000ms`
+The cosine has the same value and zero slope at both sides of the `44000ms`
 boundary. Modulo wrap therefore creates no target jump or reset; the existing
 continuous interpolation remains smooth across the boundary.
+
+The cadence comes from the last effective autonomous background rule before
+the `140000ms` controller was introduced. In commit `8f3900a`, the effective
+CSS cascade combined `uniBgPanX ... ease-in-out infinite alternate` with the
+final `animation-duration: 22s` override, explicitly marked as the subtle pan
+tune. That override remained the effective autonomous cadence until the
+controller took sole motion ownership and neutralized the CSS animation. Each
+leg lasted 22 seconds, so its origin-to-origin round trip lasted 44 seconds. The
+current controller therefore uses `44000ms`. Its preferred 14px target leg
+averages about `0.636px/s` and peaks at about `1px/s`, well below the former
+35px leg's `1.59px/s` average, while retaining all later safety and lifecycle
+guarantees.
 
 The controller does not listen for scroll, wheel, or touch motion and does not
 read `frame.scrollTop`, `frame.scrollHeight`, or `frame.clientHeight`.
@@ -259,7 +271,49 @@ The final pre-commit pass must stage only the two guarded files before
 `git diff --cached --check`; after commit, also run
 `git diff --check "$bg_base_ref"...HEAD`.
 
-### Scroll-decoupling results — 1 September 2026
+### Speed-only deterministic results — 1 September 2026
+
+The validated base is `origin/release/prod` at `2bfb2b3`. The tuned JavaScript
+has SHA-256 `7dba25e81613ca6c45d9f0920db5656f20b89db30605112c23f94dc0bcde33f0`.
+Its only production-code difference is `AUTONOMOUS_PERIOD_MS`; replacing
+`44000` with `140000` reproduces the merged PR #91 source SHA-256 exactly:
+`13e268738655b2cc911c9b90642c1504b27b6a63bf3571ca26018d6d8dc6754f`.
+
+The deterministic PR #91 Node harness was recovered into `/tmp`, adapted to
+derive all phase timestamps from the production period, and run twice with
+byte-identical output. It executes the unmodified production controller in
+isolated mocked DOM worlds with an explicitly stepped animation-frame queue;
+no production test API or harness file is tracked. The adapted harness SHA-256
+is `5619cca5db7a12eb88255095910a0e81d9f3d967c0ac1c7c8627b27ce19d23ac`.
+
+```bash
+node --check /tmp/unisonges-bgfx-zero-scroll.b6blYM/harness.js
+node /tmp/unisonges-bgfx-zero-scroll.b6blYM/harness.js "$bg_js"
+```
+
+| Check | Result |
+| --- | --- |
+| `node --check` with Node `v24.20.0` and targeted ESLint `8.57.1` | Pass |
+| Deterministic timing | Period `44000ms`; quarter `11000ms`; extreme `22000ms`; two cycles `88000ms`; repeated output byte-identical |
+| Two-cycle continuity | Desired target returns exactly at each boundary; phase-aligned rendered transforms at `44000ms` and `88000ms` are both `-0.055px` |
+| Autonomous progression | 965 distinct transforms over 16s; maximum 16ms step `0.016px`; zero continuous layout reads |
+| Equal-phase top/25%/50%/75%/bottom | Desired `-7px` and rendered transform `-0.998px` are exactly identical |
+| Frozen scroll, wheel, and touch isolation | Four 5-event sequences; zero listener, motion-state change, or direct transform write |
+| Abundant, 10px, 1.5px, and zero safe travel | Ranges reduce to `14px`, `4.5px`, `0.675px`, and `0px` |
+| Fractional bounds and extreme viewport geometries | Every emitted transform remains inside its measured safe interval; no blank edge |
+| Resize, repeated resize, delayed fonts, visibility, and bfcache | Pass; hidden time excluded and phase preserved |
+| Five repeated evaluations and explicit destruction | At most one motion frame; zero leaked listener, frame, or observer |
+| Reduced motion and Save-Data, including live changes | Static after sizing with zero autonomous frame while either policy denies motion |
+| Route image, Accueil fallback, and dimension cache reuse | Pass; zero cache-busted request |
+| Scroll, timer, dependency, layout-read, whitespace, and exact two-file guards | Pass |
+| Real Chromium validation of the `44000ms` tune | Deferred until the system-message task releases DDEV and Chromium |
+
+### Merged PR #91 scroll-decoupling baseline — 1 September 2026
+
+The results below describe the merged `140000ms` implementation and establish
+the scroll-decoupling baseline inherited by this follow-up. Its original
+timestamps and measurements are intentionally retained as historical evidence;
+the separate speed-tuning results above validate the current `44000ms` period.
 
 The existing PR #91 branch was fetched and rebased onto `origin/release/prod`
 at `a673a078430501d29f1631b96edf57cb65ec4c19`, the merge commit for PR #84.
@@ -302,7 +356,7 @@ next-frame difference from an untouched control.
 | Exact two-file scope, PR-overlap, secret, whitespace, animation, and edge reviews | Pass |
 | Chromium `151.0.7922.34` matrix | Pass |
 
-## Chromium validation
+## Historical Chromium validation for merged PR #91
 
 Playwright `1.62.1` and Chromium `151.0.7922.34` loaded the exact rebased PR
 source into the local DDEV serving checkout. The tracked serving tree matched
