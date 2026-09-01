@@ -170,6 +170,15 @@ function unisonges_theme_preprocess_page(array &$variables): void {
 }
 
 /**
+ * Implements hook_theme_suggestions_HOOK_alter() for status messages.
+ */
+function unisonges_theme_theme_suggestions_status_messages_alter(array &$suggestions): void {
+  // Barrio can otherwise select a fixed alert or toast variant. Keep every
+  // system message in the public theme's main-content flow instead.
+  $suggestions[] = 'status_messages__unisonges_inline';
+}
+
+/**
  * Implements hook_theme_suggestions_page_alter().
  *
  * Force the front layout on /accueil even if Drupal doesn't treat it as <front>.
