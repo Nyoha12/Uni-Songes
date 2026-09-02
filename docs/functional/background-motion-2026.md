@@ -1,9 +1,10 @@
 # Autonomous background motion — 2026
 
-Status: the speed-only follow-up is implemented and deterministically validated.
-It preserves the zero-scroll-coupling behavior merged in PR #91. Real Chromium
-validation remains deferred until the system-message task releases DDEV. DDEV,
-Docker, Drush, Chromium, and the VPS are not used for this follow-up.
+Status: the speed-only follow-up is implemented and fully validated. It
+preserves the zero-scroll-coupling behavior merged in PR #91, is rebased onto
+the `release/prod` merge of PR #99, and has passed deterministic and real
+Chromium validation. The local Drupal runtime was restored exactly and stopped;
+the VPS was not accessed.
 
 ## Scope
 
@@ -271,10 +272,13 @@ The final pre-commit pass must stage only the two guarded files before
 `git diff --cached --check`; after commit, also run
 `git diff --check "$bg_base_ref"...HEAD`.
 
-### Speed-only deterministic results — 1 September 2026
+### Speed-only deterministic results — 2 September 2026
 
-The validated base is `origin/release/prod` at `2bfb2b3`. The tuned JavaScript
-has SHA-256 `7dba25e81613ca6c45d9f0920db5656f20b89db30605112c23f94dc0bcde33f0`.
+The validated base is `origin/release/prod` at
+`5b8e80c2e2ac266978ba2be0b8eee2c56a04605f`, the merge of PR #99. The exact
+rebased controller tested in Drupal is commit
+`464facc8243a5fbaf2aac152f7669f4e1e3b642f`; its JavaScript has SHA-256
+`7dba25e81613ca6c45d9f0920db5656f20b89db30605112c23f94dc0bcde33f0`.
 Its only production-code difference is `AUTONOMOUS_PERIOD_MS`; replacing
 `44000` with `140000` reproduces the merged PR #91 source SHA-256 exactly:
 `13e268738655b2cc911c9b90642c1504b27b6a63bf3571ca26018d6d8dc6754f`.
@@ -306,7 +310,115 @@ node /tmp/unisonges-bgfx-zero-scroll.b6blYM/harness.js "$bg_js"
 | Reduced motion and Save-Data, including live changes | Static after sizing with zero autonomous frame while either policy denies motion |
 | Route image, Accueil fallback, and dimension cache reuse | Pass; zero cache-busted request |
 | Scroll, timer, dependency, layout-read, whitespace, and exact two-file guards | Pass |
-| Real Chromium validation of the `44000ms` tune | Deferred until the system-message task releases DDEV and Chromium |
+| Real Chromium validation of the `44000ms` tune | Pass; two independent native traces covered more than two complete cycles |
+
+### Real Chromium results — 2 September 2026
+
+Playwright `1.62.1` and Chrome for Testing `151.0.7922.34` loaded the exact
+rebased source above from the DDEV serving checkout. The served and worktree
+JavaScript matched byte-for-byte. All browser logs, traces, and screenshots are
+outside the repository under
+`/tmp/pr98-bgfx-44s-runtime-20260902T072127Z`; no runtime helper is tracked.
+
+#### Cadence and continuity
+
+A native wall-clock/`requestAnimationFrame` capture recorded `2032` raw samples
+over `93.030s`, or `2.114` complete cycles. The fitted period was `43.9997s`
+and real travel was `13.970px` inside a measured `0 … 88px` safe interval.
+Position was `0.053795px` at `44s` and `0.054384px` at `88s`; the
+cycle-to-cycle difference was `0.000589px`, below the controller's `0.001px`
+serialization precision. Continuity-fit gaps were `0.000674px` at `44s` and
+`0.000169px` at `88s`. The largest native-frame write was `0.082px`, while
+writes straddling those boundaries were only `-0.002px` and `-0.004px`.
+
+An independent native harness ran for `90.190s`, sampled `179` times, measured
+`13.962px` of travel, and found the same `-0.032px` transform nearest both the
+`44s` and `88s` origins. The controlled two-cycle worlds were byte-identical
+with and without continuous scrolling. These traces make the nearly 14px
+round trip clearly perceptible while the small per-frame changes, zero-slope
+turns, visual review, and absence of a boundary reset keep it subtle.
+
+#### Scroll independence
+
+At the frozen `11000ms` quarter phase, top, 25%, 50%, 75%, and bottom had the
+same phase, anchor, direction, range, desired target, rendered state, and exact
+transform. Mouse wheel, trackpad-like wheel events, touch, PageDown, PageUp,
+Home, End, scripted `scrollTop`, and a headed native scrollbar drag all moved
+the content while producing zero wrapper-style write and zero change to that
+motion tuple. The native drag used the real 30px scrollbar with page CDP
+disconnected; it moved the scrollframe from `0` to `4214` and retained the
+exact `-0.998px` background transform.
+
+#### Edge, route, and reflow safety
+
+A dedicated 30-case matrix sampled `5910` real production frames through two
+cycles. It covered all eight route-specific/default images, desktop, tablet,
+mobile portrait, mobile landscape, `320px`, 100%, 150%, and 200% reflow, long
+and short pages, Accueil fallback, and constrained safe capacities. Every
+sample stayed inside its measured bounds after fractional rounding. The
+smallest observed guards were `26px` at the top and `2px` at the bottom, with
+no horizontal overflow or blank edge. Forced directional capacities of
+`40px`, `10px`, `1.5px`, and `0px` produced autonomous ranges of `14px`,
+`4.5px`, `0.675px`, and `0px`, confirming automatic reduction through zero.
+The recovered PR #91 matrix independently passed 33 route/device/reflow cases.
+
+#### Lifecycle and static policies
+
+Repeated and native resize, delayed fonts, hidden/visible, pagehide/pageshow,
+persisted bfcache, five repeated evaluations, explicit destruction, and clean
+recreation all passed with one controller, one owner style, and no leaked
+frame, listener, observer, asset, or cache-busted request. A true headed native
+tab switch kept the transform exactly `-0.113px` throughout `3s` hidden with
+automation disconnected, then resumed smoothly. A separate raw Chrome history
+probe emitted `pagehide.persisted = true` and `pageshow.persisted = true`, kept
+the same document/controller identity, and held exactly `-0.11px` while
+suspended. Reduced motion and Save-Data retained sizing but stayed static with
+no autonomous frame. No console exception, failed background request, HTTP
+5xx, or continuous-loop layout read was observed.
+
+#### PR #99 authentication integration
+
+`/user/login`, `/user/register`, and `/user/password` each passed desktop,
+tablet, mobile portrait, mobile landscape, `320px`, 150%, and 200% reflow, and
+the owner profile passed authenticated validation. Across 23 route visits the
+background remained subtle and readable around the opaque authentication
+surface; long-form scrolling did not change it. Messages remained inline,
+controls stayed hittable and focusable, and each page retained exactly one
+background asset/controller. There was no duplicate title/message/controller,
+blocked interaction, PHP warning from the run, console error, or HTTP 5xx.
+
+#### Runtime restoration
+
+Before the first runtime write, named DDEV snapshot
+`pr98-bgfx-44s-pr99-pre-runtime-20260902T072127Z` was created. Its archive
+SHA-256 is
+`bef3601b570554fab2aaef8acca17906cdbf36f5def0c58c006a42ae014a797c`.
+The baseline recorded:
+
+- normalized database SHA-256
+  `161ef10fa5a32b0075cc19c4abd9a3ec8b9d8e0039be392db83f676397134b4b`;
+- 314 active-config rows with SHA-256
+  `07ec23fcbcbab78e48b746283be7ffb12fda49b5c59264fdf0fea31e0ec32702`;
+- public-files SHA-256
+  `fb1121f1100122f262f4e2910627a6241457b5abc157ef2cb96bee860a6da1ba`;
+- users SHA-256
+  `374162b81e6886c2b4c86a4853ba116dcad9e591c984ad0ff07a6b66e9aa8623`;
+- path-alias SHA-256
+  `d02e6fe25774d1f5e85f53b9bd31e7bade6f64613be4854c082ff1305d955f85`;
+- ignored DDEV static-input SHA-256
+  `d9b3649ca9472695a552afcea78463930072e5b22e87515d2456ab8ca35c0818`;
+- Olivero/Claro as default/admin themes, front page `/node`, zero nodes, seven
+  users, and 16 aliases.
+
+After testing, the snapshot and public files were restored and verified. A
+second authoritative snapshot restore removed first-audit cache effects; the
+normalized database, active config, public files, users, aliases, entity
+counts, themes, front page, and ignored DDEV inputs all matched their baseline
+fingerprints exactly. Fixture counts were zero. The serving checkout was
+returned clean to `release/prod` at
+`5b8e80c2e2ac266978ba2be0b8eee2c56a04605f`. Browser profiles and runtime
+helpers were removed while evidence remained under `/tmp`. DDEV was stopped
+and unlisted with no `ddev-unisonges-*` container. The VPS was not accessed.
 
 ### Merged PR #91 scroll-decoupling baseline — 1 September 2026
 
