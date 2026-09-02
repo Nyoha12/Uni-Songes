@@ -229,6 +229,19 @@ function editorial_home_node_identity(NodeInterface $node): array {
 }
 
 /**
+ * Exact revision metadata retained so rollback can restore the original row.
+ */
+function editorial_home_revision_identity(NodeInterface $node): array {
+  return [
+    'revision_id' => (int) $node->getRevisionId(),
+    'revision_user_id' => (int) $node->getRevisionUserId(),
+    'revision_created' => (int) $node->getRevisionCreationTime(),
+    'revision_log_message' => $node->getRevisionLogMessage(),
+    'changed' => (int) $node->getChangedTime(),
+  ];
+}
+
+/**
  * Stable identity of the one PathAlias entity.
  */
 function editorial_home_alias_identity(object $alias): array {
@@ -284,6 +297,7 @@ function editorial_home_resolve_page(string $alias, string $expected_title): arr
   return [
     'node' => $node,
     'node_identity' => editorial_home_node_identity($node),
+    'revision_identity' => editorial_home_revision_identity($node),
     'alias' => $alias_entity,
     'alias_identity' => editorial_home_alias_identity($alias_entity),
     'body' => editorial_home_body_snapshot($node),
@@ -389,18 +403,31 @@ function editorial_home_source_inventory(string $repo_root): array {
     'drupal/composer.lock',
     'drupal/config/sync/block.block.unisonges_blog_posts.yml',
     'drupal/config/sync/block.block.unisonges_editorial_home.yml',
+    'drupal/config/sync/block.block.unisonges_forum_blog_proposal.yml',
+    'drupal/config/sync/block.block.unisonges_forum_topics.yml',
+    'drupal/config/sync/core.base_field_override.node.forum_topic.promote.yml',
+    'drupal/config/sync/core.base_field_override.node.forum_topic.status.yml',
+    'drupal/config/sync/core.entity_form_display.node.forum_topic.default.yml',
+    'drupal/config/sync/core.entity_view_display.node.forum_topic.default.yml',
+    'drupal/config/sync/core.entity_view_display.node.forum_topic.teaser.yml',
     'drupal/config/sync/core.extension.yml',
+    'drupal/config/sync/field.field.comment.comment.comment_body.yml',
+    'drupal/config/sync/field.field.node.forum_topic.body.yml',
+    'drupal/config/sync/field.field.node.forum_topic.comment.yml',
     'drupal/config/sync/field.field.node.article.field_tags.yml',
     'drupal/config/sync/field.field.node.page.body.yml',
     'drupal/config/sync/field.storage.node.field_tags.yml',
     'drupal/config/sync/filter.format.full_html.yml',
     'drupal/config/sync/node.type.article.yml',
+    'drupal/config/sync/node.type.forum_topic.yml',
     'drupal/config/sync/node.type.page.yml',
     'drupal/config/sync/system.site.yml',
     'drupal/config/sync/system.theme.yml',
     'drupal/config/sync/taxonomy.vocabulary.tags.yml',
     'drupal/config/sync/user.role.anonymous.yml',
     'drupal/config/sync/views.view.blog_posts.yml',
+    'drupal/config/sync/views.view.forum_topics.yml',
+    'drupal/config/sync/webform.webform.forum_blog_proposal.yml',
     'drupal/scripts/apply-content-architecture-2026.sh',
     'drupal/scripts/apply-editorial-home-blog-2026.sh',
     'drupal/scripts/editorial-home-blog-config.php',
@@ -819,7 +846,7 @@ function editorial_home_validate_rollback_state(
     'contract',
     'homepage',
   ], 'Rollback state');
-  if (($raw['version'] ?? NULL) !== 1
+  if (($raw['version'] ?? NULL) !== 2
     || ($raw['feature'] ?? NULL) !== EDITORIAL_HOME_MODULE
     || ($raw['site_uuid'] ?? NULL) !== EDITORIAL_HOME_SITE_UUID
     || !editorial_home_data_equals($raw['contract'] ?? NULL, $contract)
@@ -832,6 +859,8 @@ function editorial_home_validate_rollback_state(
     'alias',
     'original_revision_id',
     'target_revision_id',
+    'original_revision',
+    'target_revision',
     'original_body',
     'reviewed_prestate',
   ], 'Rollback homepage state');
@@ -840,6 +869,16 @@ function editorial_home_validate_rollback_state(
     || !is_int($homepage['original_revision_id'] ?? NULL)
     || ($homepage['original_revision_id'] ?? 0) < 1
     || ($homepage['target_revision_id'] ?? NULL) !== $home['revision_id']
+    || !is_array($homepage['original_revision'] ?? NULL)
+    || !is_array($homepage['target_revision'] ?? NULL)
+    || ($homepage['original_revision']['revision_id'] ?? NULL)
+      !== ($homepage['original_revision_id'] ?? NULL)
+    || ($homepage['target_revision']['revision_id'] ?? NULL)
+      !== ($homepage['target_revision_id'] ?? NULL)
+    || !editorial_home_data_equals(
+      $homepage['target_revision'] ?? NULL,
+      $home['revision_identity'],
+    )
     || !is_array($homepage['original_body'] ?? NULL)) {
     editorial_home_fail('The rollback copy does not identify the current /accueil entity and target revision exactly.');
   }
@@ -851,6 +890,26 @@ function editorial_home_validate_rollback_state(
   if ($prestate === 'editorial_home_target'
     || ($homepage['reviewed_prestate'] ?? NULL) !== $prestate) {
     editorial_home_fail('The retained /accueil body is not the exact reviewed pre-state.');
+  }
+  $storage = \Drupal::entityTypeManager()->getStorage('node');
+  if (!$storage instanceof RevisionableStorageInterface) {
+    editorial_home_fail('Node storage lost revision support while validating rollback state.');
+  }
+  $original_revision = $storage->loadRevision($homepage['original_revision_id']);
+  if (!$original_revision instanceof NodeInterface
+    || !editorial_home_data_equals(
+      editorial_home_node_identity($original_revision),
+      $home['node_identity'],
+    )
+    || !editorial_home_data_equals(
+      editorial_home_revision_identity($original_revision),
+      $homepage['original_revision'],
+    )
+    || !editorial_home_data_equals(
+      editorial_home_body_snapshot($original_revision),
+      $homepage['original_body'],
+    )) {
+    editorial_home_fail('The retained original /accueil revision changed or disappeared.');
   }
   return $raw;
 }
@@ -907,6 +966,30 @@ function editorial_home_preflight(
   $blog_block_source = editorial_home_read_yaml($sync_dir . '/' . $blog_block_name . '.yml');
   editorial_home_assert_blog_block_source($blog_block_source);
   editorial_home_assert_source_config($blog_block_name, $blog_block_source);
+  $forum_prerequisite_names = [
+    'node.type.forum_topic',
+    'core.base_field_override.node.forum_topic.status',
+    'core.base_field_override.node.forum_topic.promote',
+    'field.field.node.forum_topic.body',
+    'field.field.node.forum_topic.comment',
+    'core.entity_form_display.node.forum_topic.default',
+    'core.entity_view_display.node.forum_topic.default',
+    'core.entity_view_display.node.forum_topic.teaser',
+    'views.view.forum_topics',
+    'webform.webform.forum_blog_proposal',
+    'block.block.unisonges_forum_topics',
+    'block.block.unisonges_forum_blog_proposal',
+    'field.field.comment.comment.comment_body',
+  ];
+  foreach ($forum_prerequisite_names as $forum_prerequisite_name) {
+    $forum_prerequisite_source = editorial_home_read_yaml(
+      $sync_dir . '/' . $forum_prerequisite_name . '.yml',
+    );
+    editorial_home_assert_source_config(
+      $forum_prerequisite_name,
+      $forum_prerequisite_source,
+    );
+  }
   $block_source = editorial_home_read_yaml($sync_dir . '/' . EDITORIAL_HOME_BLOCK_CONFIG . '.yml');
   editorial_home_assert_block_source($block_source);
   $core_extension_source = editorial_home_read_yaml($sync_dir . '/core.extension.yml');
@@ -1013,6 +1096,7 @@ function editorial_home_preflight(
   $merged_home_body = editorial_home_extract_page_body($content_source, 'accueil');
   $approved_about_body = editorial_home_extract_page_body($content_source, 'a_propos');
   $approved_blog_body = editorial_home_extract_page_body($content_source, 'blog');
+  $approved_forum_body = editorial_home_extract_page_body($content_source, 'forum');
   $approved_sentence = "Le Blog accueillera les actualités de l'association, des articles artistiques et pédagogiques, ainsi que des réflexions et des ressources autour de ses pratiques et de ses projets.";
   if (substr_count($approved_blog_body, '<p>' . $approved_sentence . '</p>') !== 1) {
     editorial_home_fail('The approved /blog source sentence changed unexpectedly.');
@@ -1022,13 +1106,14 @@ function editorial_home_preflight(
     '/accueil' => editorial_home_resolve_page('/accueil', 'Accueil'),
     '/blog' => editorial_home_resolve_page('/blog', 'Blog'),
     '/a-propos' => editorial_home_resolve_page('/a-propos', 'À propos'),
+    '/forum' => editorial_home_resolve_page('/forum', 'Forum'),
   ];
   $node_ids = array_map(
     static fn(array $page): int => $page['node_identity']['id'],
     $pages,
   );
-  if (count(array_unique($node_ids, SORT_NUMERIC)) !== 3) {
-    editorial_home_fail('/accueil, /blog, and /a-propos must own three distinct Basic pages.');
+  if (count(array_unique($node_ids, SORT_NUMERIC)) !== 4) {
+    editorial_home_fail('/accueil, /blog, /a-propos, and /forum must own four distinct Basic pages.');
   }
   $anonymous = new AnonymousUserSession();
   foreach ($pages as $alias => $page) {
@@ -1047,6 +1132,13 @@ function editorial_home_preflight(
   if ($blog_body['empty'] !== FALSE
     || substr_count($blog_body['value'], '<p>' . $approved_sentence . '</p>') !== 1) {
     editorial_home_fail('The current /blog body does not contain the one approved source sentence.');
+  }
+  $forum_body = $pages['/forum']['body'];
+  if ($forum_body['empty'] !== FALSE
+    || $forum_body['value'] !== $approved_forum_body
+    || $forum_body['format'] !== EDITORIAL_HOME_BODY_FORMAT
+    || $forum_body['summary'] !== NULL) {
+    editorial_home_fail('The current /forum body is not the exact approved content source.');
   }
   $current_blog_sentence = $approved_sentence;
   $target_body = <<<HTML
@@ -1268,6 +1360,7 @@ HTML;
       'identity' => $pages['/accueil']['node_identity'],
       'alias' => $pages['/accueil']['alias_identity'],
       'revision_id' => $pages['/accueil']['revision_id'],
+      'revision_identity' => $pages['/accueil']['revision_identity'],
       'body' => $pages['/accueil']['body'],
     ],
     'blog' => [
@@ -1279,6 +1372,11 @@ HTML;
       'identity' => $pages['/a-propos']['node_identity'],
       'alias' => $pages['/a-propos']['alias_identity'],
       'body_sha256' => hash('sha256', $about_body['value']),
+    ],
+    'forum' => [
+      'identity' => $pages['/forum']['node_identity'],
+      'alias' => $pages['/forum']['alias_identity'],
+      'body_sha256' => hash('sha256', $forum_body['value']),
     ],
     'rollback_state' => $state_record,
     'config_snapshot_sha256' => editorial_home_hash_data($config_snapshot),
@@ -1486,7 +1584,93 @@ function editorial_home_write_body(
   return [
     'node' => $written,
     'revision_id' => (int) $written->getRevisionId(),
+    'revision_identity' => editorial_home_revision_identity($written),
   ];
+}
+
+/**
+ * Reinstate the retained original revision and remove only the feature revision.
+ */
+function editorial_home_restore_original_revision(
+  int $node_id,
+  array $expected_identity,
+  int $target_revision_id,
+  array $target_revision_identity,
+  array $target_body,
+  int $original_revision_id,
+  array $original_revision_identity,
+  array $original_body,
+): void {
+  $storage = \Drupal::entityTypeManager()->getStorage('node');
+  if (!$storage instanceof RevisionableStorageInterface) {
+    editorial_home_fail('Node storage lost exact revision support before rollback restoration.');
+  }
+  $storage->resetCache([$node_id]);
+  $current = $storage->load($node_id);
+  $original = $storage->loadRevision($original_revision_id);
+  $latest_revision_id = $storage->getLatestRevisionId($node_id);
+  if (!$current instanceof NodeInterface
+    || !$original instanceof NodeInterface
+    || !$current->isDefaultRevision()
+    || $latest_revision_id === NULL
+    || (string) $latest_revision_id !== (string) $target_revision_id
+    || (int) $current->getRevisionId() !== $target_revision_id
+    || !editorial_home_data_equals(editorial_home_node_identity($current), $expected_identity)
+    || !editorial_home_data_equals(
+      editorial_home_revision_identity($current),
+      $target_revision_identity,
+    )
+    || !editorial_home_data_equals(editorial_home_body_snapshot($current), $target_body)
+    || (int) $original->getRevisionId() !== $original_revision_id
+    || !editorial_home_data_equals(editorial_home_node_identity($original), $expected_identity)
+    || !editorial_home_data_equals(
+      editorial_home_revision_identity($original),
+      $original_revision_identity,
+    )
+    || !editorial_home_data_equals(editorial_home_body_snapshot($original), $original_body)) {
+    editorial_home_fail('/accueil revision history changed immediately before exact rollback.');
+  }
+
+  $original->setNewRevision(FALSE);
+  $original->isDefaultRevision(TRUE);
+  $original->setSyncing(TRUE);
+  $original->save();
+
+  $storage = \Drupal::entityTypeManager()->getStorage('node');
+  if (!$storage instanceof RevisionableStorageInterface) {
+    editorial_home_fail('Node storage lost exact revision support during rollback restoration.');
+  }
+  $storage->resetCache([$node_id]);
+  $restored = $storage->load($node_id);
+  if (!$restored instanceof NodeInterface
+    || !$restored->isDefaultRevision()
+    || (int) $restored->getRevisionId() !== $original_revision_id
+    || !editorial_home_data_equals(editorial_home_node_identity($restored), $expected_identity)
+    || !editorial_home_data_equals(
+      editorial_home_revision_identity($restored),
+      $original_revision_identity,
+    )
+    || !editorial_home_data_equals(editorial_home_body_snapshot($restored), $original_body)) {
+    editorial_home_fail('The original /accueil revision was not reinstated exactly.');
+  }
+
+  $storage->deleteRevision($target_revision_id);
+  $storage->resetCache([$node_id]);
+  $restored = $storage->load($node_id);
+  $restored_latest_revision_id = $storage->getLatestRevisionId($node_id);
+  if (!$restored instanceof NodeInterface
+    || !$restored->isDefaultRevision()
+    || $restored_latest_revision_id === NULL
+    || (string) $restored_latest_revision_id !== (string) $original_revision_id
+    || $storage->loadRevision($target_revision_id) !== NULL
+    || !editorial_home_data_equals(editorial_home_node_identity($restored), $expected_identity)
+    || !editorial_home_data_equals(
+      editorial_home_revision_identity($restored),
+      $original_revision_identity,
+    )
+    || !editorial_home_data_equals(editorial_home_body_snapshot($restored), $original_body)) {
+    editorial_home_fail('Exact /accueil revision restoration or feature-revision deletion failed.');
+  }
 }
 
 /**
@@ -1595,7 +1779,7 @@ function editorial_home_apply_plan(
       $applied_count++;
 
       $rollback_state = [
-        'version' => 1,
+        'version' => 2,
         'feature' => EDITORIAL_HOME_MODULE,
         'site_uuid' => EDITORIAL_HOME_SITE_UUID,
         'contract' => $plan['contract'],
@@ -1604,6 +1788,8 @@ function editorial_home_apply_plan(
           'alias' => $home['alias_identity'],
           'original_revision_id' => $home['revision_id'],
           'target_revision_id' => $written['revision_id'],
+          'original_revision' => $home['revision_identity'],
+          'target_revision' => $written['revision_identity'],
           'original_body' => $home['body'],
           'reviewed_prestate' => $plan['home_state'],
         ],
@@ -1625,15 +1811,17 @@ function editorial_home_apply_plan(
         editorial_home_fail('Rollback state disappeared before the transaction.');
       }
       $original_body = $rollback_state['homepage']['original_body'];
-      editorial_home_line('WRITE', 'restore exact body-only revision for /accueil node/'
+      editorial_home_line('WRITE', 'restore original revision for /accueil node/'
         . $home['node_identity']['id']);
-      editorial_home_write_body(
+      editorial_home_restore_original_revision(
         $home['node_identity']['id'],
         $home['node_identity'],
         $home['revision_id'],
+        $home['revision_identity'],
         $home['body'],
+        $rollback_state['homepage']['original_revision_id'],
+        $rollback_state['homepage']['original_revision'],
         $original_body,
-        'Editorial Blog homepage 2026 rollback: restore reviewed body.',
       );
       $applied_count++;
 

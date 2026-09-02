@@ -80,7 +80,11 @@ final class EditorialHomeBuilder {
 
     $request = $this->requestStack->getCurrentRequest();
     $query = $request?->query->all() ?? [];
-    $theme_input = $this->parseThemeInput($query);
+    $raw_query = $request?->server->get('QUERY_STRING');
+    $theme_input = $this->parseThemeInput(
+      $query,
+      is_string($raw_query) ? $raw_query : '',
+    );
     $page_input = $this->parsePageInput($query);
     $page = $page_input['page'];
     $unsupported_query = array_diff(array_keys($query), ['page', 'theme']) !== [];
@@ -749,9 +753,22 @@ final class EditorialHomeBuilder {
    * @return array{present: bool, tid: ?int, invalid: bool}
    *   A normalized theme state.
    */
-  private function parseThemeInput(array $query): array {
+  private function parseThemeInput(array $query, string $raw_query): array {
     if (!array_key_exists('theme', $query)) {
       return ['present' => FALSE, 'tid' => NULL, 'invalid' => FALSE];
+    }
+
+    $theme_occurrences = 0;
+    foreach (preg_split('/[&;]/', $raw_query, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $pair) {
+      $separator = strpos($pair, '=');
+      $encoded_key = $separator === FALSE ? $pair : substr($pair, 0, $separator);
+      $decoded_key = rawurldecode(str_replace('+', ' ', $encoded_key));
+      if ($decoded_key === 'theme') {
+        $theme_occurrences++;
+      }
+    }
+    if ($theme_occurrences !== 1) {
+      return ['present' => TRUE, 'tid' => NULL, 'invalid' => TRUE];
     }
 
     $value = $query['theme'];

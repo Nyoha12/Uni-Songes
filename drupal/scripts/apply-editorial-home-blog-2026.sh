@@ -25,18 +25,31 @@ readonly -a REVIEWED_RELATIVE_FILES=(
   drupal/composer.lock
   drupal/config/sync/block.block.unisonges_blog_posts.yml
   drupal/config/sync/block.block.unisonges_editorial_home.yml
+  drupal/config/sync/block.block.unisonges_forum_blog_proposal.yml
+  drupal/config/sync/block.block.unisonges_forum_topics.yml
+  drupal/config/sync/core.base_field_override.node.forum_topic.promote.yml
+  drupal/config/sync/core.base_field_override.node.forum_topic.status.yml
+  drupal/config/sync/core.entity_form_display.node.forum_topic.default.yml
+  drupal/config/sync/core.entity_view_display.node.forum_topic.default.yml
+  drupal/config/sync/core.entity_view_display.node.forum_topic.teaser.yml
   drupal/config/sync/core.extension.yml
+  drupal/config/sync/field.field.comment.comment.comment_body.yml
+  drupal/config/sync/field.field.node.forum_topic.body.yml
+  drupal/config/sync/field.field.node.forum_topic.comment.yml
   drupal/config/sync/field.field.node.article.field_tags.yml
   drupal/config/sync/field.field.node.page.body.yml
   drupal/config/sync/field.storage.node.field_tags.yml
   drupal/config/sync/filter.format.full_html.yml
   drupal/config/sync/node.type.article.yml
+  drupal/config/sync/node.type.forum_topic.yml
   drupal/config/sync/node.type.page.yml
   drupal/config/sync/system.site.yml
   drupal/config/sync/system.theme.yml
   drupal/config/sync/taxonomy.vocabulary.tags.yml
   drupal/config/sync/user.role.anonymous.yml
   drupal/config/sync/views.view.blog_posts.yml
+  drupal/config/sync/views.view.forum_topics.yml
+  drupal/config/sync/webform.webform.forum_blog_proposal.yml
   drupal/scripts/apply-content-architecture-2026.sh
   drupal/scripts/apply-editorial-home-blog-2026.sh
   drupal/scripts/editorial-home-blog-config.php
