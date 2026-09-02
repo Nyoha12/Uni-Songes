@@ -1531,7 +1531,7 @@ function editorial_home_write_body(
   int $expected_revision_id,
   array $expected_body,
   array $target_body,
-  string $revision_message,
+  ?string $revision_message,
 ): array {
   $storage = \Drupal::entityTypeManager()->getStorage('node');
   if (!$storage instanceof RevisionableStorageInterface) {
@@ -1774,7 +1774,7 @@ function editorial_home_apply_plan(
         $home['revision_id'],
         $home['body'],
         $target_body,
-        'Editorial Blog homepage 2026: reviewed introduction.',
+        $home['revision_identity']['revision_log_message'],
       );
       $applied_count++;
 
