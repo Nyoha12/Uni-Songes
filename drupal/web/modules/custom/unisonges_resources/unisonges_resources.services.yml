@@ -1,0 +1,20 @@
+parameters:
+  unisonges_resources.manifest_path: '%app.root%/../content/resources/resources.yml'
+
+services:
+  unisonges_resources.manifest_validator:
+    class: Drupal\unisonges_resources\Manifest\ManifestValidator
+
+  unisonges_resources.manifest_repository:
+    class: Drupal\unisonges_resources\Manifest\ManifestRepository
+    arguments:
+      - '%unisonges_resources.manifest_path%'
+      - '@unisonges_resources.manifest_validator'
+
+  unisonges_resources.access:
+    class: Drupal\unisonges_resources\Access\ResourcesAccess
+    arguments:
+      - '@config.factory'
+      - '@unisonges_resources.manifest_repository'
+    tags:
+      - { name: access_check, applies_to: _unisonges_resources_access }

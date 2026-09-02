@@ -1,0 +1,9 @@
+unisonges_resources.page:
+  path: '/ressources'
+  defaults:
+    _controller: '\Drupal\unisonges_resources\Controller\ResourcesController::page'
+    _title: 'Ressources'
+  requirements:
+    _unisonges_resources_access: 'TRUE'
+  options:
+    no_cache: true
