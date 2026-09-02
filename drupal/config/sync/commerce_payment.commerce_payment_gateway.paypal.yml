@@ -1,6 +1,6 @@
 uuid: 934a7d2b-6222-4051-a747-96c5b7eaf60d
 langcode: fr
-status: true
+status: false
 dependencies:
   module:
     - commerce_paypal
@@ -15,8 +15,8 @@ configuration:
     - paypal
   collect_billing_information: false
   payment_solution: smart_payment_buttons
-  client_id: AbthG-DcLgaXPgYDot9bC5YmhdksX-PUBlodoVebuqDKe2KAB__m9Zw3M1aJiH_RtZs55hh8sE7q2t_V
-  secret: EIEcBoNL8jkleO-MdOVk312PmNU4OQI4IAICxw3EthFNIlEu_GdR8wsH2yrKd2mHBIJ28IkcP3n07Wbl
+  client_id: ''
+  secret: ''
   intent: capture
   disable_funding: {  }
   disable_card: {  }

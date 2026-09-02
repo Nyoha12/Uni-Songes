@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2016 # Embedded PHP is intentionally single-quoted.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -53,14 +54,7 @@ else {
 }
 '
 
-echo "[bootstrap-commerce] Disabling PayPal if no secrets are set"
-PAYPAL_CLIENT_ID="${PAYPAL_CLIENT_ID:-}"
-PAYPAL_SECRET="${PAYPAL_SECRET:-}"
-if [[ -z "${PAYPAL_CLIENT_ID}" || -z "${PAYPAL_SECRET}" ]]; then
-  "${DRUSH}" pm:uninstall commerce_paypal -y || true
-  echo "PayPal module disabled (missing secrets)."
-else
-  echo "PayPal secrets detected, module left untouched."
-fi
+echo "[bootstrap-commerce] PayPal configuration is runtime-managed"
+echo "[bootstrap-commerce] No PayPal state changed; follow the credential remediation runbook"
 
 echo "[bootstrap-commerce] Completed"
