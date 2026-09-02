@@ -1,0 +1,10 @@
+unisonges_resources.settings:
+  type: config_object
+  label: 'Uni-Songes Resources hub settings'
+  mapping:
+    enabled:
+      type: boolean
+      label: 'Expose the Resources hub'
+    manifest_fingerprint:
+      type: string
+      label: 'Approved manifest SHA-256 fingerprint'
