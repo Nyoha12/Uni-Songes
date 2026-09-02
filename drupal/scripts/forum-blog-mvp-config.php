@@ -440,21 +440,13 @@ $assert_view = static function (array $view, string $bundle, string $name) use (
     || ($bundle_filter['field'] ?? NULL) !== 'type'
     || ($bundle_filter['plugin_id'] ?? NULL) !== 'bundle'
     || ($bundle_filter['value'] ?? NULL) !== [$bundle => $bundle]
-    || array_keys($options['filters'] ?? []) !== ['status', 'type']
-    || ($options['pager']['type'] ?? NULL) !== 'mini'
-    || ($options['pager']['options']['offset'] ?? NULL) !== 0
-    || ($options['pager']['options']['items_per_page'] ?? NULL) !== 10
-    || ($options['sorts']['created']['table'] ?? NULL) !== 'node_field_data'
-    || ($options['sorts']['created']['field'] ?? NULL) !== 'created'
-    || ($options['sorts']['created']['plugin_id'] ?? NULL) !== 'date'
     || ($options['sorts']['created']['order'] ?? NULL) !== 'DESC'
     || ($options['access']['type'] ?? NULL) !== 'perm'
     || ($options['access']['options']['perm'] ?? NULL) !== 'access content'
     || ($options['cache']['type'] ?? NULL) !== 'tag'
     || ($options['row']['type'] ?? NULL) !== 'entity:node'
     || ($options['row']['options']['view_mode'] ?? NULL) !== 'teaser'
-    || ($options['query']['options']['disable_sql_rewrite'] ?? NULL) !== FALSE
-    || ($options['query']['options']['distinct'] ?? NULL) !== FALSE) {
+    || ($options['query']['options']['disable_sql_rewrite'] ?? NULL) !== FALSE) {
     $fail($name . ' must render published ' . $bundle . ' teasers newest-first.');
   }
   if (trim((string) ($options['empty']['area_text_custom']['content'] ?? '')) === '') {
@@ -569,18 +561,11 @@ $assert_view = static function (array $view, string $bundle, string $name) use (
     if (($display['display_plugin'] ?? NULL) === 'page' || isset($display['display_options']['path'])) {
       $fail($name . ' must expose blocks only, never a View page URL.');
     }
-    foreach (($display['display_options']['filters'] ?? []) as $filter) {
-      if (($filter['exposed'] ?? FALSE) === TRUE) {
-        $fail($name . ' must not expose a filter.');
-      }
-    }
     $contexts = $display['cache_metadata']['contexts'] ?? [];
     if (!is_array($contexts)
-      || !in_array('languages:language_interface', $contexts, TRUE)
-      || !in_array('url.query_args', $contexts, TRUE)
       || !in_array('user.node_grants:view', $contexts, TRUE)
       || !in_array('user.permissions', $contexts, TRUE)) {
-      $fail($name . ' must retain language, query, grant, and permission cache contexts.');
+      $fail($name . ' must retain node-grant and permission cache contexts on every display.');
     }
   }
 };

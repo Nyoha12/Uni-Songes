@@ -16,7 +16,7 @@ body.path-frontpage.section-accueil .unisonges-editorial-home {
   --editorial-ink: #2d2922;
   --editorial-muted: #736b5d;
   --editorial-line: rgba(67, 57, 40, 0.24);
-  --editorial-accent: #246b64;
+  --editorial-accent: #0f766e;
   color: var(--editorial-ink);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   overflow-wrap: anywhere;
@@ -52,6 +52,12 @@ body.path-frontpage.section-accueil .unisonges-editorial-home-intro__link {
   text-underline-offset: 0.24em;
 }
 
+body.path-frontpage.section-accueil .unisonges-editorial-home-intro a:focus-visible,
+.unisonges-editorial-home :where(a, summary):focus-visible {
+  outline: 3px solid var(--editorial-accent);
+  outline-offset: 3px;
+}
+
 .unisonges-editorial-home__layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 15rem;
@@ -72,11 +78,17 @@ body.path-frontpage.section-accueil .unisonges-editorial-home-intro__link {
 }
 
 .unisonges-editorial-home__stream > h2 {
-  margin: 0 0 clamp(1.5rem, 3vw, 2.5rem);
+  margin: 0 0 0.35rem;
   font-family: inherit;
   font-size: clamp(1.5rem, 3.6vw, 2.35rem);
   font-weight: 500;
   letter-spacing: -0.025em;
+}
+
+.unisonges-editorial-home__ordering {
+  margin: 0 0 clamp(1.5rem, 3vw, 2.5rem);
+  color: var(--editorial-muted);
+  font-size: 0.78rem;
 }
 
 .unisonges-editorial-home__disclosure {
@@ -246,7 +258,7 @@ body.path-frontpage.section-accueil .unisonges-editorial-home-intro__link {
   color: var(--editorial-muted);
 }
 
-@media (max-width: 48rem) {
+@media (max-width: 62rem) {
   .unisonges-editorial-home__layout {
     grid-template-columns: minmax(0, 1fr);
     row-gap: 2rem;

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\unisonges_editorial_home;
 
 use Drupal\Core\Extension\ModuleUninstallValidatorInterface;
+use Drupal\Core\State\StateInterface;
 
 /**
  * Keeps the coupled View, block, Body, state, and module rollback atomic.
@@ -13,11 +14,26 @@ final class EditorialHomeUninstallValidator implements ModuleUninstallValidatorI
 
   private const MODULE = 'unisonges_editorial_home';
 
+  private const ROLLBACK_STATE_KEY = 'unisonges_editorial_home.rollback.v1';
+
+  /**
+   * Constructs the uninstall validator.
+   */
+  public function __construct(
+    private readonly StateInterface $state,
+  ) {}
+
   /**
    * {@inheritdoc}
    */
   public function validate($module): array {
     if ($module !== self::MODULE) {
+      return [];
+    }
+    $sentinel = new \stdClass();
+    if ($this->state->get(self::ROLLBACK_STATE_KEY, $sentinel) === $sentinel) {
+      // A bare or incomplete module activation has no coupled rollback copy.
+      // Let Drupal remove it instead of trapping an operator in a partial state.
       return [];
     }
     if ($this->isPreflightAuthorized() || $this->isRollbackAuthorized()) {

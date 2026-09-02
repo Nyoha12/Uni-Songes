@@ -9,11 +9,13 @@ use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\Entity\EntityRepositoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\GeneratedUrl;
 use Drupal\Core\Language\LanguageInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Session\AccountSwitcherInterface;
 use Drupal\Core\Session\AnonymousUserSession;
+use Drupal\Core\State\StateInterface;
 use Drupal\Core\Url;
 use Drupal\node\NodeInterface;
 use Drupal\taxonomy\TermInterface;
@@ -44,6 +46,10 @@ final class EditorialHomeBuilder {
 
   private const MAX_PAGE = 10000;
 
+  private const ROLLBACK_STATE_KEY = 'unisonges_editorial_home.rollback.v1';
+
+  private const SITE_UUID = 'ff0af3b7-b9cf-4d63-8932-4f55870ce430';
+
   /**
    * Constructs an EditorialHomeBuilder object.
    */
@@ -55,6 +61,7 @@ final class EditorialHomeBuilder {
     private readonly RequestStack $requestStack,
     private readonly DateFormatterInterface $dateFormatter,
     private readonly LanguageManagerInterface $languageManager,
+    private readonly StateInterface $state,
   ) {}
 
   /**
@@ -64,10 +71,19 @@ final class EditorialHomeBuilder {
    *   A render array for the editorial homepage theme hook.
    */
   public function build(): array {
+    if (!$this->isFeatureActivated()) {
+      // An isolated module/config activation must not render beside the old
+      // homepage Body. The guarded helper stores this marker only after the
+      // View, module, block, and exact Body transition have all succeeded.
+      return ['#cache' => ['max-age' => 0]];
+    }
+
     $request = $this->requestStack->getCurrentRequest();
     $query = $request?->query->all() ?? [];
     $theme_input = $this->parseThemeInput($query);
-    $page = $this->parsePageInput($query);
+    $page_input = $this->parsePageInput($query);
+    $page = $page_input['page'];
+    $unsupported_query = array_diff(array_keys($query), ['page', 'theme']) !== [];
 
     $cacheability = (new CacheableMetadata())
       ->setCacheContexts([
@@ -76,11 +92,11 @@ final class EditorialHomeBuilder {
         'languages:' . LanguageInterface::TYPE_URL,
         'timezone',
         'url.path',
-        'url.query_args:page',
-        'url.query_args:theme',
+        'url.query_args',
         'user.node_grants:view',
         'user.permissions',
-      ]);
+      ])
+      ->addCacheTags(['route_match']);
     $this->addListCacheability($cacheability);
 
     $articles = [];
@@ -166,7 +182,10 @@ final class EditorialHomeBuilder {
       ? (string) $selected_term->id()
       : NULL;
     foreach ($themes as &$theme) {
-      $theme['url'] = $this->buildThemeUrl($theme['id']);
+      $theme['url'] = $this->generateUrl(
+        $this->buildThemeUrl($theme['id']),
+        $cacheability,
+      );
       $theme['current'] = $selected_theme === $theme['id'] && !$theme_invalid;
     }
     unset($theme);
@@ -181,12 +200,29 @@ final class EditorialHomeBuilder {
     $pager = [
       'page' => $page,
       'previous' => !$theme_invalid && $page > 0
-        ? $this->buildPageUrl($page - 1, $pager_theme)
+        ? $this->generateUrl(
+          $this->buildPageUrl($page - 1, $pager_theme),
+          $cacheability,
+        )
         : NULL,
       'next' => $has_next
-        ? $this->buildPageUrl($page + 1, $pager_theme)
+        ? $this->generateUrl(
+          $this->buildPageUrl($page + 1, $pager_theme),
+          $cacheability,
+        )
         : NULL,
     ];
+
+    $all_articles_url = $this->generateUrl(
+      Url::fromUserInput('/accueil'),
+      $cacheability,
+    );
+    $collection_start_url = $selected_theme !== NULL && !$theme_invalid
+      ? $this->generateUrl(
+        $this->buildThemeUrl($selected_theme),
+        $cacheability,
+      )
+      : $all_articles_url;
 
     $build = [
       '#theme' => 'unisonges_editorial_home',
@@ -198,8 +234,12 @@ final class EditorialHomeBuilder {
         && !$theme_invalid,
       '#theme_invalid' => $theme_invalid,
       '#pager' => $pager,
-      '#all_articles_url' => Url::fromUserInput('/accueil'),
-      '#about_url' => Url::fromUserInput('/a-propos'),
+      '#all_articles_url' => $all_articles_url,
+      '#collection_start_url' => $collection_start_url,
+      '#about_url' => $this->generateUrl(
+        Url::fromUserInput('/a-propos'),
+        $cacheability,
+      ),
       '#attached' => [
         'library' => [
           'unisonges_editorial_home/editorial_home',
@@ -207,7 +247,13 @@ final class EditorialHomeBuilder {
       ],
     ];
 
-    if ($theme_input['present']) {
+    $empty_later_page = !$theme_invalid && $page > 0 && $articles === [];
+    $noncanonical_page = $page_input['invalid']
+      || ($page_input['present'] && $page === 0);
+    if ($theme_input['present']
+      || $noncanonical_page
+      || $empty_later_page
+      || $unsupported_query) {
       $build['#attached']['html_head'][] = [
         [
           '#tag' => 'meta',
@@ -216,12 +262,78 @@ final class EditorialHomeBuilder {
             'content' => 'noindex,follow',
           ],
         ],
-        'unisonges_editorial_home_theme_robots',
+        'unisonges_editorial_home_state_robots',
       ];
     }
 
     $cacheability->applyTo($build);
     return $build;
+  }
+
+  /**
+   * Confirms the helper-owned activation marker before rendering anything.
+   */
+  private function isFeatureActivated(): bool {
+    $sentinel = new \stdClass();
+    $state = $this->state->get(self::ROLLBACK_STATE_KEY, $sentinel);
+    if (!is_array($state)
+      || array_keys($state) !== [
+        'version',
+        'feature',
+        'site_uuid',
+        'contract',
+        'homepage',
+      ]
+      || ($state['version'] ?? NULL) !== 1
+      || ($state['feature'] ?? NULL) !== 'unisonges_editorial_home'
+      || ($state['site_uuid'] ?? NULL) !== self::SITE_UUID
+      || !is_array($state['contract'] ?? NULL)
+      || array_keys($state['contract']) !== [
+        'view_baseline_sha256',
+        'view_target_sha256',
+        'target_body_sha256',
+        'content_source_sha256',
+      ]
+      || !is_array($state['homepage'] ?? NULL)
+      || array_keys($state['homepage']) !== [
+        'identity',
+        'alias',
+        'original_revision_id',
+        'target_revision_id',
+        'original_body',
+        'reviewed_prestate',
+      ]) {
+      return FALSE;
+    }
+
+    foreach ([
+      'view_baseline_sha256',
+      'view_target_sha256',
+      'target_body_sha256',
+      'content_source_sha256',
+    ] as $hash_key) {
+      $hash = $state['contract'][$hash_key] ?? NULL;
+      if (!is_string($hash)
+        || preg_match('/^[a-f0-9]{64}$/D', $hash) !== 1) {
+        return FALSE;
+      }
+    }
+
+    $homepage = $state['homepage'];
+    $node_id = $homepage['identity']['id'] ?? NULL;
+    return is_int($node_id)
+      && $node_id > 0
+      && ($homepage['identity']['entity_type'] ?? NULL) === 'node'
+      && ($homepage['identity']['bundle'] ?? NULL) === 'page'
+      && ($homepage['alias']['entity_type'] ?? NULL) === 'path_alias'
+      && ($homepage['alias']['alias'] ?? NULL) === '/accueil'
+      && ($homepage['alias']['path'] ?? NULL) === '/node/' . $node_id
+      && is_int($homepage['original_revision_id'] ?? NULL)
+      && ($homepage['original_revision_id'] ?? 0) > 0
+      && is_int($homepage['target_revision_id'] ?? NULL)
+      && ($homepage['target_revision_id'] ?? 0) > 0
+      && is_array($homepage['original_body'] ?? NULL)
+      && ($homepage['reviewed_prestate'] ?? NULL) === 'reviewed_content_architecture_merged';
   }
 
   /**
@@ -363,7 +475,7 @@ final class EditorialHomeBuilder {
           $account,
           $cacheability,
         ),
-        'url' => $canonical_url,
+        'url' => $this->generateUrl($canonical_url, $cacheability),
         'emphasized' => FALSE,
       ];
     }
@@ -663,15 +775,18 @@ final class EditorialHomeBuilder {
    *
    * @param array<string, mixed> $query
    *   The request query values.
+   *
+   * @return array{present: bool, page: int, invalid: bool}
+   *   A normalized pager state.
    */
-  private function parsePageInput(array $query): int {
+  private function parsePageInput(array $query): array {
     $value = $query['page'] ?? NULL;
     if ($value === NULL) {
-      return 0;
+      return ['present' => FALSE, 'page' => 0, 'invalid' => FALSE];
     }
     if (!is_string($value)
       || preg_match('/^(?:0|[1-9][0-9]*)$/D', $value) !== 1) {
-      return 0;
+      return ['present' => TRUE, 'page' => 0, 'invalid' => TRUE];
     }
 
     $page = filter_var(
@@ -684,19 +799,18 @@ final class EditorialHomeBuilder {
         ],
       ],
     );
-    return is_int($page) ? $page : 0;
+    return is_int($page)
+      ? ['present' => TRUE, 'page' => $page, 'invalid' => FALSE]
+      : ['present' => TRUE, 'page' => 0, 'invalid' => TRUE];
   }
 
   /**
    * Builds a pager URL from only the normalized filter and page state.
    */
   private function buildPageUrl(int $page, ?string $theme): Url {
-    $query = ['page' => (string) $page];
+    $query = $page > 0 ? ['page' => (string) $page] : [];
     if ($theme !== NULL) {
-      $query = [
-        'theme' => $theme,
-        'page' => (string) $page,
-      ];
+      $query = ['theme' => $theme] + $query;
     }
 
     return Url::fromUserInput('/accueil', ['query' => $query]);
@@ -709,6 +823,21 @@ final class EditorialHomeBuilder {
     return Url::fromUserInput('/accueil', [
       'query' => ['theme' => $tid],
     ]);
+  }
+
+  /**
+   * Generates one URL while retaining all outbound cacheability metadata.
+   */
+  private function generateUrl(
+    Url $url,
+    CacheableMetadata $cacheability,
+  ): string {
+    $generated = $url->toString(TRUE);
+    if (!$generated instanceof GeneratedUrl) {
+      throw new \LogicException('Expected a cacheable generated Drupal URL.');
+    }
+    $cacheability->addCacheableDependency($generated);
+    return $generated->getGeneratedUrl();
   }
 
 }

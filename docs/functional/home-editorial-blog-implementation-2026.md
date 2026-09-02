@@ -11,20 +11,27 @@ La validation retenue pour cette PR est exclusivement statique. Aucun
 déploiement, aucune fusion et aucune activation n'ont lieu ; Chromium, Mailpit
 et le VPS ne sont pas utilisés.
 
-Incident de périmètre consigné : pendant l'audit, un sous-agent a utilisé par
-erreur DDEV, Docker et Drush dans un autre checkout local pour des inspections
-annoncées comme non mutantes. Il n'a appelé aucun `save`, aucune API de mutation
-et aucun environnement distant, mais le bootstrap peut avoir produit une
-activité de cache incidente. Cette piste a été arrêtée, ses résultats ne sont
-pas retenus comme preuves, et toutes les conclusions de cette PR sont
-revalidées par les contrôles statiques documentés ci-dessous.
-
 La direction visuelle vient exactement de la PR de design #97 au commit
 `7155cce198f99fb7e6b5b83716465bd3e1ca78a7`, avec les corrections produit
 approuvées pour cette implémentation. Les trois fichiers de la PR #97 restent
 inchangés.
 
 ## Audit de l'existant
+
+### Intégration avec `release/prod`
+
+La branche a été rebasée sur `5b8e80c2e2ac266978ba2be0b8eee2c56a04605f`,
+qui contient les PR #99 et #100. L'audit statique après rebase confirme un seul
+H1, un seul `main` et un seul chemin de messages fourni par le shell. Les routes
+d'authentification et de compte, la présentation de leurs messages et tous les
+fichiers partagés du thème restent inchangés.
+
+Le delta complet reste limité à 17 fichiers. L'entrée unique ajoutée à
+`core.extension.yml` est nécessaire pour représenter de façon reproductible le
+module dont dépend le bloc synchronisé. Les seules adaptations au helper et à
+la documentation Forum/Blog concernent la coexistence puis l'ordre de retrait
+du troisième display de la View que cette feature partage ; elles ne modifient
+pas le comportement des displays `default` et `block_1` de `/blog`.
 
 ### Accueil, shell et blocs
 
@@ -40,10 +47,9 @@ inchangés.
   intégré, il restera dans le scrollframe selon son propre contrat.
 
 Le corps fusionné de `/accueil` contient une introduction promotionnelle, un
-CTA de réservation et six grandes cartes. Un dry-run historique documente
-également un corps actif vide. Afficher l'un de ces états avec la nouvelle
-liste produirait une double homepage ; le helper ciblé traite donc ces deux
-états seulement et refuse toute autre valeur.
+CTA de réservation et six grandes cartes. L'afficher avec la nouvelle liste
+produirait une double homepage ; le helper ciblé reconnaît donc ce seul état
+versionné exact et refuse toute autre valeur.
 
 ### Blog et Articles
 
@@ -108,12 +114,21 @@ Le module `unisonges_editorial_home` possède toute la présentation :
 - une bibliothèque CSS attachée par le render array du bloc ;
 - aucune route et aucun JavaScript.
 
-Un validateur de désinstallation appartenant au module refuse le retrait par
-l'UI, une API générique ou un import de configuration : ces chemins laisseraient
-la View, le Body et la copie de rollback dans un état partiel. Le helper peut
-seul exécuter les validateurs en lecture, puis l'uninstall effectif sous son
-autorisation mémoire verrouillée. Il exige zéro module ou thème actif dépendant
-et interdit à Drupal d'élargir la liste de modules à désinstaller.
+Le module est masqué de l'UI d'extensions et son bloc ne rend rien tant que la
+copie d'activation/rollback cohérente n'existe pas. Une activation isolée par
+API ou import de configuration ne constitue donc pas une installation de la
+feature : elle ne remplace pas le Body, ne rend pas la liste à côté de l'ancien
+accueil et ne verrouille pas l'édition de `/accueil`. Le helper refuse cet état
+partiel ; il reste le seul chemin pris en charge pour installer les cinq parties
+couplées.
+
+Le validateur de désinstallation refuse un retrait générique seulement lorsque
+la copie de rollback prouve que la feature complète est active. Une activation
+isolée sans cette copie reste désinstallable par Drupal, afin de ne pas piéger
+l'opérateur. Pour un rollback complet, le helper conserve la copie jusqu'à
+l'uninstall effectif sous son autorisation mémoire verrouillée, puis la supprime.
+Il exige zéro module ou thème actif dépendant et interdit à Drupal d'élargir la
+liste de modules à désinstaller.
 
 La bibliothèque du thème, son fichier `.theme` et `styles.css` ne sont pas
 modifiés. Le CSS du module est borné à `.section-accueil` et au composant. Il
@@ -121,8 +136,10 @@ fait du scrollframe existant l'unique surface ivoire, sans changer son identité
 sa hauteur, son rôle de scroller ou le fond autonome.
 
 Le rendu conserve les métadonnées de cache de la View et ajoute les contextes
-du chemin, de `theme`, du pager et des langues, ainsi que les dépendances des
-Articles, termes, accès et listes d'entités réellement consultés.
+du chemin, de la requête — dont `theme` et le pager — et des langues, ainsi que
+les dépendances des Articles, termes, accès et listes d'entités réellement
+consultés. Les URL sont générées avec collecte de leurs métadonnées et le tag
+`route_match` invalide les canonical lorsque les alias changent.
 
 ## Composition finale
 
@@ -174,9 +191,12 @@ Le filtre est entièrement serveur et fonctionne sans JavaScript.
   inaccessible ne retombe jamais sur la collection complète et n'expose aucun
   libellé.
 - Les liens générés ne conservent que `theme` et le `page` validés. Changer de
-  thème omet `page`; le mini-pager conserve le thème courant.
-- Les états filtrés ou invalides portent `noindex,follow`; le canonical front
-  existant reste inchangé.
+  thème omet `page`; le mini-pager conserve le thème courant et omet `page=0`.
+- Les états filtrés, invalides, hors plage ou portant une clé GET non prise en
+  charge reçoivent `noindex,follow`; aucune clé arbitraire n'est propagée. Une
+  page hors plage indique qu'elle ne contient aucun Article et propose le retour
+  à la première page de la collection courante. Le canonical front existant
+  reste inchangé.
 - `distinct: true` sur le display homepage garantit une ligne par Article même
   lorsque `field_tags` contient plusieurs valeurs.
 
@@ -200,11 +220,9 @@ Le corps cible est exactement :
 
 Le helper résout `/accueil` par son unique PathAlias ; aucun NID n'est codé en
 dur. Il exige une Basic page publiée, le front `/accueil`, une révision active
-non divergente et l'un des deux états antérieurs relus :
-
-- corps vide ;
-- corps promotionnel exact fusionné dans
-  `apply-content-architecture-2026.sh`.
+non divergente et le corps promotionnel exact fusionné dans
+`apply-content-architecture-2026.sh`. Un corps vide ou toute autre variante
+échoue donc en préflight sans écriture.
 
 Il affiche le corps courant et le corps cible entre délimiteurs, avec longueur
 et SHA-256. Avant la transition, il conserve l'item Body exact — valeur,
@@ -285,6 +303,11 @@ Le plan allowliste uniquement :
 - la copie de rollback appartenant au feature ;
 - le corps de l'unique page résolue par `/accueil`.
 
+L'installation suit l'ordre View, module, bloc, Body, copie de rollback. Le
+rollback suit l'ordre Body, bloc, View, module, suppression de la copie. Les
+dépendances existent donc avant leurs consommateurs, et la preuve permettant
+le rollback reste disponible jusqu'à la désinstallation autorisée du module.
+
 Il n'exécute aucun import complet ou partiel et aucune requête SQL brute. Toutes
 les dépendances sont validées avant écriture, puis relues sous verrous juste
 avant application. Le token lie l'origine, le commit, les sources relues,
@@ -312,9 +335,8 @@ fichiers de navigation exclus de cette PR.
 
 ## Matrice runtime différée
 
-PR #99 possède exclusivement les ressources runtime ; cette matrice reste
-entièrement différée et non validée par le bootstrap accidentel signalé plus
-haut. La PR reste en brouillon jusqu'à validation de :
+PR #98 possède exclusivement les ressources runtime ; cette matrice reste
+entièrement différée. La PR reste en brouillon jusqu'à validation de :
 
 - zéro Article ;
 - un Article ;

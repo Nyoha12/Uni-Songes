@@ -43,19 +43,24 @@
           {{ 'Articles récents'|t }}
         {% endif %}
       </h2>
+      <p class="unisonges-editorial-home__ordering">{{ 'Du plus récent au plus ancien'|t }}</p>
 
       {% if theme_invalid %}
         <p class="unisonges-editorial-home__empty" role="status">{{ 'Le thème demandé n’est pas disponible.'|t }}</p>
         <p class="unisonges-editorial-home__reset"><a href="{{ all_articles_url }}">{{ 'Voir tous les articles'|t }}</a></p>
       {% elseif articles is empty %}
         <p class="unisonges-editorial-home__empty" role="status">
-          {% if theme_filtered and selected_theme_name %}
+          {% if pager.page > 0 %}
+            {{ 'Cette page ne contient aucun article.'|t }}
+          {% elseif theme_filtered and selected_theme_name %}
             {{ 'Aucun article publié pour le thème « @theme ».'|t({'@theme': selected_theme_name}) }}
           {% else %}
             {{ 'Aucun article publié pour le moment.'|t }}
           {% endif %}
         </p>
-        {% if theme_filtered %}
+        {% if pager.page > 0 %}
+          <p class="unisonges-editorial-home__reset"><a href="{{ collection_start_url }}">{{ 'Revenir à la première page'|t }}</a></p>
+        {% elseif theme_filtered %}
           <p class="unisonges-editorial-home__reset"><a href="{{ all_articles_url }}">{{ 'Voir tous les articles'|t }}</a></p>
         {% endif %}
       {% else %}
@@ -88,7 +93,7 @@
           {% if pager.previous %}
             <a href="{{ pager.previous }}" rel="prev">{{ 'Articles plus récents'|t }}</a>
           {% endif %}
-          <span>{{ 'Page @page'|t({'@page': pager.page + 1}) }}</span>
+          <span aria-current="page">{{ 'Page @page'|t({'@page': pager.page + 1}) }}</span>
           {% if pager.next %}
             <a href="{{ pager.next }}" rel="next">{{ 'Articles plus anciens'|t }}</a>
           {% endif %}

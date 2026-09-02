@@ -29,6 +29,7 @@ function unisonges_editorial_home_theme(
         'theme_invalid' => FALSE,
         'pager' => [],
         'all_articles_url' => NULL,
+        'collection_start_url' => NULL,
         'about_url' => NULL,
       ],
       'template' => 'unisonges-editorial-home',
@@ -44,14 +45,6 @@ function unisonges_editorial_home_node_presave(NodeInterface $node): void {
     return;
   }
 
-  $front_path = \Drupal::service('path_alias.manager')
-    ->getPathByAlias('/accueil');
-  $front_node_id = preg_match(
-    '/^\/node\/([1-9][0-9]*)$/D',
-    $front_path,
-    $matches,
-  ) === 1 ? (int) $matches[1] : NULL;
-
   $state_sentinel = new stdClass();
   $rollback_state = \Drupal::state()->get(
     'unisonges_editorial_home.rollback.v1',
@@ -62,6 +55,22 @@ function unisonges_editorial_home_node_presave(NodeInterface $node): void {
     && is_int($rollback_state['homepage']['identity']['id'] ?? NULL)
       ? $rollback_state['homepage']['identity']['id']
       : NULL;
+  $authorization = $GLOBALS[
+    'UNISONGES_EDITORIAL_HOME_BODY_TRANSITION_AUTHORIZATION'
+  ] ?? NULL;
+  if (!$state_exists && !is_array($authorization)) {
+    // A bare module activation is not a complete editorial-home deployment
+    // and must not unexpectedly lock ordinary /accueil content editing.
+    return;
+  }
+
+  $front_path = \Drupal::service('path_alias.manager')
+    ->getPathByAlias('/accueil');
+  $front_node_id = preg_match(
+    '/^\/node\/([1-9][0-9]*)$/D',
+    $front_path,
+    $matches,
+  ) === 1 ? (int) $matches[1] : NULL;
 
   $node_id = (int) $node->id();
   if ($node_id !== $front_node_id && $node_id !== $state_node_id) {
@@ -88,9 +97,6 @@ function unisonges_editorial_home_node_presave(NodeInterface $node): void {
     return;
   }
 
-  $authorization = $GLOBALS[
-    'UNISONGES_EDITORIAL_HOME_BODY_TRANSITION_AUTHORIZATION'
-  ] ?? NULL;
   $authorized_transition = PHP_SAPI === 'cli'
     && is_array($authorization)
     && array_keys($authorization) === [

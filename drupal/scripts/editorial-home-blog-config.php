@@ -755,15 +755,6 @@ function editorial_home_classify_body(
     'summary',
     'items',
   ], '/accueil body tuple');
-  if ($body === [
-    'empty' => TRUE,
-    'value' => '',
-    'format' => NULL,
-    'summary' => NULL,
-    'items' => [],
-  ]) {
-    return 'reviewed_live_empty';
-  }
   if ($body['empty'] === FALSE
     && $body['value'] === $merged_body
     && $body['format'] === EDITORIAL_HOME_BODY_FORMAT
@@ -859,7 +850,7 @@ function editorial_home_validate_rollback_state(
   );
   if ($prestate === 'editorial_home_target'
     || ($homepage['reviewed_prestate'] ?? NULL) !== $prestate) {
-    editorial_home_fail('The retained /accueil body is not one of the two exact reviewed pre-states.');
+    editorial_home_fail('The retained /accueil body is not the exact reviewed pre-state.');
   }
   return $raw;
 }
@@ -928,6 +919,7 @@ function editorial_home_preflight(
   $module_info = editorial_home_read_yaml($module_dir . '/' . EDITORIAL_HOME_MODULE . '.info.yml');
   if (($module_info['type'] ?? NULL) !== 'module'
     || ($module_info['name'] ?? NULL) !== 'Accueil éditorial Uni-Songes'
+    || ($module_info['hidden'] ?? NULL) !== TRUE
     || ($module_info['dependencies'] ?? NULL) !== [
       'drupal:block',
       'drupal:node',
@@ -1191,10 +1183,7 @@ HTML;
     && !$module_enabled
     && $block_state === 'missing'
     && !$state_record['exists']
-    && in_array($home_state, [
-      'reviewed_live_empty',
-      'reviewed_content_architecture_merged',
-    ], TRUE);
+    && $home_state === 'reviewed_content_architecture_merged';
   $is_target = $view_state === 'target_three_displays'
     && $core_state === 'module_enabled_target'
     && $module_enabled
@@ -1259,8 +1248,8 @@ HTML;
       ['type' => 'content_body_restore', 'target' => '/accueil'],
       ['type' => 'config_delete', 'target' => EDITORIAL_HOME_BLOCK_CONFIG],
       ['type' => 'config_update', 'target' => EDITORIAL_HOME_VIEW_CONFIG],
-      ['type' => 'state_delete', 'target' => EDITORIAL_HOME_STATE_KEY],
       ['type' => 'module_disable', 'target' => EDITORIAL_HOME_MODULE],
+      ['type' => 'state_delete', 'target' => EDITORIAL_HOME_STATE_KEY],
     ];
     $deployment_state = 'target';
   }
@@ -1313,6 +1302,12 @@ HTML;
   $plan_token = editorial_home_hash_data($plan_payload);
 
   if ($verbose) {
+    $planned_body_state = 'editorial_home_target';
+    $planned_body_value = $target_body;
+    if ($action === 'rollback') {
+      $planned_body_state = (string) $rollback_state['homepage']['reviewed_prestate'];
+      $planned_body_value = (string) $rollback_state['homepage']['original_body']['value'];
+    }
     editorial_home_line('RUNTIME_OK', 'PHP=' . PHP_VERSION . ' Drupal=' . \Drupal::VERSION
       . ' site=' . $site_origin . ' uuid=' . EDITORIAL_HOME_SITE_UUID);
     editorial_home_line('SOURCE_COUNT', (string) count($source_hashes));
@@ -1322,7 +1317,7 @@ HTML;
     editorial_home_line('FEATURE_STATE', $deployment_state);
     editorial_home_line('HOME_PRESTATE', $home_state);
     editorial_home_print_body('ACCUEIL_CURRENT_BODY', $home_state, $pages['/accueil']['body']['value']);
-    editorial_home_print_body('ACCUEIL_TARGET_BODY', 'editorial_home_target', $target_body);
+    editorial_home_print_body('ACCUEIL_TARGET_BODY', $planned_body_state, $planned_body_value);
     editorial_home_line('PLAN_OPERATION_COUNT', (string) count($operations));
     foreach ($operations as $index => $operation) {
       editorial_home_line(
@@ -1562,7 +1557,7 @@ function editorial_home_apply_plan(
       $applied_count++;
 
       editorial_home_line('WRITE', 'enable module ' . EDITORIAL_HOME_MODULE);
-      if (!\Drupal::service('module_installer')->install([EDITORIAL_HOME_MODULE], TRUE)
+      if (!\Drupal::service('module_installer')->install([EDITORIAL_HOME_MODULE], FALSE)
         || !\Drupal::moduleHandler()->moduleExists(EDITORIAL_HOME_MODULE)) {
         editorial_home_fail('Drupal module API did not enable the exact custom module.');
       }
@@ -1650,14 +1645,6 @@ function editorial_home_apply_plan(
       editorial_home_write_view($plan['sources']['view_baseline']);
       $applied_count++;
 
-      editorial_home_line('WRITE', 'delete ' . EDITORIAL_HOME_STATE_KEY);
-      \Drupal::state()->delete(EDITORIAL_HOME_STATE_KEY);
-      \Drupal::state()->resetCache();
-      if (editorial_home_read_rollback_state()['exists']) {
-        editorial_home_fail('Post-delete verification failed for the rollback state copy.');
-      }
-      $applied_count++;
-
       $snapshot_before_uninstall = editorial_home_config_snapshot();
       if (editorial_home_module_dependents($snapshot_before_uninstall) !== []) {
         editorial_home_fail('A module config dependent appeared immediately before uninstall.');
@@ -1671,6 +1658,14 @@ function editorial_home_apply_plan(
       if (!is_array($active_core)
         || !editorial_home_data_equals($active_core, $plan['sources']['core_extension_baseline'])) {
         editorial_home_fail('Module uninstall did not restore exact baseline core.extension.');
+      }
+      $applied_count++;
+
+      editorial_home_line('WRITE', 'delete ' . EDITORIAL_HOME_STATE_KEY);
+      \Drupal::state()->delete(EDITORIAL_HOME_STATE_KEY);
+      \Drupal::state()->resetCache();
+      if (editorial_home_read_rollback_state()['exists']) {
+        editorial_home_fail('Post-delete verification failed for the rollback state copy.');
       }
       $applied_count++;
     }
@@ -1697,10 +1692,7 @@ function editorial_home_apply_plan(
     }
     if ($action === 'rollback') {
       if (count($verified['operations']) !== 5
-        || !in_array($verified['home_state'], [
-          'reviewed_live_empty',
-          'reviewed_content_architecture_merged',
-        ], TRUE)) {
+        || $verified['home_state'] !== 'reviewed_content_architecture_merged') {
         editorial_home_fail('Final rollback verification did not restore the exact original baseline.');
       }
     }
