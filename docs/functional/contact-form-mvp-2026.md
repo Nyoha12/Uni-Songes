@@ -77,20 +77,63 @@ seulement de celles de `contact`, avant et après une application. Une
 modification ou un reclassement d'une proposition Forum/Blog ferait donc
 échouer la vérification au lieu d'être silencieusement accepté.
 
+### Intégrations de thème, messages et compte
+
+L'intégrité des bibliothèques du thème est désormais fusionnée. Le gabarit du
+nœud Contact attache `unisonges_theme/contact`, qui existe et dépend seulement
+de `unisonges_theme/unisonges-layout`. Cette bibliothèque ne déclare aucun
+JavaScript et ne référence donc pas le script statique historique décrit
+ci-dessous.
+
+La PR #100 est fusionnée. Dans la configuration synchronisée, l'unique bloc de
+messages actif du thème `unisonges_theme` reste
+`unisonges_theme_messages`, dans `content` au poids -8. Les deux shells publics
+rendent `page.content` une seule fois à l'intérieur de `main`. La suggestion de
+thème fusionnée sélectionne le template inline
+`status-messages--unisonges-inline.html.twig`, qui fournit une destination
+`data-drupal-messages` dans le flux normal, sans wrapper fixe ni toast.
+
+Le Contact ne crée aucun autre bloc de messages. Ses erreurs de champ restent
+adjacentes au formulaire (`form_disable_inline_errors: false`) et sa
+confirmation reste de type `inline`. La matrice runtime doit vérifier que ces
+deux rendus Webform coexistent avec le chemin global de statut, erreur ou
+avertissement sans perte, doublon ni message de session retardé. La présence de
+la source fusionnée ne constitue pas une affirmation de son activation en
+production.
+
+La PR #99 est également fusionnée. Sa classe de page et sa bibliothèque
+`unisonges_theme/auth-account` sont limitées aux routes de connexion,
+inscription, mot de passe et compte du propriétaire. `/contact` est une route
+canonique de nœud, hors de cette allowlist. La feuille `auth-account.css` n'est
+chargée que dans cette allowlist et ses sélecteurs ciblent exclusivement les
+classes `auth-account-*` ajoutées dans ce même scope. La bibliothèque Contact ne
+dépend pas de la bibliothèque compte. Le bloc Contact ne comporte aucune
+condition de rôle : ses rendus anonyme et connecté restent indépendants de la
+présentation du compte.
+
+### Isolation de la PR #103 concurrente
+
+La PR #103 possède ses fichiers d'accueil éditorial et n'est pas modifiée ici.
+Son bloc `unisonges_editorial_home`, UUID
+`8e6e9ece-878e-4bf8-b09e-a7638827a132`, utilise son propre plugin et le chemin
+`/accueil`. Elle ne déclare aucun Webform, aucun espace de soumission et aucun
+fichier Contact. Son ID, son UUID, sa route et son stockage restent donc
+indépendants de `contact` et de `unisonges_contact_form`.
+
 ### JavaScript historique
 
 `drupal/web/themes/custom/unisonges_theme/js/contact-form.js` est orphelin :
-aucune bibliothèque `contact` n'est déclarée dans le fichier de bibliothèques
-du thème, malgré l'attachement demandé par le gabarit du nœud Contact. Le script
-vise un ancien formulaire statique et un service Google Apps Script, collecte
-des données supplémentaires (téléphone, URL et agent utilisateur), ne contrôle
-pas le statut HTTP avant d'afficher un succès et n'apporte pas de validation
-serveur Drupal.
+aucune bibliothèque du thème ne le référence. La bibliothèque `contact`
+désormais valide ne contient qu'une dépendance de mise en page. Le script vise
+un ancien formulaire statique et un service Google Apps Script, collecte des
+données supplémentaires (téléphone, URL et agent utilisateur), ne contrôle pas
+le statut HTTP avant d'afficher un succès et n'apporte pas de validation serveur
+Drupal.
 
 Il reste donc inutilisé et inchangé. Le MVP repose exclusivement sur le rendu,
 la validation et la confirmation standards de Webform. Son retrait éventuel et
-la correction de la déclaration de bibliothèque appartiennent à une évolution
-distincte, coordonnée avec le propriétaire du thème.
+la suppression de ce code mort appartiennent à une évolution distincte,
+coordonnée avec le propriétaire du thème.
 
 ### Confidentialité existante
 
@@ -203,6 +246,10 @@ terminées :
   (session/cookie) pour un visiteur anonyme ;
 - 30 demandes terminées par heure pour l'ensemble du Webform.
 
+`form_submit_once: true` conserve en plus la protection native immédiate contre
+les doubles clics. Cette protection côté client n'est pas une clé d'idempotence
+serveur contre deux requêtes parallèles ou rejouées.
+
 La version installée ne fournit pas de limite Webform native par adresse IP.
 Un visiteur peut contourner la limite anonyme en renouvelant son état client,
 et la limite globale peut elle-même être utilisée pour provoquer une
@@ -220,9 +267,11 @@ Webform compatible doit être planifiée séparément.
 
 ## Déploiement ciblé
 
-Le script `drupal/scripts/apply-contact-form-mvp-2026.sh` est en lecture seule
-par défaut. Il n'exécute aucun import de configuration complet ou partiel. Son
-allowlist d'écriture contient exactement :
+Le mode dry-run de `drupal/scripts/apply-contact-form-mvp-2026.sh` est le mode
+par défaut. Son chemin Contact retourne après le préflight complet et avant les
+verrous, la transaction ou tout `save()` : il ne modifie aucune configuration,
+aucun contenu, alias ou soumission. Le script n'exécute aucun import de
+configuration complet ou partiel. Son allowlist d'écriture contient exactement :
 
 - `webform.webform.contact` ;
 - `block.block.unisonges_contact_form`.
@@ -234,6 +283,13 @@ les plugins, les permissions, la page `/contact`, les doublons, les alias, toute
 les soumissions et l'intégralité de la configuration active. Il accepte
 uniquement l'état historique connu, l'état cible exact ou l'état de rollback
 exact ; toute dérive ou installation partielle ferme l'exécution.
+
+Cette garantie statique porte sur l'état fonctionnel contrôlé par le script. Une
+commande Drush doit néanmoins démarrer Drupal ; sur un environnement froid, ce
+bootstrap ou les services de lecture peuvent réchauffer des caches techniques.
+L'absence littérale de toute écriture physique de cache ne peut donc pas être
+démontrée hors runtime et doit être observée pendant la passe différée. Aucun de
+ces caches n'appartient à l'allowlist Contact.
 
 Une application exige en plus :
 
@@ -318,45 +374,46 @@ Les contrôles hors runtime exécutés sur le diff comprennent :
   dépendances, accès, blocs, chemins et séparation des soumissions ;
 - contrôle du contrat fusionné de la PR #78 qui conserve `/contact` comme Page
   de base canonique en lecture seule ;
+- contrôle de la PR #100 fusionnée : un seul bloc de messages actif du thème,
+  destination inline dans `main`, sans bloc Contact supplémentaire ;
+- contrôle de la PR #99 fusionnée : route `/contact`, bibliothèque Contact et
+  sélecteurs hors de la portée authentification/compte ;
+- contrôle de la PR #103 concurrente : fichiers, ID, UUID, bloc, route et
+  espace de stockage indépendants ;
 - `bash -n` et ShellCheck sur le lanceur ;
 - `php -l` sur le helper ;
 - `git diff --check`, garde de cinq fichiers, recherche de secrets et contrôle
   de non-chevauchement avec les PR concurrentes.
 
-Le parser YAML utilisé pour ces contrôles est `yaml@2.8.1`, épinglé via
-`npm exec` sans ajouter de dépendance au dépôt. Les contrôles de runtime Drupal
-restent ceux de la matrice ci-dessous.
+Le parser YAML utilisé pour ces contrôles est `yaml@2.8.1`, épinglé dans un
+préfixe temporaire isolé sans ajouter de dépendance au dépôt. Les contrôles de
+runtime Drupal restent ceux de la matrice ci-dessous.
 
 ## Matrice d'exécution différée
 
-Les PR #80 puis #78 sont désormais fusionnées dans `release/prod` et le présent
-changement est rebasé sur leur état commun. La PR #81 reste le prérequis runtime
-explicite pour la validation complète des messages : dans la base actuelle,
-l'unique bloc de messages Drupal est encore placé dans la région `header`, que
-les shells publics ne rendent pas. La PR #81 le déplace seule dans `content`,
-avant le contenu principal.
+Les implémentations source Forum/Blog, menu public final, inscription visiteur,
+intégrité des bibliothèques, titres sémantiques, cycle inline des messages de la
+PR #100 et présentation authentification/compte de la PR #99 sont fusionnées
+dans `release/prod`. Le présent changement est rebasé sur cet état. Il ne reste
+aucun prérequis de fusion avant la matrice Contact.
 
-La confirmation de succès `inline` du Contact et les erreurs attachées aux
-champs sont rendues dans le formulaire par Webform ; la PR #81 ne les crée pas.
-Elle est néanmoins requise avant la matrice complète pour que les messages
-Drupal globaux de statut, d'erreur ou d'avertissement aient eux aussi un chemin
-de rendu, puis pour vérifier leur coexistence sans perte ni doublon avec les
-messages propres au formulaire.
-
-La PR #81 possède exclusivement DDEV, Docker, Drush, Chromium et Mailpit pendant
-ce rafraîchissement. Aucun de ces outils, aucun navigateur et aucun VPS n'est
-utilisé ici. La PR #85 reste en brouillon jusqu'à une passe autorisée exécutant
-la matrice complète sur staging.
+La validation runtime reste en attente uniquement parce que la PR #98 possède
+actuellement en exclusivité DDEV et les autres ressources runtime. Aucun DDEV,
+Docker, Drush, Chromium, Playwright, Mailpit, navigateur ou VPS n'est utilisé
+pour ce rafraîchissement statique. La PR #85 reste en brouillon et aucune
+activation de production n'est revendiquée.
 
 ### Ordre runtime restant
 
-1. terminer et intégrer la PR #81 dans `release/prod` ;
-2. rebaser à nouveau la PR #85 sur cette base et répéter les gardes statiques ;
-3. sur le staging autorisé, exécuter le dry-run puis l'application Contact
-   ciblée, sans import complet ou partiel ;
+1. attendre que la PR #98 libère les ressources runtime ;
+2. récupérer `release/prod`, rebaser à nouveau la PR #85 si la base a avancé et
+   répéter les gardes statiques ;
+3. dans le DDEV local autorisé, confirmer le bloc de messages fusionné
+   `content/-8`, puis exécuter le dry-run et l'application Contact ciblée, sans
+   import complet ou partiel ;
 4. exécuter les scénarios visiteur, utilisateur, administrateur et affichage,
-   y compris la confirmation inline, les erreurs de champ et les éventuels
-   messages Drupal globaux rendus grâce au placement de la PR #81 ;
+   y compris la confirmation inline, les erreurs de champ et le chemin global
+   de messages de la PR #100 ;
 5. exécuter le second dry-run, la seconde application idempotente, le rollback,
    la réapplication et le nettoyage des soumissions de test.
 
@@ -390,9 +447,10 @@ ne possède aucun gestionnaire d'e-mail.
 ### Affichage et intégration
 
 - le formulaire apparaît uniquement sur `/contact`, sans doublon ;
-- la PR #81 est intégrée avant le test, puis les erreurs de champ, la
-  confirmation inline et les messages Drupal globaux s'affichent correctement
-  et une seule fois ;
+- les erreurs de champ, la confirmation inline et l'unique chemin global de
+  messages fusionné par la PR #100 s'affichent correctement et une seule fois ;
+- aucune classe, bibliothèque ou présentation authentification/compte de la
+  PR #99 ne s'applique à `/contact`, que le visiteur soit anonyme ou connecté ;
 - rendu desktop et mobile sous Chromium ;
 - navigation intégrale au clavier ;
 - erreurs et confirmation accessibles ;
@@ -420,4 +478,5 @@ ne possède aucun gestionnaire d'e-mail.
 - n'ajouter une livraison e-mail qu'après validation d'un destinataire et de la
   politique de confidentialité ;
 - décider séparément d'une éventuelle protection anti-spam supplémentaire ;
-- traiter séparément le JavaScript et la bibliothèque de thème historiques.
+- retirer séparément le JavaScript historique non référencé si sa suppression
+  est approuvée.
