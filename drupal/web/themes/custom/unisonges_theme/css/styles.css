@@ -62,7 +62,8 @@ a:hover{ color: var(--accent2); }
 
 .site-header{ background:#fff; }
 .btn--cta{ background: var(--accent); color:#fff; border-color: transparent; }
-.btn--cta:hover{ filter: brightness(.96); }
+.btn--cta:hover{ color:#fff; filter: brightness(.96); }
+.btn--cta:active{ color:#fff; }
 
 .home-card{
   transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
@@ -1823,6 +1824,15 @@ form[id*="webform-submission-cours-particuliers-reservation"] .form-actions .but
 form[id*="webform-submission-cours-particuliers-reservation"] .webform-actions .button--primary:hover{
   filter: brightness(.96);
   box-shadow: 0 10px 22px rgba(2,6,23,.16);
+}
+
+form[id*="webform-submission-cours-particuliers-reservation"] .form-actions input[type="submit"]:focus,
+form[id*="webform-submission-cours-particuliers-reservation"] .webform-actions input[type="submit"]:focus,
+form[id*="webform-submission-cours-particuliers-reservation"] .form-actions input[type="submit"]:focus-visible,
+form[id*="webform-submission-cours-particuliers-reservation"] .webform-actions input[type="submit"]:focus-visible{
+  border-color: #0f766e;
+  outline: 2px solid #0f766e;
+  outline-offset: 2px;
 }
 
 /* UNISONGES booking form final error/warning layout */
