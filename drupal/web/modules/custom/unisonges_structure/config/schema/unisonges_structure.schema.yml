@@ -1,6 +1,6 @@
 unisonges_structure.google_calendar:
   type: config_object
-  label: 'Unisonges Google Calendar sync'
+  label: 'Unisonges Google Calendar state-foundation hold'
   mapping:
     enabled:
       type: boolean
@@ -10,16 +10,16 @@ unisonges_structure.google_calendar:
       label: 'Dry-run mode'
     calendar_id:
       type: string
-      label: 'Google Calendar ID'
+      label: 'Preserved inactive Google Calendar ID'
     timezone:
       type: string
       label: 'Event timezone'
     batch_size:
       type: integer
-      label: 'Cron batch size'
+      label: 'Reserved future worker batch size'
     token_provider:
       type: string
-      label: 'Token provider mode'
+      label: 'Disabled token provider mode'
     access_token_env_var:
       type: string
-      label: 'Access token environment variable'
+      label: 'Preserved inactive token locator'

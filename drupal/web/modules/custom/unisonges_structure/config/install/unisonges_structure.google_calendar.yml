@@ -1,0 +1,7 @@
+enabled: false
+dry_run: true
+calendar_id: ''
+timezone: Europe/Paris
+batch_size: 1
+token_provider: disabled
+access_token_env_var: ''

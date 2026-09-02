@@ -143,19 +143,8 @@ function unisonges_structure_entity_update(EntityInterface $entity): void {
  * Implements hook_cron().
  */
 function unisonges_structure_cron(): void {
-  try {
-    $container = \Drupal::getContainer();
-    if (!$container->has('unisonges_structure.booking_calendar_sync')) {
-      return;
-    }
-
-    $container->get('unisonges_structure.booking_calendar_sync')->processPendingFromCron();
-  }
-  catch (\Throwable $e) {
-    \Drupal::logger('unisonges_booking_sync')->error('Google Calendar booking sync cron failed: @message', [
-      '@message' => $e->getMessage(),
-    ]);
-  }
+  // Production scheduler activation is intentionally absent in the static
+  // state-foundation phase. Do not resolve the worker or its client here.
 }
 
 /**
@@ -2533,14 +2522,12 @@ function _unisonges_structure_is_cancelled_booking_value(?string $value): bool {
 }
 
 /**
- * UNISONGES_GOOGLE_CALENDAR_BOOKING_SYNC_SKELETON
+ * UNISONGES_GOOGLE_CALENDAR_BOOKING_SYNC_LEGACY_COMPATIBILITY
  *
- * This skeleton only stores internal dry-run Google Calendar event payloads
- * for course bookings. It does not perform OAuth, call Google APIs, send
- * events externally, or create a real system cron task.
- *
- * Next step: add Google OAuth/API integration, then process this table from
- * a Drupal cron or queue runner scheduled every 5 minutes.
+ * Existing reservation hooks still record legacy intent. The state-foundation
+ * release hard-disables cron/manual consumption before configuration, rows,
+ * credentials, or clients. Legacy payload/error columns are preserved for a
+ * later guarded migration and must never be used by diagnostics.
  */
 
 /**
@@ -2638,7 +2625,7 @@ function unisonges_structure_build_google_calendar_dry_run_payload(\Drupal\webfo
 }
 
 /**
- * Queues an internal dry-run Google Calendar sync action.
+ * Records a legacy Google Calendar sync action while processing is held.
  */
 function _unisonges_structure_queue_google_calendar_booking_sync(\Drupal\webform\WebformSubmissionInterface $webform_submission, string $sync_action): void {
   if ($webform_submission->getWebform()->id() !== 'cours_particuliers_reservation') {

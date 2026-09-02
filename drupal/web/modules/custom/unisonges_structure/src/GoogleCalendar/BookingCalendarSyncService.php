@@ -10,7 +10,7 @@ use Drupal\webform\WebformSubmissionInterface;
 use Psr\Log\LoggerInterface;
 
 /**
- * Processes pending course booking rows for Google Calendar sync.
+ * Legacy worker retained behind the hard state-foundation activation hold.
  */
 class BookingCalendarSyncService {
 
@@ -65,15 +65,23 @@ class BookingCalendarSyncService {
   private $calendarClient;
 
   /**
+   * Hard activation boundary for this release.
+   *
+   * @var \Drupal\unisonges_structure\GoogleCalendar\GoogleCalendarActivationBoundary
+   */
+  private $activationBoundary;
+
+  /**
    * Constructs the booking sync service.
    */
-  public function __construct(Connection $database, EntityTypeManagerInterface $entity_type_manager, ConfigFactoryInterface $config_factory, TimeInterface $time, LoggerInterface $logger, GoogleCalendarClientInterface $calendar_client) {
+  public function __construct(Connection $database, EntityTypeManagerInterface $entity_type_manager, ConfigFactoryInterface $config_factory, TimeInterface $time, LoggerInterface $logger, GoogleCalendarClientInterface $calendar_client, GoogleCalendarActivationBoundary $activation_boundary) {
     $this->database = $database;
     $this->entityTypeManager = $entity_type_manager;
     $this->configFactory = $config_factory;
     $this->time = $time;
     $this->logger = $logger;
     $this->calendarClient = $calendar_client;
+    $this->activationBoundary = $activation_boundary;
   }
 
   /**
@@ -93,6 +101,15 @@ class BookingCalendarSyncService {
       'skipped' => 0,
       'error' => 0,
     ];
+
+    // This non-configurable boundary precedes config, row, credential, and
+    // client access. The state-foundation release cannot process backlog.
+    if (!$this->activationBoundary->allowsRemoteProcessing()) {
+      $this->logger->debug('Google Calendar processing is held by @reason.', [
+        '@reason' => $this->activationBoundary->reasonCode(),
+      ]);
+      return $result;
+    }
 
     if (!$this->isEnabled()) {
       $this->logger->debug('Google Calendar booking sync is disabled; cron skipped.');
