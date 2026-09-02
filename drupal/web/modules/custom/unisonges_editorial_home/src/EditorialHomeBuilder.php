@@ -288,7 +288,7 @@ final class EditorialHomeBuilder {
         'contract',
         'homepage',
       ]
-      || ($state['version'] ?? NULL) !== 1
+      || ($state['version'] ?? NULL) !== 2
       || ($state['feature'] ?? NULL) !== 'unisonges_editorial_home'
       || ($state['site_uuid'] ?? NULL) !== self::SITE_UUID
       || !is_array($state['contract'] ?? NULL)
@@ -304,6 +304,8 @@ final class EditorialHomeBuilder {
         'alias',
         'original_revision_id',
         'target_revision_id',
+        'original_revision',
+        'target_revision',
         'original_body',
         'reviewed_prestate',
       ]) {
@@ -325,6 +327,8 @@ final class EditorialHomeBuilder {
 
     $homepage = $state['homepage'];
     $node_id = $homepage['identity']['id'] ?? NULL;
+    $original_revision_id = $homepage['original_revision_id'] ?? NULL;
+    $target_revision_id = $homepage['target_revision_id'] ?? NULL;
     return is_int($node_id)
       && $node_id > 0
       && ($homepage['identity']['entity_type'] ?? NULL) === 'node'
@@ -332,12 +336,43 @@ final class EditorialHomeBuilder {
       && ($homepage['alias']['entity_type'] ?? NULL) === 'path_alias'
       && ($homepage['alias']['alias'] ?? NULL) === '/accueil'
       && ($homepage['alias']['path'] ?? NULL) === '/node/' . $node_id
-      && is_int($homepage['original_revision_id'] ?? NULL)
-      && ($homepage['original_revision_id'] ?? 0) > 0
-      && is_int($homepage['target_revision_id'] ?? NULL)
-      && ($homepage['target_revision_id'] ?? 0) > 0
+      && is_int($original_revision_id)
+      && $original_revision_id > 0
+      && is_int($target_revision_id)
+      && $target_revision_id > 0
+      && $this->isRevisionIdentity(
+        $homepage['original_revision'] ?? NULL,
+        $original_revision_id,
+      )
+      && $this->isRevisionIdentity(
+        $homepage['target_revision'] ?? NULL,
+        $target_revision_id,
+      )
       && is_array($homepage['original_body'] ?? NULL)
       && ($homepage['reviewed_prestate'] ?? NULL) === 'reviewed_content_architecture_merged';
+  }
+
+  /**
+   * Validates the exact revision metadata shape retained by lifecycle v2.
+   */
+  private function isRevisionIdentity(mixed $revision, int $revision_id): bool {
+    return is_array($revision)
+      && array_keys($revision) === [
+        'revision_id',
+        'revision_user_id',
+        'revision_created',
+        'revision_log_message',
+        'changed',
+      ]
+      && ($revision['revision_id'] ?? NULL) === $revision_id
+      && is_int($revision['revision_user_id'] ?? NULL)
+      && ($revision['revision_user_id'] ?? -1) >= 0
+      && is_int($revision['revision_created'] ?? NULL)
+      && ($revision['revision_created'] ?? 0) > 0
+      && (is_string($revision['revision_log_message'] ?? NULL)
+        || ($revision['revision_log_message'] ?? NULL) === NULL)
+      && is_int($revision['changed'] ?? NULL)
+      && ($revision['changed'] ?? 0) > 0;
   }
 
   /**
