@@ -27,6 +27,9 @@ readonly -a REVIEWED_RELATIVE_FILES=(
   drupal/config/sync/block.block.unisonges_editorial_home.yml
   drupal/config/sync/block.block.unisonges_forum_blog_proposal.yml
   drupal/config/sync/block.block.unisonges_forum_topics.yml
+  drupal/config/sync/block.block.unisonges_theme_content.yml
+  drupal/config/sync/block.block.unisonges_theme_messages.yml
+  drupal/config/sync/block.block.unisonges_theme_page_title.yml
   drupal/config/sync/core.base_field_override.node.forum_topic.promote.yml
   drupal/config/sync/core.base_field_override.node.forum_topic.status.yml
   drupal/config/sync/core.entity_form_display.node.forum_topic.default.yml

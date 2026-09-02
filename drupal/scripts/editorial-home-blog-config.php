@@ -405,6 +405,9 @@ function editorial_home_source_inventory(string $repo_root): array {
     'drupal/config/sync/block.block.unisonges_editorial_home.yml',
     'drupal/config/sync/block.block.unisonges_forum_blog_proposal.yml',
     'drupal/config/sync/block.block.unisonges_forum_topics.yml',
+    'drupal/config/sync/block.block.unisonges_theme_content.yml',
+    'drupal/config/sync/block.block.unisonges_theme_messages.yml',
+    'drupal/config/sync/block.block.unisonges_theme_page_title.yml',
     'drupal/config/sync/core.base_field_override.node.forum_topic.promote.yml',
     'drupal/config/sync/core.base_field_override.node.forum_topic.status.yml',
     'drupal/config/sync/core.entity_form_display.node.forum_topic.default.yml',
@@ -966,6 +969,50 @@ function editorial_home_preflight(
   $blog_block_source = editorial_home_read_yaml($sync_dir . '/' . $blog_block_name . '.yml');
   editorial_home_assert_blog_block_source($blog_block_source);
   editorial_home_assert_source_config($blog_block_name, $blog_block_source);
+  $shell_block_names = [
+    'block.block.unisonges_theme_messages',
+    'block.block.unisonges_theme_page_title',
+    'block.block.unisonges_theme_content',
+  ];
+  $shell_blocks = [];
+  foreach ($shell_block_names as $shell_block_name) {
+    $shell_blocks[$shell_block_name] = editorial_home_read_yaml(
+      $sync_dir . '/' . $shell_block_name . '.yml',
+    );
+    editorial_home_assert_source_config(
+      $shell_block_name,
+      $shell_blocks[$shell_block_name],
+    );
+  }
+  $messages_block = $shell_blocks['block.block.unisonges_theme_messages'];
+  $page_title_block = $shell_blocks['block.block.unisonges_theme_page_title'];
+  $content_block = $shell_blocks['block.block.unisonges_theme_content'];
+  if (($messages_block['status'] ?? NULL) !== TRUE
+    || ($messages_block['theme'] ?? NULL) !== EDITORIAL_HOME_THEME
+    || ($messages_block['region'] ?? NULL) !== EDITORIAL_HOME_REGION
+    || ($messages_block['weight'] ?? NULL) !== -8
+    || ($messages_block['plugin'] ?? NULL) !== 'system_messages_block'
+    || ($messages_block['visibility'] ?? NULL) !== []
+    || ($page_title_block['status'] ?? NULL) !== TRUE
+    || ($page_title_block['theme'] ?? NULL) !== EDITORIAL_HOME_THEME
+    || ($page_title_block['region'] ?? NULL) !== EDITORIAL_HOME_REGION
+    || ($page_title_block['weight'] ?? NULL) !== -7
+    || ($page_title_block['plugin'] ?? NULL) !== 'page_title_block'
+    || ($page_title_block['visibility']['request_path']['negate'] ?? NULL) !== TRUE
+    || str_contains(
+      (string) ($page_title_block['visibility']['request_path']['pages'] ?? ''),
+      '/accueil',
+    )
+    || ($content_block['status'] ?? NULL) !== TRUE
+    || ($content_block['theme'] ?? NULL) !== EDITORIAL_HOME_THEME
+    || ($content_block['region'] ?? NULL) !== EDITORIAL_HOME_REGION
+    || ($content_block['weight'] ?? NULL) !== -3
+    || ($content_block['plugin'] ?? NULL) !== 'system_main_block'
+    || ($content_block['visibility'] ?? NULL) !== []) {
+    editorial_home_fail(
+      'The messages, page-title, and main-content blocks must retain their exact one-path shell order.',
+    );
+  }
   $forum_prerequisite_names = [
     'node.type.forum_topic',
     'core.base_field_override.node.forum_topic.status',
