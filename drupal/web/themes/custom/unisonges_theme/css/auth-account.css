@@ -1,0 +1,689 @@
+/* Route-scoped authentication and owner-account presentation. */
+
+.auth-account-page {
+  --auth-account-surface: #fffaf2;
+  --auth-account-surface-strong: #fffdf8;
+  --auth-account-surface-muted: #f5efe4;
+  --auth-account-ink: #102033;
+  --auth-account-muted: #475569;
+  --auth-account-border: #a8b5b0;
+  --auth-account-border-soft: #ccd4d0;
+  --auth-account-teal: #0f766e;
+  --auth-account-teal-dark: #075b55;
+  --auth-account-focus: #9b4d00;
+  --auth-account-error: #7a1f12;
+  --auth-account-error-bg: #fdf0ee;
+  --auth-account-success: #0b4f49;
+  --auth-account-success-bg: #eef8f3;
+  --auth-account-warning: #5b4213;
+  --auth-account-warning-bg: #fff7df;
+  --auth-account-info: #173f49;
+  --auth-account-info-bg: #eef6f7;
+  --auth-account-shadow: 0 6px 20px rgba(15, 32, 51, 0.08);
+  --auth-account-width: 34rem;
+  color: var(--auth-account-ink);
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    Arial,
+    sans-serif;
+}
+
+.auth-account-page--register {
+  --auth-account-width: 40rem;
+}
+
+.auth-account-page--profile,
+.auth-account-page--edit {
+  --auth-account-width: 44rem;
+}
+
+/* Reuse the existing scrollframe as the single, route-scoped form surface. */
+.auth-account-page #unisonges-scrollframe.scrollframe {
+  box-sizing: border-box;
+  width: min(var(--auth-account-width), calc(100vw - 2rem)) !important;
+  max-width: var(--auth-account-width) !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: calc(100vh - var(--header-h, 72px) - 1.5rem) !important;
+  max-height: calc(100dvh - var(--header-h, 72px) - 1.5rem) !important;
+  overflow: auto !important;
+  border: 1px solid var(--auth-account-border) !important;
+  border-radius: 0.75rem !important;
+  background: var(--auth-account-surface-strong) !important;
+  box-shadow: var(--auth-account-shadow) !important;
+  backdrop-filter: none !important;
+}
+
+.auth-account-page #unisonges-scrollframe .scrollframe__inner {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: clamp(1.25rem, 4vw, 1.75rem) !important;
+  overflow: visible !important;
+}
+
+.auth-account-page
+  #unisonges-scrollframe
+  :where(.block, form, article, fieldset, details) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.auth-account-page .unisonges-page-title-block {
+  order: -30;
+  margin: 0 0 0.7rem;
+}
+
+.auth-account-page .unisonges-page-title-block .content {
+  margin: 0;
+}
+
+.auth-account-page .unisonges-page-title-block h1 {
+  max-width: 28ch;
+  margin: 0;
+  color: var(--auth-account-ink);
+  font-family: inherit;
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  font-weight: 700;
+  line-height: 1.18;
+  letter-spacing: 0.005em;
+  overflow-wrap: break-word;
+  text-wrap: balance;
+}
+
+.auth-account-page :where(p, li, dd, .field__item) {
+  overflow-wrap: anywhere;
+}
+
+.auth-account-page :where(a, button, input, select, textarea, summary) {
+  font: inherit;
+}
+
+.auth-account-page
+  :where(
+    a,
+    button,
+    input:not([type="hidden"]),
+    select,
+    textarea,
+    summary
+  ):focus-visible {
+  outline: 3px solid var(--auth-account-focus) !important;
+  outline-offset: 3px !important;
+}
+
+/* Keep PR #100's single Messenger path, visually between title and form. */
+.auth-account-page .unisonges-system-messages {
+  order: -20;
+  position: static !important;
+  inset: auto !important;
+  width: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 0 1rem !important;
+  padding: 0 !important;
+}
+
+.auth-account-page .unisonges-system-messages .messages__wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.auth-account-page .unisonges-system-messages .alert {
+  position: static !important;
+  box-sizing: border-box;
+  display: flow-root;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0.8rem 0.875rem 0.65rem 1rem;
+  border: 1px solid var(--auth-account-border);
+  border-inline-start-width: 0.25rem;
+  border-radius: 0.5rem;
+  background: var(--auth-account-surface);
+  color: var(--auth-account-ink);
+  box-shadow: none;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.auth-account-page .unisonges-system-messages .alert-danger {
+  border-color: #c85849;
+  background: var(--auth-account-error-bg);
+  color: var(--auth-account-error);
+}
+
+.auth-account-page .unisonges-system-messages .alert-success {
+  border-color: #4d9383;
+  background: var(--auth-account-success-bg);
+  color: var(--auth-account-success);
+}
+
+.auth-account-page .unisonges-system-messages .alert-warning {
+  border-color: #b98b2f;
+  background: var(--auth-account-warning-bg);
+  color: var(--auth-account-warning);
+}
+
+.auth-account-page .unisonges-system-messages .alert-info {
+  border-color: #4f8792;
+  background: var(--auth-account-info-bg);
+  color: var(--auth-account-info);
+}
+
+.auth-account-page .unisonges-system-messages :where(ul, ol) {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+}
+
+.auth-account-page .unisonges-system-messages li + li {
+  margin-top: 0.3rem;
+}
+
+.auth-account-page .unisonges-system-messages .alert a {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.18em;
+}
+
+.auth-account-page .unisonges-system-messages .alert .btn-close {
+  position: static !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  float: inline-end;
+  margin: -0.35rem -0.25rem -0.35rem 0.5rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 0.25rem;
+  background: transparent !important;
+  color: inherit;
+  font-size: 1.5rem;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.auth-account-page .unisonges-system-messages .alert .btn-close::before {
+  content: "×";
+}
+
+.auth-account-page .unisonges-system-messages .alert .btn-close:hover,
+.auth-account-page .unisonges-system-messages .alert .btn-close:focus-visible {
+  border-color: currentColor;
+  opacity: 1;
+}
+
+/* Contextual links replace duplicate anonymous account tabs. */
+:is(
+    .auth-account-page--login,
+    .auth-account-page--register,
+    .auth-account-page--password,
+    .auth-account-page--reset
+  )
+  :where(.block-local-tasks-block, nav.tabs) {
+  display: none;
+}
+
+.auth-account-form,
+.auth-account-page--profile .profile {
+  color: var(--auth-account-ink);
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.auth-account__intro {
+  max-width: 62ch;
+  margin: 0 0 1.4rem;
+  color: var(--auth-account-muted);
+}
+
+.auth-account__required-note {
+  margin: 0 0 1.2rem;
+  color: #34454f;
+  font-size: 0.93rem;
+}
+
+.auth-account-form :where(.js-form-item, .form-item, .mb-3) {
+  min-width: 0;
+}
+
+.auth-account-form :where(.js-form-item, .form-item) {
+  margin-bottom: 1.25rem;
+}
+
+.auth-account-form :where(.js-form-item > label, .form-item > label, legend) {
+  display: block;
+  margin: 0 0 0.4rem;
+  color: var(--auth-account-ink);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.auth-account-form
+  :where(
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="search"],
+    input[type="url"],
+    input[type="tel"],
+    input[type="number"],
+    input[type="date"],
+    input[type="file"],
+    select,
+    textarea,
+    .form-control
+  ) {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 3rem;
+  padding: 0.65rem 0.75rem;
+  border: 1.5px solid #73857e;
+  border-radius: 0.375rem;
+  background: #fff;
+  color: var(--auth-account-ink);
+  line-height: 1.35;
+}
+
+.auth-account-form textarea {
+  min-height: 7rem;
+}
+
+.auth-account-form input[type="file"] {
+  padding: 0.42rem;
+  overflow: hidden;
+}
+
+.auth-account-form input[type="file"]::file-selector-button {
+  min-height: 2.1rem;
+  margin-right: 0.55rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--auth-account-border);
+  border-radius: 0.25rem;
+  background: var(--auth-account-surface-muted);
+  color: var(--auth-account-ink);
+  font: inherit;
+  font-weight: 700;
+}
+
+.auth-account-form .form-managed-file {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.auth-account-form .form-managed-file input[type="file"] {
+  flex: 1 1 18rem;
+}
+
+.auth-account-form .form-managed-file :where(.image-widget-data, .file-widget) {
+  display: flex;
+  flex: 1 1 18rem;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.auth-account-form :where(.description, .form-text, .text-muted) {
+  display: block;
+  margin-top: 0.4rem;
+  color: var(--auth-account-muted) !important;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+/* Barrio otherwise leaves password widgets at 55%, which breaks narrow reflow. */
+.auth-account-form
+  :where(
+    .password-confirm,
+    .password-field,
+    .password-strength,
+    .password-confirm-match,
+    .confirm-parent,
+    .password-parent
+  ) {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.auth-account-form
+  :where(
+    input.error,
+    select.error,
+    textarea.error,
+    .form-control.error,
+    input.is-invalid,
+    select.is-invalid,
+    textarea.is-invalid,
+    input[aria-invalid="true"],
+    select[aria-invalid="true"],
+    textarea[aria-invalid="true"]
+  ) {
+  border-color: #c85849;
+  box-shadow: 0 0 0 1px #c85849;
+}
+
+.auth-account-form :where(.form-item--error-message, .invalid-feedback) {
+  display: block;
+  margin-top: 0.45rem;
+  color: var(--auth-account-error);
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.auth-account-form :where(fieldset, details) {
+  max-width: 100%;
+  margin: 0 0 1.25rem;
+  padding: 1rem;
+  border: 1px solid var(--auth-account-border-soft);
+  border-radius: 0.5rem;
+  background: var(--auth-account-surface);
+}
+
+.auth-account-form details > summary {
+  min-height: 2.75rem;
+  color: var(--auth-account-ink);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.auth-account-form
+  :where(.form-check, .js-form-type-checkbox, .js-form-type-radio) {
+  min-height: 2.75rem;
+}
+
+.auth-account-form > .form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-top: 1.4rem;
+}
+
+.auth-account-form :where(button, input[type="submit"], .button, .btn),
+.auth-account__link,
+.auth-account-page .block-local-tasks-block a {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-height: 2.75rem;
+  border-radius: 0.375rem;
+  line-height: 1.25;
+}
+
+.auth-account-form
+  > .form-actions
+  :where(.button--primary, .btn-primary, input[type="submit"]),
+.auth-account-form#user-pass-reset
+  :where(.button--primary, .btn-primary, input[type="submit"]) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 1rem;
+  border: 1px solid var(--auth-account-teal);
+  background: var(--auth-account-teal);
+  color: #fff;
+  font-weight: 800;
+  text-align: center;
+  text-decoration: none;
+}
+
+.auth-account-form
+  > .form-actions
+  :where(.button--primary, .btn-primary, input[type="submit"]):hover,
+.auth-account-form
+  > .form-actions
+  :where(.button--primary, .btn-primary, input[type="submit"]):focus-visible,
+.auth-account-form#user-pass-reset
+  :where(.button--primary, .btn-primary, input[type="submit"]):hover,
+.auth-account-form#user-pass-reset
+  :where(.button--primary, .btn-primary, input[type="submit"]):focus-visible {
+  border-color: var(--auth-account-teal-dark);
+  background: var(--auth-account-teal-dark);
+  color: #fff;
+}
+
+.auth-account-form
+  .form-managed-file
+  :where(button, input[type="submit"], .button, .btn) {
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--auth-account-border);
+  background: var(--auth-account-surface-muted);
+  color: var(--auth-account-ink);
+  font-weight: 700;
+}
+
+.auth-account__link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0;
+  color: var(--auth-account-teal-dark);
+  font-weight: 700;
+  text-underline-offset: 0.2em;
+  overflow-wrap: anywhere;
+}
+
+.auth-account__link:hover {
+  color: #063f3b;
+}
+
+.auth-account__link--quiet {
+  color: #2f454e;
+  font-weight: 600;
+}
+
+.auth-account__note {
+  margin: 1.5rem 0 0;
+  padding: 0.65rem 0.75rem;
+  border-left: 0.1875rem solid #78a49b;
+  background: #f7f4ed;
+  color: #34454f;
+  font-size: 0.93rem;
+}
+
+.auth-account__destination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--auth-account-border-soft);
+}
+
+.auth-account__destination p {
+  margin: 0;
+}
+
+.auth-account__secondary-action {
+  justify-content: center;
+  padding: 0.65rem 1rem;
+  border: 1px solid var(--auth-account-teal);
+  background: transparent;
+  color: var(--auth-account-teal-dark);
+  text-align: center;
+  text-decoration: none;
+}
+
+.auth-account__secondary-action:hover,
+.auth-account__secondary-action:focus-visible {
+  background: #e8f2ef;
+  color: #063f3b;
+}
+
+/* Owner profile: real Drupal fields only, without dashboard placeholders. */
+.auth-account-page--profile .profile {
+  padding: 1rem;
+  border: 1px solid var(--auth-account-border-soft);
+  border-radius: 0.5rem;
+  background: var(--auth-account-surface);
+}
+
+.auth-account-page--profile .profile > .field + .field {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--auth-account-border-soft);
+}
+
+.auth-account-page--profile .profile :where(.field__label, dt) {
+  color: var(--auth-account-muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.auth-account-page--profile .profile :where(.field__item, dd) {
+  min-width: 0;
+  margin: 0;
+  color: var(--auth-account-ink);
+  font-weight: 700;
+}
+
+body.auth-account-page--profile .profile .field--label-inline .field__label {
+  width: auto;
+}
+
+body.auth-account-page--profile
+  .profile
+  :where(.field--label-inline, .field--label-above)
+  .field__item {
+  box-sizing: border-box;
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.auth-account-page--profile .profile img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+}
+
+/* Retain Core's owner tabs, styled as reachable account actions. */
+.auth-account-page
+  :where(.block-local-tasks-block ul, nav.tabs ul, ul.tabs, ul.nav-tabs) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 1.25rem;
+  padding: 0;
+  border: 0;
+  list-style: none;
+}
+
+.auth-account-page :where(.block-local-tasks-block, nav.tabs) li {
+  margin: 0;
+}
+
+.auth-account-page :where(.block-local-tasks-block, nav.tabs) a {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--auth-account-border);
+  background: var(--auth-account-surface);
+  color: var(--auth-account-teal-dark);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.auth-account-page
+  :where(.block-local-tasks-block, nav.tabs)
+  :where(a.active, a[aria-current="page"], li.active > a) {
+  border-color: var(--auth-account-teal);
+  background: var(--auth-account-teal);
+  color: #fff;
+}
+
+@media (max-width: 32rem) {
+  .auth-account-page #unisonges-scrollframe.scrollframe {
+    width: calc(100vw - 1rem) !important;
+  }
+
+  .auth-account-page #unisonges-scrollframe .scrollframe__inner {
+    padding: 1rem !important;
+  }
+
+  .auth-account-form > .form-actions,
+  .auth-account__destination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .auth-account-form
+    > .form-actions
+    :where(.button, .btn, input[type="submit"]),
+  .auth-account__destination .auth-account__link,
+  .auth-account-page :where(.block-local-tasks-block, nav.tabs) a {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .auth-account-page :where(.block-local-tasks-block, nav.tabs) li {
+    flex: 1 1 100%;
+  }
+}
+
+@media (max-width: 20rem) {
+  .auth-account-page #unisonges-scrollframe.scrollframe {
+    width: calc(100vw - 0.75rem) !important;
+  }
+
+  .auth-account-page #unisonges-scrollframe .scrollframe__inner {
+    padding: 0.75rem !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-account-page .unisonges-system-messages .fade {
+    transition: none !important;
+  }
+}
+
+@media (forced-colors: active) {
+  .auth-account-page
+    :where(
+      #unisonges-scrollframe,
+      .alert,
+      fieldset,
+      details,
+      input,
+      select,
+      textarea,
+      button,
+      .auth-account__secondary-action,
+      .profile
+    ) {
+    border-color: CanvasText !important;
+  }
+
+  .auth-account-page .unisonges-system-messages .btn-close {
+    border-color: ButtonText !important;
+    color: ButtonText !important;
+    forced-color-adjust: auto;
+  }
+}

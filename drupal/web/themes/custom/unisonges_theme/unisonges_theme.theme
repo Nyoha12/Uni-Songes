@@ -6,11 +6,15 @@
  */
 
 use Drupal\Core\Cache\CacheableMetadata;
+use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Language\LanguageInterface;
 use Drupal\Core\Menu\MenuTreeParameters;
+use Drupal\Core\Render\Markup;
+use Drupal\Core\Url;
 use Drupal\commerce_product\Entity\ProductInterface;
 use Drupal\commerce_product\Entity\ProductVariationInterface;
 use Drupal\node\NodeInterface;
+use Drupal\user\UserInterface;
 
 /**
  * Implements hook_preprocess_node().
@@ -217,7 +221,7 @@ function unisonges_theme_theme_suggestions_node_alter(array &$suggestions, array
  * Add section-* class based on first segment of current path alias.
  * Example: /cours/debutant => section-cours
  */
-function unisonges_theme_preprocess_html(array &$variables) {
+function unisonges_theme_preprocess_html(array &$variables): void {
   $current_path = \Drupal::service('path.current')->getPath();
   $alias = \Drupal::service('path_alias.manager')->getAliasByPath($current_path);
   $alias = trim($alias, '/');
@@ -235,4 +239,340 @@ function unisonges_theme_preprocess_html(array &$variables) {
   if ($segment) {
     $variables['attributes']['class'][] = 'section-' . $segment;
   }
+
+  $auth_account_scope = _unisonges_theme_auth_account_scope();
+  $route_name = \Drupal::routeMatch()->getRouteName();
+  $owner_sensitive_route = in_array(
+    $route_name,
+    ['entity.user.canonical', 'entity.user.edit_form'],
+    TRUE,
+  );
+  if ($auth_account_scope === NULL && !$owner_sensitive_route) {
+    return;
+  }
+
+  $cache_contexts = ['route'];
+  if ($owner_sensitive_route) {
+    $cache_contexts[] = 'user';
+  }
+  CacheableMetadata::createFromRenderArray($variables)
+    ->addCacheContexts($cache_contexts)
+    ->applyTo($variables);
+
+  if ($auth_account_scope === NULL) {
+    return;
+  }
+
+  $variables['attributes']['class'][] = 'auth-account-page';
+  $variables['attributes']['class'][] = 'auth-account-page--' . $auth_account_scope;
+  $variables['#attached']['library'][] = 'unisonges_theme/auth-account';
+  $variables['#attached']['html_head'][] = [
+    [
+      '#type' => 'html_tag',
+      '#tag' => 'script',
+      '#value' => Markup::create(<<<'JS'
+((document) => {
+  if (document.documentElement.dataset.unisongesAuthMessageDismiss === 'true') {
+    return;
+  }
+  document.documentElement.dataset.unisongesAuthMessageDismiss = 'true';
+  document.addEventListener('click', (event) => {
+    const dismiss = event.target.closest?.(
+      '.auth-account-page .unisonges-system-messages .btn-close',
+    );
+    const alert = dismiss?.closest('.alert');
+    if (!alert) {
+      return;
+    }
+    event.preventDefault();
+    (alert.closest('[data-drupal-message-id]') || alert).remove();
+  });
+})(document);
+JS
+      ),
+    ],
+    'unisonges_auth_account_message_dismiss',
+  ];
+}
+
+/**
+ * Alters the route titles rendered by the existing page-title block.
+ */
+function unisonges_theme_preprocess_page_title(array &$variables): void {
+  $titles = [
+    'login' => t('Se connecter'),
+    'register' => t('Créer un compte'),
+    'password' => t('Réinitialiser le mot de passe'),
+  ];
+  $scope = _unisonges_theme_auth_account_scope();
+
+  if (isset($titles[$scope])) {
+    $variables['title'] = $titles[$scope];
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for the canonical login form.
+ */
+function unisonges_theme_form_user_login_form_alter(array &$form, FormStateInterface $form_state): void {
+  if (\Drupal::routeMatch()->getRouteName() !== 'user.login') {
+    return;
+  }
+
+  _unisonges_theme_prepare_auth_account_form(
+    $form,
+    'auth-account-login-intro',
+    t("Connectez-vous avec votre nom d’utilisateur pour accéder à votre compte Uni-Songes."),
+  );
+
+  $form['name']['#title'] = t("Nom d’utilisateur");
+  $form['pass']['#title'] = t('Mot de passe');
+  $form['actions']['submit']['#value'] = t('Se connecter');
+  $form['actions']['#weight'] = 100;
+
+  $form['auth_account_password_link'] = [
+    '#type' => 'link',
+    '#title' => t('Mot de passe oublié ?'),
+    '#url' => _unisonges_theme_auth_account_url('user.pass'),
+    '#attributes' => [
+      'class' => ['auth-account__link', 'auth-account__link--quiet'],
+    ],
+    '#cache' => ['contexts' => ['url.query_args:destination']],
+    '#weight' => 90,
+  ];
+  $form['auth_account_reservation_note'] = [
+    '#type' => 'html_tag',
+    '#tag' => 'p',
+    '#value' => t(
+      'Un compte est nécessaire pour confirmer une réservation ; chaque créneau reste soumis à disponibilité.',
+    ),
+    '#attributes' => ['class' => ['auth-account__note']],
+    '#weight' => 200,
+  ];
+  $form['auth_account_destination'] = _unisonges_theme_auth_account_destination(
+    t("Vous n’avez pas encore de compte ?"),
+    t('Créer un compte'),
+    'user.register',
+    TRUE,
+  );
+  $form['auth_account_destination']['#weight'] = 300;
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for public registration.
+ */
+function unisonges_theme_form_user_register_form_alter(array &$form, FormStateInterface $form_state): void {
+  if (\Drupal::routeMatch()->getRouteName() !== 'user.register') {
+    return;
+  }
+
+  _unisonges_theme_prepare_auth_account_form(
+    $form,
+    'auth-account-register-intro',
+    t(
+      'Après l’inscription, vous recevrez un email avec un lien à usage unique pour vérifier votre adresse et choisir votre mot de passe.',
+    ),
+  );
+
+  if (isset($form['account']['mail'])) {
+    $form['account']['mail']['#title'] = t('Adresse email');
+    $form['account']['mail']['#attributes']['autocomplete'] = 'email';
+  }
+  if (isset($form['account']['name'])) {
+    $form['account']['name']['#title'] = t("Nom d’utilisateur");
+    $form['account']['name']['#attributes']['autocomplete'] = 'username';
+  }
+  $form['actions']['submit']['#value'] = t('Créer mon compte');
+
+  $form['auth_account_required_note'] = [
+    '#type' => 'html_tag',
+    '#tag' => 'p',
+    '#value' => t("Les champs obligatoires doivent être renseignés. L’image de profil reste facultative."),
+    '#attributes' => ['class' => ['auth-account__required-note']],
+    '#weight' => -900,
+  ];
+  $form['auth_account_reservation_note'] = [
+    '#type' => 'html_tag',
+    '#tag' => 'p',
+    '#value' => t("Le compte permet de confirmer une réservation, sans garantir la disponibilité d’un créneau."),
+    '#attributes' => ['class' => ['auth-account__note']],
+    '#weight' => 900,
+  ];
+  $form['auth_account_destination'] = _unisonges_theme_auth_account_destination(
+    t('Vous avez déjà un compte ?'),
+    t('Se connecter'),
+    'user.login',
+  );
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for password reset requests.
+ */
+function unisonges_theme_form_user_pass_alter(array &$form, FormStateInterface $form_state): void {
+  if (\Drupal::routeMatch()->getRouteName() !== 'user.pass') {
+    return;
+  }
+
+  $is_authenticated_variant = ($form['name']['#type'] ?? NULL) === 'value';
+  $intro = $is_authenticated_variant
+    ? t("Les instructions seront envoyées à l’adresse enregistrée pour votre compte.")
+    : t(
+      'Indiquez votre nom d’utilisateur ou votre adresse email pour recevoir les instructions de réinitialisation.',
+    );
+  _unisonges_theme_prepare_auth_account_form(
+    $form,
+    'auth-account-password-intro',
+    $intro,
+  );
+
+  if (!$is_authenticated_variant && isset($form['name']['#title'])) {
+    $form['name']['#title'] = t("Nom d’utilisateur ou adresse email");
+  }
+  $form['actions']['submit']['#value'] = t('Envoyer les instructions');
+  if (!$is_authenticated_variant) {
+    $form['auth_account_destination'] = _unisonges_theme_auth_account_destination(
+      '',
+      t('Revenir à la connexion'),
+      'user.login',
+    );
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for one-time login entry.
+ */
+function unisonges_theme_form_user_pass_reset_alter(array &$form, FormStateInterface $form_state): void {
+  if (\Drupal::routeMatch()->getRouteName() !== 'user.reset.form') {
+    return;
+  }
+
+  $form['#attributes']['class'][] = 'auth-account-form';
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for the owner's account form.
+ */
+function unisonges_theme_form_user_form_alter(array &$form, FormStateInterface $form_state): void {
+  if (_unisonges_theme_auth_account_scope() !== 'edit') {
+    return;
+  }
+
+  $intro = $form_state->get('user_pass_reset')
+    ? t('Choisissez et confirmez votre mot de passe pour terminer l’accès à votre compte.')
+    : t('Mettez à jour les informations de votre compte, puis enregistrez vos modifications.');
+  _unisonges_theme_prepare_auth_account_form(
+    $form,
+    'auth-account-edit-intro',
+    $intro,
+  );
+}
+
+/**
+ * Returns the visual scope allowed for the current auth/account route.
+ */
+function _unisonges_theme_auth_account_scope(): ?string {
+  $route_match = \Drupal::routeMatch();
+  $route_name = $route_match->getRouteName();
+  $route_scopes = [
+    'user.login' => 'login',
+    'user.register' => 'register',
+    'user.pass' => 'password',
+    'user.reset.form' => 'reset',
+  ];
+
+  if (isset($route_scopes[$route_name])) {
+    if (in_array($route_name, ['user.login', 'user.register'], TRUE)
+      && \Drupal::currentUser()->isAuthenticated()) {
+      return NULL;
+    }
+    return $route_scopes[$route_name];
+  }
+  if (!in_array($route_name, ['entity.user.canonical', 'entity.user.edit_form'], TRUE)) {
+    return NULL;
+  }
+
+  $account = $route_match->getParameter('user');
+  $current_user = \Drupal::currentUser();
+  if (!$account instanceof UserInterface
+    || $current_user->isAnonymous()
+    || (int) $account->id() !== (int) $current_user->id()) {
+    return NULL;
+  }
+
+  // Future reservation/order summaries belong in an owner-access-checked,
+  // lazy-built block, not in Drupal's cached user entity render array.
+  return $route_name === 'entity.user.canonical' ? 'profile' : 'edit';
+}
+
+/**
+ * Adds shared presentation metadata without replacing form children.
+ */
+function _unisonges_theme_prepare_auth_account_form(array &$form, string $intro_id, mixed $intro): void {
+  $form['#attributes']['class'][] = 'auth-account-form';
+  $described_by = $form['#attributes']['aria-describedby'] ?? '';
+  if (is_array($described_by)) {
+    $described_by = implode(' ', $described_by);
+  }
+  $described_by = trim((string) $described_by);
+  $form['#attributes']['aria-describedby'] = trim($described_by . ' ' . $intro_id);
+  $form['auth_account_intro'] = [
+    '#type' => 'html_tag',
+    '#tag' => 'p',
+    '#value' => $intro,
+    '#attributes' => [
+      'class' => ['auth-account__intro'],
+      'id' => $intro_id,
+    ],
+    '#weight' => -1000,
+  ];
+}
+
+/**
+ * Builds a secondary destination from an existing Drupal route.
+ */
+function _unisonges_theme_auth_account_destination(
+  mixed $prompt,
+  mixed $link_text,
+  string $route_name,
+  bool $button = FALSE,
+): array {
+  $link_classes = ['auth-account__link'];
+  if ($button) {
+    $link_classes[] = 'auth-account__secondary-action';
+  }
+
+  $destination = [
+    '#type' => 'container',
+    '#attributes' => ['class' => ['auth-account__destination']],
+    '#cache' => ['contexts' => ['url.query_args:destination']],
+    '#weight' => 1000,
+    'link' => [
+      '#type' => 'link',
+      '#title' => $link_text,
+      '#url' => _unisonges_theme_auth_account_url($route_name),
+      '#attributes' => ['class' => $link_classes],
+    ],
+  ];
+  if ((string) $prompt !== '') {
+    $destination['prompt'] = [
+      '#type' => 'html_tag',
+      '#tag' => 'p',
+      '#value' => $prompt,
+      '#weight' => -1,
+    ];
+  }
+
+  return $destination;
+}
+
+/**
+ * Builds an existing auth route URL while retaining a safe destination.
+ */
+function _unisonges_theme_auth_account_url(string $route_name): Url {
+  $options = [];
+  if (\Drupal::request()->query->has('destination')) {
+    $options['query'] = \Drupal::service('redirect.destination')->getAsArray();
+  }
+
+  return Url::fromRoute($route_name, [], $options);
 }
