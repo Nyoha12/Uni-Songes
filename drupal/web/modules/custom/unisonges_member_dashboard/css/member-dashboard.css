@@ -1,0 +1,291 @@
+.unisonges-member-dashboard {
+  --member-dashboard-ink: #102033;
+  --member-dashboard-muted: #475569;
+  --member-dashboard-surface: #fffaf2;
+  --member-dashboard-surface-strong: #fffdf8;
+  --member-dashboard-border: #a8b5b0;
+  --member-dashboard-border-soft: #ccd4d0;
+  --member-dashboard-link: #0f766e;
+  --member-dashboard-link-hover: #075b55;
+  --member-dashboard-focus: #9b4d00;
+  --member-dashboard-positive: #0b4f49;
+  --member-dashboard-positive-bg: #eef8f3;
+  --member-dashboard-caution: #5b4213;
+  --member-dashboard-caution-bg: #fff7df;
+  --member-dashboard-neutral: #173f49;
+  --member-dashboard-neutral-bg: #eef6f7;
+
+  min-width: 0;
+  margin-block-start: clamp(1.5rem, 5vw, 2.5rem);
+  color: var(--member-dashboard-ink);
+}
+
+.unisonges-member-dashboard :where(p, li, dd, dt, h2, h3, a) {
+  overflow-wrap: anywhere;
+}
+
+.unisonges-member-dashboard :where(a):focus-visible {
+  outline: 3px solid var(--member-dashboard-focus);
+  outline-offset: 3px;
+}
+
+.unisonges-member-dashboard__account-context {
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--member-dashboard-border-soft);
+  border-inline-start-width: 0.25rem;
+  border-radius: 0.4rem;
+  background: var(--member-dashboard-surface);
+}
+
+.unisonges-member-dashboard__account-context p {
+  margin: 0;
+}
+
+.unisonges-member-dashboard__eyebrow,
+.unisonges-member-dashboard__kicker {
+  color: var(--member-dashboard-link-hover);
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.unisonges-member-dashboard__eyebrow {
+  margin-block-end: 0.2rem !important;
+}
+
+.unisonges-member-dashboard__nav {
+  margin-block-start: 1rem;
+  padding-block: 0.65rem;
+  border-block: 1px solid var(--member-dashboard-border-soft);
+}
+
+.unisonges-member-dashboard__nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.9rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.unisonges-member-dashboard__nav a,
+.unisonges-member-dashboard__record-link {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  color: var(--member-dashboard-link);
+  font-weight: 700;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.18em;
+}
+
+.unisonges-member-dashboard :where(
+    .unisonges-member-dashboard__nav a,
+    .unisonges-member-dashboard__record-link
+  ):hover {
+  color: var(--member-dashboard-link-hover);
+  text-decoration-thickness: 0.14em;
+}
+
+.unisonges-member-dashboard__section {
+  min-width: 0;
+  padding-block: clamp(1.4rem, 5vw, 2.15rem);
+  scroll-margin-block-start: 1rem;
+}
+
+.unisonges-member-dashboard__section + .unisonges-member-dashboard__section {
+  border-block-start: 1px solid var(--member-dashboard-border);
+}
+
+.unisonges-member-dashboard__section-heading,
+.unisonges-member-dashboard__record-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+}
+
+.unisonges-member-dashboard__section-heading {
+  margin-block-end: 0.8rem;
+}
+
+.unisonges-member-dashboard__kicker {
+  margin: 0 0 0.2rem;
+}
+
+.unisonges-member-dashboard h2,
+.unisonges-member-dashboard h3 {
+  margin-block-start: 0;
+  color: var(--member-dashboard-ink);
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+.unisonges-member-dashboard h2 {
+  margin-block-end: 0;
+  font-size: clamp(1.3rem, 5vw, 1.6rem);
+}
+
+.unisonges-member-dashboard h3 {
+  max-width: 42ch;
+  margin-block-end: 0;
+  font-size: 1.02rem;
+}
+
+.unisonges-member-dashboard__records {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.unisonges-member-dashboard__record {
+  min-width: 0;
+  padding-block: 1rem;
+  border-block-end: 1px solid var(--member-dashboard-border-soft);
+}
+
+.unisonges-member-dashboard__record:first-child {
+  border-block-start: 1px solid var(--member-dashboard-border-soft);
+}
+
+.unisonges-member-dashboard__record > p {
+  margin: 0.6rem 0 0;
+}
+
+.unisonges-member-dashboard__facts,
+.unisonges-member-dashboard__rights {
+  margin: 0;
+}
+
+.unisonges-member-dashboard__facts > div {
+  display: grid;
+  grid-template-columns: minmax(7.5rem, 0.38fr) minmax(0, 1fr);
+  gap: 0.2rem 1rem;
+  padding-block: 0.5rem;
+  border-block-end: 1px solid var(--member-dashboard-border-soft);
+}
+
+.unisonges-member-dashboard dt {
+  color: var(--member-dashboard-muted);
+  font-size: 0.92rem;
+  font-weight: 650;
+}
+
+.unisonges-member-dashboard dd {
+  min-width: 0;
+  margin: 0;
+}
+
+.unisonges-member-dashboard__rights > div {
+  padding-block: 0.8rem;
+  border-block-end: 1px solid var(--member-dashboard-border-soft);
+}
+
+.unisonges-member-dashboard__rights > div:first-child {
+  border-block-start: 1px solid var(--member-dashboard-border-soft);
+}
+
+.unisonges-member-dashboard__rights dd {
+  margin-block-start: 0.15rem;
+}
+
+.unisonges-member-dashboard__status {
+  display: inline-flex;
+  min-height: 1.65rem;
+  align-items: center;
+  padding: 0.16rem 0.48rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.unisonges-member-dashboard__status--registered,
+.unisonges-member-dashboard__status--paid {
+  background: var(--member-dashboard-positive-bg);
+  color: var(--member-dashboard-positive);
+}
+
+.unisonges-member-dashboard__status--pay_on_site {
+  background: var(--member-dashboard-caution-bg);
+  color: var(--member-dashboard-caution);
+}
+
+.unisonges-member-dashboard__status--inactive,
+.unisonges-member-dashboard__status--cancelled,
+.unisonges-member-dashboard__status--in_progress,
+.unisonges-member-dashboard__status--received {
+  background: var(--member-dashboard-neutral-bg);
+  color: var(--member-dashboard-neutral);
+}
+
+.unisonges-member-dashboard__meta,
+.unisonges-member-dashboard__note {
+  color: var(--member-dashboard-muted);
+  font-size: 0.92rem;
+}
+
+.unisonges-member-dashboard__note {
+  max-width: 64ch;
+  margin: 0.75rem 0 0;
+}
+
+.unisonges-member-dashboard__empty {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border-inline-start: 0.2rem solid var(--member-dashboard-border);
+  background: var(--member-dashboard-surface-strong);
+  color: var(--member-dashboard-muted);
+}
+
+.unisonges-member-dashboard__record-link {
+  margin-block-start: 0.2rem;
+}
+
+@media (max-width: 32rem) {
+  .unisonges-member-dashboard__facts > div {
+    display: block;
+  }
+
+  .unisonges-member-dashboard__facts dd {
+    margin-block-start: 0.15rem;
+  }
+}
+
+@media (max-width: 20rem) {
+  .unisonges-member-dashboard__account-context {
+    padding-inline: 0.75rem;
+  }
+
+  .unisonges-member-dashboard__nav ul {
+    display: block;
+  }
+
+  .unisonges-member-dashboard__nav a,
+  .unisonges-member-dashboard__record-link {
+    width: 100%;
+  }
+}
+
+@media (forced-colors: active) {
+  .unisonges-member-dashboard__account-context,
+  .unisonges-member-dashboard__status,
+  .unisonges-member-dashboard__empty {
+    border-color: CanvasText;
+  }
+
+  .unisonges-member-dashboard__account-context,
+  .unisonges-member-dashboard__status,
+  .unisonges-member-dashboard__empty {
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  .unisonges-member-dashboard :where(a):focus-visible {
+    outline-color: Highlight;
+  }
+}

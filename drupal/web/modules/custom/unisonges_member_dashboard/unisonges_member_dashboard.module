@@ -1,0 +1,42 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * @file
+ * Owner-only integration for the Uni-Songes member dashboard.
+ */
+
+use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
+use Drupal\Core\Entity\EntityInterface;
+
+/**
+ * Implements hook_theme().
+ */
+function unisonges_member_dashboard_theme(): array {
+  return [
+    'unisonges_member_dashboard' => [
+      'variables' => [
+        'reservations' => [],
+        'rights' => [],
+        'orders' => [],
+        'proposals' => [],
+        'contributions' => [],
+      ],
+      'template' => 'unisonges-member-dashboard',
+    ],
+  ];
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_view() for user entities.
+ */
+function unisonges_member_dashboard_user_view(
+  array &$build,
+  EntityInterface $entity,
+  EntityViewDisplayInterface $display,
+  string $view_mode,
+): void {
+  \Drupal::service('unisonges_member_dashboard.attachment')
+    ->attach($build, $entity, $view_mode);
+}

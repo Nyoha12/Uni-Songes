@@ -1,0 +1,196 @@
+{#
+/**
+ * @file
+ * Read-only owner dashboard appended after the Core user profile.
+ *
+ * Authorization, source parsing, and allowlisting are completed by the lazy
+ * builder. Twig receives display-only values and adds no page-level H1.
+ */
+#}
+<div class="unisonges-member-dashboard">
+  <aside class="unisonges-member-dashboard__account-context" aria-label="{{ 'Mon compte'|t }}">
+    <p class="unisonges-member-dashboard__eyebrow">{{ 'Mon compte'|t }}</p>
+    <p>{{ 'Les informations de votre profil restent affichées ci-dessus. L’onglet de modification habituel reste disponible.'|t }}</p>
+  </aside>
+
+  <nav class="unisonges-member-dashboard__nav" aria-label="{{ 'Sections de l’espace membre'|t }}">
+    <ul role="list">
+      <li><a href="#member-reservations">{{ 'Mes réservations'|t }}</a></li>
+      <li><a href="#member-rights">{{ 'Mes séances'|t }}</a></li>
+      <li><a href="#member-orders">{{ 'Mes commandes'|t }}</a></li>
+      <li><a href="#member-proposals">{{ 'Mes propositions'|t }}</a></li>
+      <li><a href="#member-contributions">{{ 'Mes contributions'|t }}</a></li>
+    </ul>
+  </nav>
+
+  <section id="member-reservations" class="unisonges-member-dashboard__section" aria-labelledby="member-reservations-title">
+    <header class="unisonges-member-dashboard__section-heading">
+      <div>
+        <p class="unisonges-member-dashboard__kicker">{{ 'Demandes récentes'|t }}</p>
+        <h2 id="member-reservations-title">{{ 'Mes réservations'|t }}</h2>
+      </div>
+    </header>
+    {% if reservations %}
+      <ol class="unisonges-member-dashboard__records" role="list">
+        {% for reservation in reservations %}
+          <li class="unisonges-member-dashboard__record">
+            <div class="unisonges-member-dashboard__record-heading">
+              <h3>{{ reservation.title }}</h3>
+              <span class="unisonges-member-dashboard__status unisonges-member-dashboard__status--{{ reservation.status_key }}">{{ reservation.status }}</span>
+            </div>
+            <dl class="unisonges-member-dashboard__facts">
+              <div>
+                <dt>{{ 'Soumise le'|t }}</dt>
+                <dd>{{ reservation.submitted }}</dd>
+              </div>
+              {% if reservation.scheduled %}
+                <div>
+                  <dt>{{ 'Créneau'|t }}</dt>
+                  <dd>{{ reservation.scheduled }}</dd>
+                </div>
+              {% endif %}
+              {% if reservation.mode %}
+                <div>
+                  <dt>{{ 'Mode'|t }}</dt>
+                  <dd>{{ reservation.mode }}</dd>
+                </div>
+              {% endif %}
+              {% if reservation.platform %}
+                <div>
+                  <dt>{{ 'Plateforme'|t }}</dt>
+                  <dd>{{ reservation.platform }}</dd>
+                </div>
+              {% endif %}
+            </dl>
+          </li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <p class="unisonges-member-dashboard__empty">{{ 'Aucune réservation affichable pour le moment.'|t }}</p>
+    {% endif %}
+  </section>
+
+  <section id="member-rights" class="unisonges-member-dashboard__section" aria-labelledby="member-rights-title">
+    <header class="unisonges-member-dashboard__section-heading">
+      <div>
+        <p class="unisonges-member-dashboard__kicker">{{ 'Soldes actuels, présentés séparément'|t }}</p>
+        <h2 id="member-rights-title">{{ 'Mes séances ou droits utilisables'|t }}</h2>
+      </div>
+    </header>
+    {% if rights.paid or rights.pay_on_site %}
+      <dl class="unisonges-member-dashboard__rights">
+        {% if rights.paid %}
+          <div>
+            <dt>{{ 'Séances disponibles'|t }}</dt>
+            <dd>
+              <strong>{{ rights.paid.count }} {{ rights.paid.count == 1 ? 'séance'|t : 'séances'|t }}</strong>
+              {% if rights.paid.expiry %}
+                <span>· {{ 'valables jusqu’au @date'|t({'@date': rights.paid.expiry}) }}</span>
+              {% endif %}
+            </dd>
+          </div>
+        {% endif %}
+        {% if rights.pay_on_site %}
+          <div>
+            <dt>{{ 'À régler sur place'|t }}</dt>
+            <dd><strong>{{ rights.pay_on_site.count }} {{ rights.pay_on_site.count == 1 ? 'séance'|t : 'séances'|t }}</strong></dd>
+          </div>
+        {% endif %}
+      </dl>
+      <p class="unisonges-member-dashboard__note">{{ 'Ces valeurs sont des soldes utilisables, pas un historique séance par séance.'|t }}</p>
+    {% else %}
+      <p class="unisonges-member-dashboard__empty">{{ 'Aucun droit utilisable actuellement.'|t }}</p>
+    {% endif %}
+  </section>
+
+  <section id="member-orders" class="unisonges-member-dashboard__section" aria-labelledby="member-orders-title">
+    <header class="unisonges-member-dashboard__section-heading">
+      <div>
+        <p class="unisonges-member-dashboard__kicker">{{ 'Commandes récentes'|t }}</p>
+        <h2 id="member-orders-title">{{ 'Mes commandes'|t }}</h2>
+      </div>
+    </header>
+    {% if orders %}
+      <ol class="unisonges-member-dashboard__records" role="list">
+        {% for order in orders %}
+          <li class="unisonges-member-dashboard__record">
+            <div class="unisonges-member-dashboard__record-heading">
+              <h3>{% if order.number %}{{ 'Commande @number'|t({'@number': order.number}) }}{% else %}{{ 'Commande'|t }}{% endif %}</h3>
+              <span class="unisonges-member-dashboard__status unisonges-member-dashboard__status--{{ order.status_key }}">{{ order.status }}</span>
+            </div>
+            <dl class="unisonges-member-dashboard__facts">
+              <div>
+                <dt>{{ order.date_label }}</dt>
+                <dd>{{ order.date }}</dd>
+              </div>
+              {% if order.total %}
+                <div>
+                  <dt>{{ 'Total'|t }}</dt>
+                  <dd>{{ order.total }}</dd>
+                </div>
+              {% endif %}
+            </dl>
+            {% if order.url %}
+              <a class="unisonges-member-dashboard__record-link" href="{{ order.url }}">
+                {{ 'Voir la commande'|t }}
+                <span class="visually-hidden">— {% if order.number %}{{ 'Commande @number'|t({'@number': order.number}) }}{% else %}{{ order.date }}{% endif %}</span>
+              </a>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <p class="unisonges-member-dashboard__empty">{{ 'Aucune commande à afficher.'|t }}</p>
+    {% endif %}
+  </section>
+
+  <section id="member-proposals" class="unisonges-member-dashboard__section" aria-labelledby="member-proposals-title">
+    <header class="unisonges-member-dashboard__section-heading">
+      <div>
+        <p class="unisonges-member-dashboard__kicker">{{ 'Idées envoyées à l’équipe'|t }}</p>
+        <h2 id="member-proposals-title">{{ 'Mes propositions'|t }}</h2>
+      </div>
+    </header>
+    {% if proposals %}
+      <ol class="unisonges-member-dashboard__records" role="list">
+        {% for proposal in proposals %}
+          <li class="unisonges-member-dashboard__record">
+            <div class="unisonges-member-dashboard__record-heading">
+              <h3>{{ proposal.title }}</h3>
+              <span class="unisonges-member-dashboard__status unisonges-member-dashboard__status--received">{{ proposal.status }}</span>
+            </div>
+            <p class="unisonges-member-dashboard__meta">{{ proposal.type }} · {{ proposal.submitted }}</p>
+          </li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <p class="unisonges-member-dashboard__empty">{{ 'Aucune proposition envoyée.'|t }}</p>
+    {% endif %}
+  </section>
+
+  <section id="member-contributions" class="unisonges-member-dashboard__section" aria-labelledby="member-contributions-title">
+    <header class="unisonges-member-dashboard__section-heading">
+      <div>
+        <p class="unisonges-member-dashboard__kicker">{{ 'Commentaires accessibles'|t }}</p>
+        <h2 id="member-contributions-title">{{ 'Mes contributions'|t }}</h2>
+      </div>
+    </header>
+    {% if contributions %}
+      <ol class="unisonges-member-dashboard__records" role="list">
+        {% for contribution in contributions %}
+          <li class="unisonges-member-dashboard__record">
+            <h3>{{ contribution.parent_type }} · {{ contribution.parent_title }}</h3>
+            <p>{{ contribution.excerpt }}</p>
+            <p class="unisonges-member-dashboard__meta">{{ contribution.date }}</p>
+            <a class="unisonges-member-dashboard__record-link" href="{{ contribution.url }}">
+              {{ 'Ouvrir le contenu'|t }}
+              <span class="visually-hidden">— {{ contribution.parent_title }} · {{ contribution.date }}</span>
+            </a>
+          </li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <p class="unisonges-member-dashboard__empty">{{ 'Aucune contribution publiée.'|t }}</p>
+    {% endif %}
+  </section>
+</div>

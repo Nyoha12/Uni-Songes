@@ -1,0 +1,29 @@
+services:
+  logger.channel.unisonges_member_dashboard:
+    parent: logger.channel_base
+    arguments: ['unisonges_member_dashboard']
+
+  unisonges_member_dashboard.access_policy:
+    class: Drupal\unisonges_member_dashboard\DashboardAccessPolicy
+
+  unisonges_member_dashboard.attachment:
+    class: Drupal\unisonges_member_dashboard\MemberDashboardAttachment
+    arguments:
+      - '@current_route_match'
+      - '@request_stack'
+      - '@current_user'
+      - '@unisonges_member_dashboard.access_policy'
+
+  unisonges_member_dashboard.builder:
+    class: Drupal\unisonges_member_dashboard\MemberDashboardBuilder
+    arguments:
+      - '@current_route_match'
+      - '@request_stack'
+      - '@current_user'
+      - '@unisonges_member_dashboard.access_policy'
+      - '@entity_type.manager'
+      - '@database'
+      - '@date.formatter'
+      - '@datetime.time'
+      - '@commerce_price.currency_formatter'
+      - '@logger.channel.unisonges_member_dashboard'
