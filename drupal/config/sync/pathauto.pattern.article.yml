@@ -1,0 +1,22 @@
+uuid: 310163cf-11a9-4902-abfb-cba9e1fc20dc
+langcode: fr
+status: true
+dependencies:
+  module:
+    - node
+id: article
+label: 'Articles du Blog'
+type: 'canonical_entities:node'
+pattern: 'blog/article/[node:title]'
+selection_criteria:
+  ce92e686-c065-49a0-967c-71ca1f122838:
+    id: 'entity_bundle:node'
+    negate: false
+    uuid: ce92e686-c065-49a0-967c-71ca1f122838
+    context_mapping:
+      node: node
+    bundles:
+      article: article
+selection_logic: and
+weight: -5
+relationships: {  }
