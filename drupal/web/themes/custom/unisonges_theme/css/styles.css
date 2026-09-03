@@ -2413,8 +2413,9 @@ form[id*="webform-submission-cours-particuliers-reservation"] .alert a,
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
   max-width: 100%;
-  min-height: 2.65rem;
+  min-height: calc(2.65rem + 0.68rem + 0.68rem + 2px);
   margin: auto 0 0;
   padding: .68rem 1.05rem;
   border: 1px solid transparent;
@@ -2426,7 +2427,7 @@ form[id*="webform-submission-cours-particuliers-reservation"] .alert a,
   text-align: center;
   text-decoration: none;
   box-shadow: 0 6px 14px rgba(2,6,23,.12);
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
 }
 
 .unisonges-offer-card__cta a,
