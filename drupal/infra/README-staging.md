@@ -40,13 +40,33 @@ Le script exécute:
 Le script:
 - crée un store `online` s'il est absent,
 - crée un payment gateway `manual` si absent,
-- désactive PayPal si aucun secret n'est configuré.
+- ne valide ni ne modifie PayPal et renvoie vers le runbook runtime dédié.
 
-## 5) Flux de configuration Drupal
+## 5) Configuration PayPal runtime
+
+La configuration exportée ne contient aucun credential et garde la passerelle
+désactivée. Suivre le runbook
+`docs/security/paypal-credential-remediation-2026.md` pour :
+
+- faire tourner le credential sandbox exposé ;
+- fournir `UNISONGES_PAYPAL_CLIENT_ID` et
+  `UNISONGES_PAYPAL_CLIENT_SECRET` depuis le stockage VPS approuvé ;
+- charger `config/runtime/paypal.settings.php` depuis le `settings.php` non
+  versionné ;
+- valider le comportement fail-closed sans afficher les valeurs.
+
+Ne jamais saisir les valeurs réelles dans
+`infra/paypal.env.example`. Ne pas sauvegarder le formulaire du gateway avec
+les overrides actifs : cela peut recopier les valeurs runtime dans la
+configuration active.
+
+## 6) Flux de configuration Drupal
 
 ### Export (depuis environnement source)
 ```bash
+./scripts/check-tracked-payment-secrets-2026.sh
 vendor/bin/drush cex -y
+./scripts/check-tracked-payment-secrets-2026.sh
 ```
 
 ### Import (sur staging)
@@ -55,7 +75,7 @@ vendor/bin/drush cim -y
 vendor/bin/drush cr
 ```
 
-## 6) Vérifications minimales
+## 7) Vérifications minimales
 ```bash
 vendor/bin/drush status
 vendor/bin/drush config:status
@@ -63,6 +83,8 @@ vendor/bin/drush watchdog:show --count=20
 ```
 
 ## Notes sécurité
-- Repo privé : possible de committer les secrets si voulu.
-- Repo public : interdit de committer les secrets ou clés privées.
-- En cas de fuite de secret : rotation immédiate.
+- Le dépôt est public : aucun secret ou credential ne doit être suivi.
+- En cas de fuite : rotation/révocation immédiate, même après nettoyage de
+  `HEAD`.
+- L'historique conserve l'ancienne valeur jusqu'à une réécriture séparée,
+  approuvée et coordonnée. Aucune réécriture n'est réalisée par ce runbook.

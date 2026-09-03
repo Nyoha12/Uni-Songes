@@ -8,5 +8,13 @@ drupal/web/themes/custom/unisonges_theme/js/*.pre_restore.*
 drupal/web/themes/custom/unisonges_theme/unisonges_theme.libraries.yml.*
 drupal/web/themes/custom/unisonges_theme/templates/**/*.bak.*
 
+# Runtime environment files (examples must remain value-free).
+.env
+.env.*
+*.env
+*.env.*
+!.env.example
+!*.env.example
+
 # Runtime-only DDEV configuration (created by the Codespaces setup)
 drupal/.ddev/
