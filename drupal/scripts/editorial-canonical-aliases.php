@@ -1623,11 +1623,17 @@ function editorial_alias_simple_sitemap_override_snapshot(): array {
 }
 
 /**
- * Hash all persisted node fields except the computed path field.
+ * Hash all persisted node fields while excluding every computed field.
  */
 function editorial_alias_node_snapshot(NodeInterface $node): array {
-  $values = $node->toArray();
-  unset($values['path']);
+  $values = [];
+  foreach ($node->getFieldDefinitions() as $field_name => $definition) {
+    if ($field_name === 'path' || $definition->isComputed()) {
+      continue;
+    }
+    $values[$field_name] = $node->get($field_name)->getValue();
+  }
+  ksort($values, SORT_STRING);
   $translation_langcodes = array_keys($node->getTranslationLanguages(FALSE));
   sort($translation_langcodes, SORT_STRING);
   return [
