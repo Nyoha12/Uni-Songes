@@ -341,10 +341,10 @@ zéro JavaScript et aucune route de View.
 
 Le composant lui-même reste utilisable sans JavaScript : disclosures natifs,
 liens GET et pager ordinaire. Le shell existant applique toutefois sa classe de
-navigation compacte par JavaScript. Son comportement global sans JavaScript à
-320 px reste un risque hérité qui n'appartient pas à cette feature et n'a pas
-été revendiqué par sa matrice, sans modification des fichiers de navigation
-exclus de cette PR.
+navigation compacte par JavaScript. Un passage Chromium à 320 px avec JavaScript
+désactivé a confirmé le rendu de la feature, l'ordre de ses contrôles, leur
+ouverture native et l'absence de débordement, sans modification des fichiers de
+navigation exclus de cette PR.
 
 ## Validation runtime locale — 3 septembre 2026
 
@@ -407,16 +407,15 @@ alias.
 
 ### Présentation et navigateur
 
-Les états zéro et un Article ont d'abord été validés par leur réponse HTTP
-rendue côté serveur. Avec la collection représentative, Chromium a ensuite
-couvert les états long, paginé, filtré et invalide à 1440 px, tablette 820 px,
-mobiles 390 et 320 px, ainsi que les reflows effectifs 150 % et 200 %, souris,
-clavier, émulation tactile, couleurs forcées, mouvement réduit, caches
-froid/chaud et agrégation CSS/JS activée puis désactivée. Ces pages ont conservé
-un H1, un `main`, un chemin de messages, zéro identifiant dupliqué, zéro
-débordement horizontal et zéro scroll imbriqué bloquant. Les deux `details`
-natifs sont utilisables au clavier et au toucher ; sur mobile ils précèdent la
-liste.
+Chromium a couvert les états zéro, un, long, paginé, filtré et invalide à
+1440 px, tablette 820 px, mobiles 390 et 320 px, ainsi que les reflows effectifs
+150 % et 200 %, souris, clavier, émulation tactile, couleurs forcées, mouvement
+réduit, caches froid/chaud et agrégation CSS/JS activée puis désactivée. Les
+états zéro et un ont été rejoués à 1440 px avec JavaScript et à 320 px sans
+JavaScript. Ces pages ont conservé un H1, un `main`, un chemin de messages, zéro
+identifiant dupliqué, zéro débordement horizontal et zéro scroll imbriqué
+bloquant. Les deux `details` natifs sont utilisables au clavier et au toucher ;
+sur mobile ils précèdent la liste.
 
 Les styles calculés confirment une liste verticale plate, aucun fond ni ombre
 de carte, un seul filet d'accent de 2 px, un titre le plus récent environ 11 %
