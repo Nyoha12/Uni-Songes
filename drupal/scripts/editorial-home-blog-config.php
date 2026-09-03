@@ -2004,9 +2004,6 @@ try {
   }
   editorial_home_exact_file($drupal_root . '/autoload.php');
   chdir($drupal_root);
-  if (!defined('DRUPAL_ROOT')) {
-    define('DRUPAL_ROOT', $drupal_root);
-  }
   $autoloader = require $drupal_root . '/autoload.php';
   $request = Request::create($site_origin . '/', 'GET');
   $kernel = DrupalKernel::createFromRequest(

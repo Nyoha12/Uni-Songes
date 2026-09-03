@@ -127,13 +127,14 @@ accueil et ne verrouille pas l'édition de `/accueil`. Le helper refuse cet éta
 partiel ; il reste le seul chemin pris en charge pour installer les cinq parties
 couplées.
 
-Le validateur de désinstallation refuse un retrait générique seulement lorsque
-la copie de rollback prouve que la feature complète est active. Une activation
-isolée sans cette copie reste désinstallable par Drupal, afin de ne pas piéger
-l'opérateur. Pour un rollback complet, le helper conserve la copie jusqu'à
-l'uninstall effectif sous son autorisation mémoire verrouillée, puis la supprime.
-Il exige zéro module ou thème actif dépendant et interdit à Drupal d'élargir la
-liste de modules à désinstaller.
+Le validateur de désinstallation refuse un retrait générique lorsqu'une copie
+de rollback est présente ; le helper vérifie séparément sa forme et sa
+cohérence avec la feature complète. Une activation isolée sans cette copie
+reste désinstallable par Drupal, afin de ne pas piéger l'opérateur. Pour un
+rollback complet, le helper conserve la copie jusqu'à l'uninstall effectif sous
+son autorisation mémoire verrouillée, puis la supprime. Il exige zéro module ou
+thème actif dépendant et interdit à Drupal d'élargir la liste de modules à
+désinstaller.
 
 La bibliothèque du thème, son fichier `.theme` et `styles.css` ne sont pas
 modifiés. Le CSS du module est borné à `.section-accueil` et au composant. Il
@@ -340,9 +341,10 @@ zéro JavaScript et aucune route de View.
 
 Le composant lui-même reste utilisable sans JavaScript : disclosures natifs,
 liens GET et pager ordinaire. Le shell existant applique toutefois sa classe de
-navigation compacte par JavaScript ; son comportement global sans JavaScript à
-320 px reste donc un risque hérité à vérifier dans la matrice, sans modifier les
-fichiers de navigation exclus de cette PR.
+navigation compacte par JavaScript. Son comportement global sans JavaScript à
+320 px reste un risque hérité qui n'appartient pas à cette feature et n'a pas
+été revendiqué par sa matrice, sans modification des fichiers de navigation
+exclus de cette PR.
 
 ## Validation runtime locale — 3 septembre 2026
 
@@ -405,14 +407,16 @@ alias.
 
 ### Présentation et navigateur
 
-Chromium a couvert 1440 px, tablette 820 px, mobiles 390 et 320 px, ainsi que
-les reflows effectifs 150 % et 200 %, souris, clavier, émulation tactile,
-couleurs forcées, mouvement réduit, caches froid/chaud et agrégation CSS/JS
-activée puis désactivée. Les pages vide, unique, longue, paginée, filtrée et
-invalide ont conservé un H1, un `main`, un chemin de messages, zéro identifiant
-dupliqué, zéro débordement horizontal et zéro scroll imbriqué bloquant. Les deux
-`details` natifs sont utilisables au clavier et au toucher ; sur mobile ils
-précèdent la liste.
+Les états zéro et un Article ont d'abord été validés par leur réponse HTTP
+rendue côté serveur. Avec la collection représentative, Chromium a ensuite
+couvert les états long, paginé, filtré et invalide à 1440 px, tablette 820 px,
+mobiles 390 et 320 px, ainsi que les reflows effectifs 150 % et 200 %, souris,
+clavier, émulation tactile, couleurs forcées, mouvement réduit, caches
+froid/chaud et agrégation CSS/JS activée puis désactivée. Ces pages ont conservé
+un H1, un `main`, un chemin de messages, zéro identifiant dupliqué, zéro
+débordement horizontal et zéro scroll imbriqué bloquant. Les deux `details`
+natifs sont utilisables au clavier et au toucher ; sur mobile ils précèdent la
+liste.
 
 Les styles calculés confirment une liste verticale plate, aucun fond ni ombre
 de carte, un seul filet d'accent de 2 px, un titre le plus récent environ 11 %
