@@ -1,6 +1,13 @@
-# Google Calendar Sync Readiness Audit
+# Historical Google Calendar Sync Readiness Audit
 
 Date: 2026-06-08
+
+> Historical status: descriptions below of the “current” worker, token, cron,
+> retry, and storage behavior refer to the pre-foundation implementation audited
+> on this date. The authoritative 2026-09-02 state is
+> `docs/functional/google-calendar-state-foundation-2026.md`: cron is empty, the
+> registered client is fail-closed with no credential/HTTP capability, and the
+> new nullable lease/CAS/retry fields remain disconnected from legacy producers.
 
 Scope: static audit of the current local implementation. This document does not
 enable real Google Calendar sync, add credentials, call Google APIs, change
@@ -53,7 +60,7 @@ Dry-run behavior is intentionally consuming: with sync enabled and dry-run on,
 the service logs the action that would be sent and marks the row `skipped` with
 `Dry-run: no Google Calendar request sent.`
 
-Real-call behavior exists as a skeleton:
+Legacy real-call branches remain in the held worker for migration context:
 
 - `pending_create` creates an event unless `google_event_id` already exists, in
   which case it updates that event.
@@ -61,10 +68,10 @@ Real-call behavior exists as a skeleton:
   event.
 - `pending_cancel` deletes `google_event_id` when present, otherwise skips.
 
-The current Google client supports `POST`, `PUT`, and `DELETE` against Google
-Calendar v3 with `sendUpdates=none`, a 10 second timeout, and a bearer access
-token read from an environment variable. `DELETE` treats HTTP 404 and 410 as
-already gone. Other non-2xx responses throw and mark the row `error`.
+The registered Google client is a fail-closed state-foundation stub. It reports
+no credentials and every create/update/delete entry point throws the fixed
+`state_foundation_inactive` reason before any config, environment, or HTTP
+access. The legacy branches cannot make a request in this release.
 
 ## Config Gates
 
@@ -75,23 +82,23 @@ defaults are:
 - `dry_run: true`
 - `calendar_id: ''`
 - `timezone: Europe/Paris`
-- `batch_size: 10`
-- `token_provider: env_access_token`
-- `access_token_env_var: UNISONGES_GCAL_ACCESS_TOKEN`
+- `batch_size: 1`
+- `token_provider: disabled`
+- `access_token_env_var: ''`
 
-These values disable real sync in two layers:
+These values are held behind non-configurable code boundaries:
 
-- When `enabled` is false, cron returns before loading pending rows.
-- When `dry_run` is true, pending rows are logged and marked skipped without
-  any Google Calendar request.
+- Drupal cron does not resolve or invoke the worker.
+- Manual worker calls stop at `GoogleCalendarActivationBoundary` before config,
+  rows, or client access.
+- The direct client itself has no credential or HTTP capability.
 
-Additional real-sync guards:
+Additional state-foundation behavior:
 
-- Non-dry-run processing fails the batch if `calendar_id` is empty.
-- Non-dry-run processing fails the batch if the configured token provider cannot
-  return a token.
-- The admin settings form requires `calendar_id` and a non-disabled token
-  provider before saving `enabled = true` with `dry_run = false`.
+- No Calendar ID is required at bootstrap.
+- The admin settings form forces `enabled = false`, `dry_run = true`, and a
+  disabled token provider; it exposes no target or credential locator.
+- Dry-run does not consume backlog because no processing path is scheduled.
 
 No `drupal/config/sync/unisonges_structure.google_calendar.yml` file is present
 in this worktree. Any future config export policy must keep secrets out of Git

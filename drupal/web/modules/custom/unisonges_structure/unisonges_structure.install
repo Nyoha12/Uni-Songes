@@ -10,7 +10,7 @@
  */
 function unisonges_structure_schema(): array {
   $schema['unisonges_structure_booking_gcal_sync'] = [
-    'description' => 'Internal dry-run Google Calendar sync mapping for course bookings.',
+    'description' => 'Legacy-compatible Google Calendar booking mapping and disabled operational-state foundation.',
     'fields' => [
       'id' => [
         'type' => 'serial',
@@ -34,39 +34,163 @@ function unisonges_structure_schema(): array {
         'type' => 'varchar',
         'length' => 255,
         'not null' => FALSE,
-        'description' => 'Google Calendar event ID once real sync is implemented.',
+        'description' => 'Restricted legacy or precommitted remote event ID; preserved during migration.',
       ],
       'sync_status' => [
         'type' => 'varchar',
         'length' => 32,
         'not null' => TRUE,
         'default' => 'pending',
-        'description' => 'Internal sync status, for example pending, synced, or error.',
+        'description' => 'Deprecated legacy status; not the reviewed operational state machine.',
       ],
       'sync_action' => [
         'type' => 'varchar',
         'length' => 32,
         'not null' => TRUE,
         'default' => 'pending_create',
-        'description' => 'Pending action requested for this booking.',
+        'description' => 'Deprecated legacy action that combines pending state with operation.',
+      ],
+      'reservation_ref' => [
+        'type' => 'varchar_ascii',
+        'length' => 96,
+        'not null' => FALSE,
+        'description' => 'Environment-scoped opaque reservation reference for initialized operational rows.',
+      ],
+      'operation' => [
+        'type' => 'varchar_ascii',
+        'length' => 16,
+        'not null' => FALSE,
+        'description' => 'Desired operation: create, update, or cancel. NULL identifies an unmigrated legacy row.',
+      ],
+      'desired_revision' => [
+        'type' => 'int',
+        'size' => 'big',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'description' => 'Monotonic source revision used to reject duplicate or out-of-order desired intent.',
+      ],
+      'processing_operation' => [
+        'type' => 'varchar_ascii',
+        'length' => 16,
+        'not null' => FALSE,
+        'description' => 'Immutable operation snapshot owned by the current processing lease.',
+      ],
+      'state' => [
+        'type' => 'varchar_ascii',
+        'length' => 32,
+        'not null' => FALSE,
+        'description' => 'Reviewed operational state. NULL identifies an unmigrated legacy row.',
+      ],
+      'generation' => [
+        'type' => 'int',
+        'size' => 'big',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'description' => 'Monotonic compare-and-swap version for an initialized operational row.',
+      ],
+      'attempt_count' => [
+        'type' => 'int',
+        'size' => 'big',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'description' => 'Bounded attempts in the current desired-operation retry window.',
+      ],
+      'first_queued_at' => [
+        'type' => 'int',
+        'size' => 'big',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'description' => 'Unix timestamp when this operational record was first queued.',
+      ],
+      'retry_window_started_at' => [
+        'type' => 'int',
+        'size' => 'big',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'description' => 'Unix timestamp anchoring the current bounded retry window.',
+      ],
+      'last_attempt_at' => [
+        'type' => 'int',
+        'size' => 'big',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'description' => 'Unix timestamp of the latest claim attempt.',
+      ],
+      'next_retry_at' => [
+        'type' => 'int',
+        'size' => 'big',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'description' => 'Earliest Unix timestamp for the next bounded retry.',
+      ],
+      'claim_mode' => [
+        'type' => 'varchar_ascii',
+        'length' => 16,
+        'not null' => FALSE,
+        'description' => 'Internal work or reconciliation claim mode; not a public operational state.',
+      ],
+      'lease_owner' => [
+        'type' => 'varchar_ascii',
+        'length' => 64,
+        'not null' => FALSE,
+        'description' => 'Opaque identity of the worker owning the processing lease.',
+      ],
+      'lease_expires_at' => [
+        'type' => 'int',
+        'size' => 'big',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'description' => 'Unix timestamp when the processing lease expires.',
+      ],
+      'lease_generation' => [
+        'type' => 'int',
+        'size' => 'big',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'description' => 'Generation captured by the current lease and required for renewal/finalization.',
+      ],
+      'last_successful_sync_at' => [
+        'type' => 'int',
+        'size' => 'big',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'description' => 'Unix timestamp of the latest successfully finalized create, update, or cancel.',
+      ],
+      'remote_etag' => [
+        'type' => 'varchar_ascii',
+        'length' => 255,
+        'not null' => FALSE,
+        'description' => 'Restricted remote version metadata when safely available.',
+      ],
+      'last_error_code' => [
+        'type' => 'varchar_ascii',
+        'length' => 64,
+        'not null' => FALSE,
+        'description' => 'Allowlisted non-sensitive machine error code.',
+      ],
+      'last_error_summary' => [
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'description' => 'Fixed operator-safe error summary; never a raw exception or response.',
       ],
       'reservation_value' => [
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,
         'default' => '',
-        'description' => 'Raw webform_booking reservation value.',
+        'description' => 'Deprecated raw reservation value retained only for guarded migration and later scrub.',
       ],
       'payload_json' => [
         'type' => 'text',
         'size' => 'big',
         'not null' => FALSE,
-        'description' => 'Dry-run Google Calendar event payload as JSON.',
+        'description' => 'Deprecated legacy payload JSON; unsafe for diagnostics and new operational writes.',
       ],
       'last_error' => [
         'type' => 'text',
         'not null' => FALSE,
-        'description' => 'Last sync error once real sync is implemented.',
+        'description' => 'Deprecated unredacted legacy error; unsafe for diagnostics.',
       ],
       'created' => [
         'type' => 'int',
@@ -86,13 +210,13 @@ function unisonges_structure_schema(): array {
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => FALSE,
-        'description' => 'Unix timestamp of the last successful real sync.',
+        'description' => 'Deprecated ambiguous legacy success timestamp.',
       ],
       'cancelled' => [
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => FALSE,
-        'description' => 'Unix timestamp when the booking was queued as cancelled.',
+        'description' => 'Deprecated timestamp when legacy cancel intent was queued.',
       ],
     ],
     'primary key' => ['id'],
@@ -104,6 +228,9 @@ function unisonges_structure_schema(): array {
       'sync_queue' => ['sync_status', 'sync_action', 'changed'],
       'google_event_id' => ['google_event_id'],
       'last_synced' => ['last_synced'],
+      'gcal_state_claim' => ['state', 'next_retry_at', 'lease_expires_at', 'changed', 'id'],
+      'gcal_lease_recovery' => ['state', 'lease_expires_at', 'id'],
+      'gcal_state_diagnostic' => ['state', 'operation', 'last_attempt_at', 'id'],
     ],
   ];
 
@@ -227,8 +354,106 @@ function unisonges_structure_update_11001(): void {
     return;
   }
 
-  $schema = unisonges_structure_schema();
-  $database_schema->createTable($table, $schema[$table]);
+  // Frozen 11001 specification. Historical updates must never call the live
+  // hook_schema(), whose additive state-foundation definition can evolve.
+  $table_spec = [
+    'description' => 'Internal dry-run Google Calendar sync mapping for course bookings.',
+    'fields' => [
+      'id' => [
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary key.',
+      ],
+      'sid' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Webform submission ID.',
+      ],
+      'submission_uuid' => [
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'description' => 'Webform submission UUID.',
+      ],
+      'google_event_id' => [
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'description' => 'Google Calendar event ID once real sync is implemented.',
+      ],
+      'sync_status' => [
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => 'pending',
+        'description' => 'Internal sync status, for example pending, synced, or error.',
+      ],
+      'sync_action' => [
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => 'pending_create',
+        'description' => 'Pending action requested for this booking.',
+      ],
+      'reservation_value' => [
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Raw webform_booking reservation value.',
+      ],
+      'payload_json' => [
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => FALSE,
+        'description' => 'Dry-run Google Calendar event payload as JSON.',
+      ],
+      'last_error' => [
+        'type' => 'text',
+        'not null' => FALSE,
+        'description' => 'Last sync error once real sync is implemented.',
+      ],
+      'created' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Unix timestamp when the mapping row was created.',
+      ],
+      'changed' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Unix timestamp when the mapping row was last changed.',
+      ],
+      'last_synced' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'description' => 'Unix timestamp of the last successful real sync.',
+      ],
+      'cancelled' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'description' => 'Unix timestamp when the booking was queued as cancelled.',
+      ],
+    ],
+    'primary key' => ['id'],
+    'unique keys' => [
+      'sid' => ['sid'],
+      'submission_uuid' => ['submission_uuid'],
+    ],
+    'indexes' => [
+      'sync_queue' => ['sync_status', 'sync_action', 'changed'],
+      'google_event_id' => ['google_event_id'],
+      'last_synced' => ['last_synced'],
+    ],
+  ];
+  $database_schema->createTable($table, $table_spec);
 }
 
 /**
@@ -266,6 +491,297 @@ function unisonges_structure_update_11003(): void {
     return;
   }
 
-  $schema = unisonges_structure_schema();
-  $database_schema->createTable($table, $schema[$table]);
+  // Frozen 11003 specification; historical updates must be self-contained.
+  $table_spec = [
+    'description' => 'Pay-on-site course reservation rights created from completed unpaid manual Commerce orders.',
+    'fields' => [
+      'id' => [
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary key.',
+      ],
+      'order_id' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Source Commerce order ID.',
+      ],
+      'uid' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'User ID owning the right.',
+      ],
+      'source_order_item_id' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Source Commerce order item ID.',
+      ],
+      'credit_index' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Stable one-based credit index within the source order item.',
+      ],
+      'product_bundle' => [
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Source Commerce product bundle at creation time.',
+      ],
+      'remaining_to_pay_credits' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 1,
+        'description' => 'Remaining reservable to-pay credit units for this row; 1 while available, 0 once consumed, paid, or cancelled.',
+      ],
+      'webform_submission_id' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'description' => 'Consuming Webform submission ID once reserved.',
+      ],
+      'status' => [
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => 'pending_payment',
+        'description' => 'Right status, for example pending_payment, consumed, paid, or cancelled.',
+      ],
+      'created' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Unix timestamp when the right was created.',
+      ],
+      'changed' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Unix timestamp when the right was last changed.',
+      ],
+      'consumed' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'description' => 'Unix timestamp when the right was consumed by a reservation.',
+      ],
+      'paid' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'description' => 'Unix timestamp when the source order payment was confirmed.',
+      ],
+      'cancelled' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'description' => 'Unix timestamp when the right was cancelled.',
+      ],
+    ],
+    'primary key' => ['id'],
+    'unique keys' => [
+      'source_credit' => ['order_id', 'source_order_item_id', 'credit_index'],
+    ],
+    'indexes' => [
+      'uid_status' => ['uid', 'status', 'changed'],
+      'order_status' => ['order_id', 'status', 'changed'],
+      'submission' => ['webform_submission_id'],
+      'source_order_item' => ['source_order_item_id'],
+    ],
+  ];
+  $database_schema->createTable($table, $table_spec);
+}
+
+/**
+ * Add the disabled Google Calendar operational-state foundation.
+ *
+ * Existing rows deliberately retain NULL operational fields. This expand hook
+ * does not classify backlog, migrate payloads/errors, load credentials, select
+ * a Calendar target, or invoke a worker.
+ */
+function unisonges_structure_update_11004(): void {
+  $table = 'unisonges_structure_booking_gcal_sync';
+  $database_schema = \Drupal::database()->schema();
+  if (!$database_schema->tableExists($table)) {
+    throw new \RuntimeException('Google Calendar mapping table is missing; update 11001 must be repaired before 11004.');
+  }
+
+  // Frozen 11004 specifications: never replace these with hook_schema() output.
+  $fields = [
+    'reservation_ref' => [
+      'type' => 'varchar_ascii',
+      'length' => 96,
+      'not null' => FALSE,
+      'description' => 'Environment-scoped opaque reservation reference for initialized operational rows.',
+    ],
+    'operation' => [
+      'type' => 'varchar_ascii',
+      'length' => 16,
+      'not null' => FALSE,
+      'description' => 'Desired operation: create, update, or cancel. NULL identifies an unmigrated legacy row.',
+    ],
+    'desired_revision' => [
+      'type' => 'int',
+      'size' => 'big',
+      'unsigned' => TRUE,
+      'not null' => FALSE,
+      'description' => 'Monotonic source revision used to reject duplicate or out-of-order desired intent.',
+    ],
+    'processing_operation' => [
+      'type' => 'varchar_ascii',
+      'length' => 16,
+      'not null' => FALSE,
+      'description' => 'Immutable operation snapshot owned by the current processing lease.',
+    ],
+    'state' => [
+      'type' => 'varchar_ascii',
+      'length' => 32,
+      'not null' => FALSE,
+      'description' => 'Reviewed operational state. NULL identifies an unmigrated legacy row.',
+    ],
+    'generation' => [
+      'type' => 'int',
+      'size' => 'big',
+      'unsigned' => TRUE,
+      'not null' => FALSE,
+      'description' => 'Monotonic compare-and-swap version for an initialized operational row.',
+    ],
+    'attempt_count' => [
+      'type' => 'int',
+      'size' => 'big',
+      'unsigned' => TRUE,
+      'not null' => FALSE,
+      'description' => 'Bounded attempts in the current desired-operation retry window.',
+    ],
+    'first_queued_at' => [
+      'type' => 'int',
+      'size' => 'big',
+      'unsigned' => TRUE,
+      'not null' => FALSE,
+      'description' => 'Unix timestamp when this operational record was first queued.',
+    ],
+    'retry_window_started_at' => [
+      'type' => 'int',
+      'size' => 'big',
+      'unsigned' => TRUE,
+      'not null' => FALSE,
+      'description' => 'Unix timestamp anchoring the current bounded retry window.',
+    ],
+    'last_attempt_at' => [
+      'type' => 'int',
+      'size' => 'big',
+      'unsigned' => TRUE,
+      'not null' => FALSE,
+      'description' => 'Unix timestamp of the latest claim attempt.',
+    ],
+    'next_retry_at' => [
+      'type' => 'int',
+      'size' => 'big',
+      'unsigned' => TRUE,
+      'not null' => FALSE,
+      'description' => 'Earliest Unix timestamp for the next bounded retry.',
+    ],
+    'claim_mode' => [
+      'type' => 'varchar_ascii',
+      'length' => 16,
+      'not null' => FALSE,
+      'description' => 'Internal work or reconciliation claim mode; not a public operational state.',
+    ],
+    'lease_owner' => [
+      'type' => 'varchar_ascii',
+      'length' => 64,
+      'not null' => FALSE,
+      'description' => 'Opaque identity of the worker owning the processing lease.',
+    ],
+    'lease_expires_at' => [
+      'type' => 'int',
+      'size' => 'big',
+      'unsigned' => TRUE,
+      'not null' => FALSE,
+      'description' => 'Unix timestamp when the processing lease expires.',
+    ],
+    'lease_generation' => [
+      'type' => 'int',
+      'size' => 'big',
+      'unsigned' => TRUE,
+      'not null' => FALSE,
+      'description' => 'Generation captured by the current lease and required for renewal/finalization.',
+    ],
+    'last_successful_sync_at' => [
+      'type' => 'int',
+      'size' => 'big',
+      'unsigned' => TRUE,
+      'not null' => FALSE,
+      'description' => 'Unix timestamp of the latest successfully finalized create, update, or cancel.',
+    ],
+    'remote_etag' => [
+      'type' => 'varchar_ascii',
+      'length' => 255,
+      'not null' => FALSE,
+      'description' => 'Restricted remote version metadata when safely available.',
+    ],
+    'last_error_code' => [
+      'type' => 'varchar_ascii',
+      'length' => 64,
+      'not null' => FALSE,
+      'description' => 'Allowlisted non-sensitive machine error code.',
+    ],
+    'last_error_summary' => [
+      'type' => 'varchar',
+      'length' => 255,
+      'not null' => FALSE,
+      'description' => 'Fixed operator-safe error summary; never a raw exception or response.',
+    ],
+  ];
+
+  foreach ($fields as $field_name => $specification) {
+    if (!$database_schema->fieldExists($table, $field_name)) {
+      $database_schema->addField($table, $field_name, $specification);
+    }
+  }
+
+  $indexes = [
+    'gcal_state_claim' => ['state', 'next_retry_at', 'lease_expires_at', 'changed', 'id'],
+    'gcal_lease_recovery' => ['state', 'lease_expires_at', 'id'],
+    'gcal_state_diagnostic' => ['state', 'operation', 'last_attempt_at', 'id'],
+  ];
+  $index_spec = [
+    'fields' => $fields + [
+      'id' => [
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary key.',
+      ],
+      'changed' => [
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Unix timestamp when the mapping row was last changed.',
+      ],
+    ],
+    'indexes' => $indexes,
+  ];
+  foreach ($indexes as $index_name => $columns) {
+    if (!$database_schema->indexExists($table, $index_name)) {
+      $database_schema->addIndex($table, $index_name, $columns, $index_spec);
+    }
+  }
+
+  // Active-only legacy config is unknown, so upgrades are forced back to hold.
+  $config = \Drupal::configFactory()->getEditable('unisonges_structure.google_calendar');
+  $config
+    ->set('enabled', FALSE)
+    ->set('dry_run', TRUE)
+    ->set('token_provider', 'disabled')
+    ->save(TRUE);
 }
