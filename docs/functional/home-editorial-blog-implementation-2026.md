@@ -3,13 +3,9 @@
 ## Statut et périmètre
 
 Cette évolution transforme `/accueil` en une surface éditoriale alimentée par
-les Articles Drupal. Elle reste en brouillon tant que la matrice de validation
-runtime ci-dessous n'a pas été exécutée sur une copie complète et autorisée du
-site.
-
-La validation retenue pour cette PR est exclusivement statique. Aucun
-déploiement, aucune fusion et aucune activation n'ont lieu ; Chromium, Mailpit
-et le VPS ne sont pas utilisés.
+les Articles Drupal. La matrice statique et runtime a été exécutée sur une
+installation DDEV locale jetable, sans donnée de production. Aucun déploiement,
+aucune fusion et aucun accès au VPS n'ont eu lieu ; Mailpit n'a pas été requis.
 
 La direction visuelle vient exactement de la PR de design #97 au commit
 `7155cce198f99fb7e6b5b83716465bd3e1ca78a7`, avec les corrections produit
@@ -20,11 +16,15 @@ inchangés.
 
 ### Intégration avec `release/prod`
 
-La branche a été rebasée sur `5b8e80c2e2ac266978ba2be0b8eee2c56a04605f`,
-qui contient les PR #99 et #100. L'audit statique après rebase confirme un seul
-H1, un seul `main` et un seul chemin de messages fourni par le shell. Les routes
-d'authentification et de compte, la présentation de leurs messages et tous les
-fichiers partagés du thème restent inchangés.
+La branche a été rebasée sur
+`9021fc0197fc001ac3225e879cfa2c1a0b409e88`, merge de la PR #87 qui contient
+aussi les PR #99 et #100 dans son ascendance. Le script complet
+`apply-content-architecture-2026.sh` de #87 est préservé octet pour octet
+(`SHA-256 9c92531dbde7141ac80107d0202e419cfd2695f027c44369207a4fe164980cdb`).
+L'audit statique et Chromium après rebase confirme un seul H1, un seul `main`
+et un seul chemin de messages fourni par le shell. Les routes d'authentification
+et de compte, la présentation de leurs messages et tous les fichiers partagés
+du thème restent inchangés.
 
 Le delta complet reste limité à 17 fichiers. L'entrée unique ajoutée à
 `core.extension.yml` est nécessaire pour représenter de façon reproductible le
@@ -50,6 +50,11 @@ Le corps fusionné de `/accueil` contient une introduction promotionnelle, un
 CTA de réservation et six grandes cartes. L'afficher avec la nouvelle liste
 produirait une double homepage ; le helper ciblé reconnaît donc ce seul état
 versionné exact et refuse toute autre valeur.
+
+Le préflight verrouille aussi les configurations exactes des blocs de messages
+(`-8`), de titre (`-7`) et de contenu principal (`-3`). Il refuse donc une
+installation dans un shell qui ne garantirait plus ce H1, ce `main`, ce chemin
+de messages ou l'ordre attendu, avant toute écriture.
 
 ### Blog et Articles
 
@@ -140,6 +145,12 @@ du chemin, de la requête — dont `theme` et le pager — et des langues, ainsi
 les dépendances des Articles, termes, accès et listes d'entités réellement
 consultés. Les URL sont générées avec collecte de leurs métadonnées et le tag
 `route_match` invalide les canonical lorsque les alias changent.
+
+Une requête qui contient `theme` est volontairement rendue non persistante dans
+le render cache du bloc. Drupal peut ainsi distinguer avant construction un
+paramètre unique valide d'une répétition ambiguë telle que
+`?theme=1&theme=2`; cette dernière reste un état invalide vide et ne peut jamais
+réutiliser la réponse mise en cache d'un filtre valide.
 
 ## Composition finale
 
@@ -251,7 +262,7 @@ tous actifs. L'ordre de retrait est donc déterministe : rollback de l'accueil
 éditorial, puis rollback Forum/Blog. L'ordre inverse est refusé à cause de la
 dépendance du bloc homepage envers `views.view.blog_posts`.
 
-## Déploiement ciblé différé
+## Déploiement ciblé
 
 Le wrapper n'utilise pas Drush. Il démarre le Drupal verrouillé directement par
 PHP et n'accepte aucun nom de module, de configuration, de route ou de contenu
@@ -333,30 +344,86 @@ navigation compacte par JavaScript ; son comportement global sans JavaScript à
 320 px reste donc un risque hérité à vérifier dans la matrice, sans modifier les
 fichiers de navigation exclus de cette PR.
 
-## Matrice runtime différée
+## Validation runtime locale — 3 septembre 2026
 
-PR #98 possède exclusivement les ressources runtime ; cette matrice reste
-entièrement différée. La PR reste en brouillon jusqu'à validation de :
+La validation a utilisé DDEV 1.25.3, Drupal 11.3.3, PHP 8.3, MariaDB 10.11 et
+Chromium 140 piloté par Playwright 1.55. Un snapshot nommé
+`pr103-editorial-home-pre-runtime-20260902T180500Z` a précédé toute écriture.
+L'état représentatif a été construit uniquement par les API Drupal et les
+helpers ciblés du dépôt, sans import de configuration, SQL brut ni donnée de
+production.
 
-- zéro Article ;
-- un Article ;
-- plusieurs Articles ;
-- aucun thème disponible ;
-- Article sans thème ;
-- un thème ;
-- plusieurs thèmes ;
-- Article avec plusieurs tags ;
-- thème réel avec zéro résultat ;
-- Article non publié ;
-- titre long ;
-- résumé manquant ;
-- mini-pager ;
-- conservation du filtre GET par le pager et remise à zéro lors d'un choix ;
-- desktop, tablette et mobile ;
-- largeur 320 px ;
-- zoom 100 %, 150 % et 200 % ;
-- clavier et focus visible ;
-- un H1, un `main` et un seul chemin de messages ;
-- aucun débordement horizontal ;
-- aucun Article dupliqué ;
-- rollback exact et absence totale de fixture résiduelle.
+### Préflight et cycle de vie
+
+Onze états invalides ont chacun été testés séparément : prérequis Forum/Blog
+absents, Body `/accueil` vide ou modifié, display Blog requis absent, module
+partiellement activé, bloc sans module, copie de rollback absente ou divergente,
+View Blog inconnue, dérive indépendante de `core.extension` et état impliquant
+un nombre d'opérations différent du plan exact. Chaque cas a été bloqué avant
+la phase d'écriture et a conservé les mêmes empreintes contenu, configuration
+et modules.
+
+Le dry-run valide a annoncé exactement cinq opérations dans l'ordre View,
+module, bloc, Body `/accueil`, état de rollback. L'apply a exécuté ces cinq
+opérations et rien d'autre. Le second dry-run puis le second apply ont annoncé
+et exécuté zéro opération, sans nouvelle révision. Le rollback a exécuté les
+cinq opérations inverses documentées, a restauré l'identité de révision et le
+Body exacts, puis un second rollback a été refusé sans écriture. Des fautes
+contrôlées après la View, après l'activation du module et après le Body ont
+toutes produit un échec non nul et une restauration atomique complète, sans
+résidu de bloc, module, état ou révision.
+
+Le helper Forum/Blog a ensuite reconnu explicitement la variante active à trois
+displays et conservé les quatorze objets Forum/Blog en `MATCH`. Ses displays
+`default` et `block_1`, `/blog`, `/forum` et le contenu « Artistes et
+partenaires » issu de #87 sont restés inchangés.
+
+### Articles, thèmes et filtre
+
+La matrice jetable a couvert zéro, un et plusieurs Articles, quinze Articles
+éligibles sur dix-sept, Articles non publiés ou inaccessibles anonymement,
+absence de thème, un ou plusieurs vrais termes, multitag et tags partagés,
+terme réel sans résultat, résumés absent et explicite, titres et libellés longs,
+Body vide, titres identiques, plus de dix résultats et seconde page. Elle a
+confirmé : publication et accès anonyme seulement, `created DESC`, dix résultats
+par page, aucune duplication multitag, aucun auteur/résumé/image inventé et des
+liens obtenus par le canonical Drupal réel.
+
+Le filtre a couvert l'absence de `theme`, un identifiant valide, inconnu,
+malformé, nul, négatif ou répété, une clé indépendante, `theme` avec `page` et
+un changement de thème depuis une page ultérieure. Les choix ne contiennent que
+les termes réels utilisés par des Articles éligibles. Un filtre valide est
+conservé dans le pager ; un changement le ramène à la première page. Tout état
+filtré ou invalide reçoit `noindex,follow`, le canonical reste `/accueil`, et
+une entrée invalide ne retombe jamais sur tous les Articles. Aucun contrôle,
+paramètre, vocabulaire ou chemin Archives/mois/année n'existe.
+
+Les URLs canoniques Article observées étaient numériques (`/fr/node/<nid>`),
+car aucun pattern Article de la PR Pathauto menée séparément n'était présent.
+C'est un prérequis SEO distinct : cette feature ne fabrique et ne modifie aucun
+alias.
+
+### Présentation et navigateur
+
+Chromium a couvert 1440 px, tablette 820 px, mobiles 390 et 320 px, ainsi que
+les reflows effectifs 150 % et 200 %, souris, clavier, émulation tactile,
+couleurs forcées, mouvement réduit, caches froid/chaud et agrégation CSS/JS
+activée puis désactivée. Les pages vide, unique, longue, paginée, filtrée et
+invalide ont conservé un H1, un `main`, un chemin de messages, zéro identifiant
+dupliqué, zéro débordement horizontal et zéro scroll imbriqué bloquant. Les deux
+`details` natifs sont utilisables au clavier et au toucher ; sur mobile ils
+précèdent la liste.
+
+Les styles calculés confirment une liste verticale plate, aucun fond ni ombre
+de carte, un seul filet d'accent de 2 px, un titre le plus récent environ 11 %
+plus grand et un rail secondaire de 15 rem. Aucun hero promotionnel, grille de
+grandes cartes, carrousel, masonry, dashboard, image obligatoire ou contrôle
+Archives n'est rendu. Le cycle BGFX reste celui de 44 secondes issu de la base
+et son état ne dépend pas du scroll. `/blog`, `/forum`, « Artistes et
+partenaires », les routes login/compte et leurs messages ont répondu sans 5xx,
+warning PHP ni erreur navigateur attribuable à cette feature.
+
+Toutes les fixtures marquées ont été supprimées et le rollback a laissé zéro
+Article, terme, module, bloc, display ou état appartenant au test. Le snapshot
+initial, les fichiers publics, le thème et la front page sont restaurés à la fin
+de la fenêtre, puis DDEV est arrêté.
