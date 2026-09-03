@@ -11,5 +11,3 @@ sitemap_generator: default
 url_generators:
   - custom
   - entity
-  - entity_menu_link_content
-  - arbitrary
