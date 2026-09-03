@@ -10,6 +10,7 @@ use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\unisonges_editorial_home\EditorialHomeBuilder;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
  * Provides the Uni-Songes editorial homepage block.
@@ -32,12 +33,15 @@ final class EditorialHomeBlock extends BlockBase implements ContainerFactoryPlug
    *   The plugin definition.
    * @param \Drupal\unisonges_editorial_home\EditorialHomeBuilder $builder
    *   The editorial homepage render builder.
+   * @param \Symfony\Component\HttpFoundation\RequestStack $request_stack
+   *   The current request stack.
    */
   public function __construct(
     array $configuration,
     $plugin_id,
     $plugin_definition,
     protected EditorialHomeBuilder $builder,
+    private readonly RequestStack $requestStack,
   ) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
   }
@@ -56,6 +60,7 @@ final class EditorialHomeBlock extends BlockBase implements ContainerFactoryPlug
       $plugin_id,
       $plugin_definition,
       $container->get('unisonges_editorial_home.builder'),
+      $container->get('request_stack'),
     );
   }
 
@@ -64,6 +69,18 @@ final class EditorialHomeBlock extends BlockBase implements ContainerFactoryPlug
    */
   public function build(): array {
     return $this->builder->build();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getCacheMaxAge(): int {
+    // PHP/Symfony normalize duplicate plain query keys to the last value.
+    // Bypass render caching for every filtered state so the builder can
+    // validate the original query string on every request and reject repeats.
+    return $this->requestStack->getCurrentRequest()?->query->has('theme')
+      ? 0
+      : parent::getCacheMaxAge();
   }
 
   /**
