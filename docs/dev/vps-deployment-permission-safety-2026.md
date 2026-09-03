@@ -3,10 +3,10 @@
 Status date: 2026-09-03.
 
 This is a manual operations guard. It is not an automatic deployment system,
-does not authorize host access, and does not repair a checkout. PR #87 is now
-merged into `release/prod`. PR #103 currently owns runtime resources, including
-DDEV and Chromium work. PR #104 remains entirely static; its only outstanding
-gate is the owner-run real-VPS read-only validation documented below.
+does not authorize host access, and does not repair a checkout. PR #87 and PR
+#103 are now merged into `release/prod`; no PR through #103 currently owns
+DDEV. PR #104 remains entirely static; its only outstanding gate is one updated
+owner-run real-VPS read-only validation documented below.
 
 ## Confirmed incident and guard
 
