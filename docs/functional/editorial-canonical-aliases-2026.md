@@ -2,19 +2,24 @@
 
 ## Status and scope
 
-This draft change adds two bundle-specific Pathauto patterns and a guarded
-existing-content audit/apply helper. It is a static phase only. No Drupal
-runtime, DDEV, Docker, Drush, browser, Mailpit, VPS, configuration import, or
-content write was used while preparing it. PR #87 has now released the shared
-runtime resources, but this explicitly static phase still defers runtime
-validation to a separately authorized DDEV pass.
+This change adds two bundle-specific Pathauto patterns and a guarded
+existing-content audit/apply helper. Its tracked scope remains static: it
+contains configuration definitions, an operator helper/wrapper, and this
+record, but no deployment or content fixture. The authorized local DDEV pass
+described below exercised the exact change with disposable fixtures and then
+restored its named snapshot. It used no production data, configuration import,
+Mailpit, or VPS access.
 
 The reviewed base is `origin/release/prod` at
-`9021fc0197fc001ac3225e879cfa2c1a0b409e88`. This change does not alter public
+`9ef3d4a2c260af9f3f2fcfe4ac584648bb592e0c`. It contains the actual PR #103
+merge (`36b023c91a4a2723391c3ddb04716c911ac6bfe1`) and the later, unrelated PR
+#104 deployment-permission files. This change does not alter public
 hub routes, node access, Views, publication defaults, global Pathauto or
 Redirect settings, sitemap configuration, robots policy, themes, menus, or
-content. It must remain a draft and must not be merged before the deferred
-matrix succeeds on an approved complete clone.
+content. The targeted matrix succeeded except for the literal child-path
+requirement on a very long single-token title, recorded below. PR #113 must
+remain draft until that policy finding is resolved and its affected cases are
+retested; merge remains outside this validation's authority and scope.
 
 ## Audited baseline
 
@@ -104,10 +109,15 @@ Locked Pathauto and Token provide no per-pattern length modifier. Changing the
 global 100-character settings is forbidden in this phase. The fixed,
 non-numeric `article` and `topic` guard segments are therefore the narrow
 configuration-only deviation: the same worst case bottoms out at
-`/blog/article` or `/forum/topic`, and every suffix remains below its hub. This
-uses the task's explicit conflict exception to the preferred expressions and
-is called out for URL-policy validation in the draft PR; no route is activated
-by this static change.
+`/blog/article` or `/forum/topic`, and every suffix remains below its hub. The
+runtime pass confirmed that exact result, which avoids the two hubs but is not
+a child below the literal `/blog/article/` or `/forum/topic/` prefix required
+by the continuation matrix. Locked Pathauto/Token has no per-pattern length
+modifier; changing a global limit is forbidden, while adding another fixed
+segment would change every public alias and requires a separately reviewed
+pattern decision. The current patterns are therefore preserved, but this
+finding prevents readiness. No route is activated merely by merging these
+tracked configuration definitions.
 
 Neither pattern contains a node ID or any numeric fallback. The fixed bundle
 prefixes prevent a cross-bundle collision. Pathauto also reserves an existing
@@ -126,10 +136,11 @@ both hubs to have exactly one distinct published Basic-page owner before any
 plan is accepted. Their aliases must be unique even after case folding and
 must be stored in `fr` or `und`.
 
-## Static slug cases
+## Slug cases
 
 These expectations reproduce Pathauto 1.14's cleaner with the tracked settings.
-They are static expectations until the same cases are exercised in Drupal.
+The authorized Drupal pass confirmed the listed punctuation, case, collision,
+empty-token, and length behavior.
 
 | Title / case | Article result | Forum Topic result | Policy result |
 | --- | --- | --- | --- |
@@ -146,7 +157,7 @@ They are static expectations until the same cases are exercised in Drupal.
 | title `Forum` | `/blog/article/forum` | `/forum/topic/forum` | cannot equal `/forum` |
 | punctuation-only title | no alias | no alias | blocked as `empty_generated_slug`; no numeric fallback |
 | literal `&lt;b&gt;` text | `/blog/article/b` | `/forum/topic/b` | reproduces Core Token's plain-text escaping before Pathauto cleaning |
-| 200 repeated `A` characters | `/blog/article` | `/forum/topic` | fixed guard is the final safe word boundary; a collision gets the next suffix |
+| 200 repeated `A` characters | `/blog/article` | `/forum/topic` | runtime actual; safe from hub overwrite, but not a child path below the required guard prefix, so readiness is blocked |
 | `MiXeD UPPER lower` | `/blog/article/mixed-upper-lower` | `/forum/topic/mixed-upper-lower` | lowercase |
 | duplicate `Écoute` then `Ecoute` | `/blog/article/ecoute`, then `/blog/article/ecoute-0` | `/forum/topic/ecoute`, then `/forum/topic/ecoute-0` | transliteration-identical titles are uniquified |
 
@@ -271,11 +282,13 @@ direct PDO rollback it explicitly restores Core's `RolledBack` state before
 the root object is destroyed. When PDO is already inactive and the server
 outcome cannot be known, it still marks callbacks as failed solely to prevent
 follow-on success work, while latching `TRANSACTION_OUTCOME_UNKNOWN`; that
-callback state is not claimed as proof of the server outcome. Durable-state
-non-mutation, cache/backend effects, nested-savepoint failures and the unknown
-branch remain explicit deferred runtime checks. Kernel shutdown deliberately
-does not dispatch HTTP terminate subscribers, so this direct helper cannot
-opportunistically launch Automated Cron after the audited plan.
+callback state is not claimed as proof of the server outcome. The targeted
+post-insert `E_USER_ERROR` test below proved nested entity-save rollback and
+durable alias/state/fingerprint non-mutation. Technical cache/backend effects
+and the separate fatal, OOM, unknown-outcome and commit-boundary hardening
+branches were not part of that targeted fault injection. Kernel shutdown
+deliberately does not dispatch HTTP terminate subscribers, so this direct
+helper cannot opportunistically launch Automated Cron after the audited plan.
 
 Apply requires the exact dry-run fingerprint, a clean tracked checkout, an
 explicit backup acknowledgement, maintenance mode, and unchanged
@@ -401,21 +414,20 @@ publication controls untouched:
 
 An unpublished Article or Forum Topic may therefore own an alias, but an
 anonymous request to that alias must still be denied by Node access. Redirect's
-tracked `access_check: false` is unchanged; old-alias behavior for unpublished
-content is explicitly part of the deferred runtime matrix.
+tracked `access_check: false` is unchanged. The runtime pass confirmed that an
+old automatic alias redirects to the canonical route and still ends in the
+normal unpublished-node denial.
 
 ## Relationship with PR #103 and PR #82
 
-PR #103 renders Article links with `$node->toUrl('canonical')`. Drupal resolves
-that canonical route through the alias manager, so once these aliases are
-active its homepage Blog links consume them without any edit to PR #103 files.
-Its dynamic cache tags also let a changed alias invalidate the rendered feed.
-Because PR heads are mutable and PR #103 also changes the active module/View
-baseline fingerprinted by the helper, this draft must be rebased and
-statically re-audited if #103 lands first; it does not edit any #103 file. PR
-#111 likewise changes the guarded `unisonges_structure.module` source and
-requires that same rebase/re-audit if it lands first, although it has no
-editorial-alias behavior or exact changed-file overlap here.
+PR #103 is merged at
+`36b023c91a4a2723391c3ddb04716c911ac6bfe1` and renders Article links with
+`$node->toUrl('canonical')`. Drupal resolves that canonical route through the
+alias manager, so the homepage Blog links consume these aliases without any
+edit to a PR #103 file. The runtime browser check confirmed that the homepage,
+Blog View, and canonical Article page all use the same Article alias. The
+branch was then rebased onto the later PR #104 merge; its two added deployment
+safety files do not overlap or change the tested Drupal/runtime inputs.
 
 PR #82 requires every dynamically included entity to resolve to exactly one
 unique non-numeric PathAlias before Simple Sitemap inclusion. These patterns
@@ -424,22 +436,22 @@ guarded path for genuinely alias-free existing content. This change does not
 edit or activate Simple Sitemap configuration, and PR #82 must continue to
 fail closed for any helper blocker.
 
-The latest open-PR filename audit on 2026-09-02 covered all 22 open PRs and 216
-file rows (#82, #85-#86, #88-#90, #92, #94, #96-#97, and #101-#112; all are
-drafts). There is no exact filename overlap with this change. The semantic or
-operational adjacencies are #82 (sitemap gate), #103 (canonical Article
-consumers and guarded config), #111 (guarded custom-module source), and #87
-(now-merged exclusive runtime owner). This inventory must be rerun immediately
-before PR creation because open heads are mutable.
+The latest open-PR filename audit on 2026-09-03 covered all 22 open PRs and 144
+file rows. Excluding PR #113 itself, there is no exact filename overlap with
+its five files. The remaining semantic adjacency is #82 (the sitemap gate);
+#103 is now part of the reviewed base. Open heads remain mutable, so the guard
+is repeated immediately before the final push/readiness transition.
 
-## Activation boundary and future commands
+## Activation boundary and operator commands
 
 The tracked staging deployment script pulls Git, installs Composer packages,
 runs database updates, and rebuilds caches; it does not import configuration.
 Accordingly, merging code alone would not activate these pattern config
 entities. Pattern activation is a separately reviewed runtime prerequisite and
-is intentionally not hidden inside this alias/state helper. No activation or
-apply is authorized in this static phase.
+is intentionally not hidden inside this alias/state helper. The validation
+activated the patterns only inside the disposable local snapshot; the final
+snapshot restore removed that active configuration and every fixture. It did
+not authorize activation or apply on any persistent environment.
 
 Activation, audit, remediation and any apply must occur inside one real
 maintenance/exclusive-writer window. If dry-run reports an unmarked manual
@@ -451,8 +463,8 @@ or make it automatically. The same fail-closed rule applies to unsupported
 language/translation topology and every other blocker.
 
 After an approved process has activated exactly the two reviewed pattern
-configs, the future runtime operator can run the helper from `drupal/` on the
-approved complete clone:
+configs, an operator can run the helper from `drupal/` on the approved complete
+clone:
 
 ```bash
 ./scripts/apply-editorial-alias-policy-2026.sh \
@@ -478,10 +490,11 @@ DDEV container. It offers no VPS override.
 
 ## Static validation record
 
-The final commit must pass all of the following without bootstrapping Drupal:
+The rebased static checks passed all of the following without bootstrapping
+Drupal:
 
-- strict parsing of every tracked YAML file and exact schema-shape assertions
-  for both new patterns;
+- strict parsing of all 492 tracked YAML files and exact Pathauto schema-shape
+  assertions for both new patterns;
 - unique top-level pattern IDs/UUIDs and condition UUIDs, and exact `article`
   / `forum_topic` bundle selection;
 - locked Pathauto/Redirect/Simple Sitemap/Token/Core versions and source API
@@ -502,39 +515,88 @@ The final commit must pass all of the following without bootstrapping Drupal:
 - no global Pathauto, Stage/Concert, sitemap, robots, Views, access, publication,
   theme, menu, Commerce, Contact, reservation, or public-legacy change;
 - UTF-8/NFC, whitespace/error-marker, secret, and Git diff checks;
-- a fresh open-PR filename-overlap check;
-- independent Pathauto, SEO, access-control, helper/API, and operations reviews.
+- a fresh open-PR filename-overlap check (22 open PRs, 144 file rows, zero
+  overlap outside PR #113);
+- independent Pathauto, SEO, access-control, helper/API, and operations reviews
+  completed; the long-title runtime policy finding is tracked below.
 
-The concrete commands and their final results are recorded in the draft PR
-description; no claim in this section substitutes for deferred Drupal runtime
-validation.
+The final static results and exact commands are also recorded in PR #113. The
+runtime record below is evidence for the targeted matrix, not authorization to
+run the helper against a persistent environment.
 
-## Deferred runtime matrix
+## Runtime validation record
 
-All rows require zero persistent fixtures after cleanup and must be recorded
-against the exact reviewed commit in the separately authorized post-#87 DDEV
-pass; none was executed in this static phase.
+The complete local clone was snapshotted as
+`pr113-editorial-alias-pre-runtime-20260903T163010Z`. The executable source
+tested at `bb65618eaadc2afaad51edc18346f2040a6d3fbc` has these SHA-256 values:
 
-| Runtime case | Required proof |
+| Tracked input | SHA-256 |
 | --- | --- |
-| Published Article | Save obtains one `/blog/article/<slug>` alias; canonical page and Blog View link resolve; anonymous access succeeds. |
-| Unpublished Article | Alias may exist; canonical alias and numeric route both obey Node access; Blog View omits it. |
-| Published Forum Topic | Save obtains one `/forum/topic/<slug>` alias; canonical page and Forum View link resolve. |
-| Unpublished Forum Topic | Alias may exist; anonymous/member access remains denied; Forum and generic Views omit it; administrator behavior is unchanged. |
-| French punctuation | Confirm accents, straight/typographic apostrophes, ampersand, slash, repeated whitespace, case and NFC against the static table. |
-| Duplicate titles | Same-bundle and transliteration-identical duplicates use deterministic `-0`, `-1`; no owner changes and cross-bundle prefixes remain distinct. |
-| Long unbroken title | A 200-character word bottoms out at `/blog/article` or `/forum/topic`; a collision uses `-0`, then `-1`, and every result remains below its hub. |
-| Title edit | An automatic alias follows `update_action: 2`; verify the old alias's 301 and access behavior through Redirect. |
-| Manual alias | Explicit `SKIP` remains byte-for-byte owned by the same entity after save, dry-run and apply. An unmarked manual alias is preserved by the helper, blocks activation/apply, and requires separately reviewed `SKIP` remediation before normal saves resume. |
-| Numeric existing alias | Classified and preserved; apply refuses until a separately reviewed migration exists. |
-| Invalid title | Punctuation-only/empty cleaned token creates no alias, no hub claim and no numeric fallback. |
-| Anonymous unpublished access | Direct alias, `/node/<id>`, and any old redirect all remain denied as required for both bundles. |
-| Blog/Forum Views | Every dynamic title/read-more link resolves to the entity's one canonical alias; unpublished rows remain absent. |
-| PR #103 homepage | Its canonical Article links resolve to the same Article alias, with correct cache invalidation after an approved title edit. |
-| PR #82 sitemap | Eligible published Article/Forum URLs are recognized only with one unique non-numeric alias; blocked/ambiguous/unpublished cases remain excluded. |
-| Helper dry-run | Writes no alias/config/content/redirect/Pathauto state and prints only privacy-minimized entity lines, aggregate counts and one fingerprint; blocker reasons are not printed, and technical cache warmup is allowed and recorded separately. |
-| Helper apply | With exact fingerprint/backup/maintenance/exclusive window/locks and bounded deadline, creates only planned missing aliases, persists `CREATE` only for those aliases and verifies every invariant. Exercise a collation-equivalent Redirect source and require pre-write refusal with no Redirect or sitemap-override mutation. |
-| Idempotence | Immediate post-apply dry-run produces zero operations; a repeated apply reports no change. |
-| Rollback | First verify all seven guarded tables and same-connection service/storage checks; inject MyISAM, trigger, missing direct `TRIGGER` grant, backend override and storage-connection drift and require a pre-write refusal. Then inject caught failures plus controlled `E_USER_ERROR`, `exit(0)`, non-zero exit, fatal and OOM subprocess failures before/during an entity-save savepoint on a disposable clone. The first-position guard must use a verified Core rollback or PDO fallback, prevent destructor/commit-all commits, make post-transaction callbacks receive `false`, return non-zero, and restore every alias/config/content/redirect/sitemap-override/state hash plus the original fingerprint. Record technical cache effects separately; test deadline expiry before and after commit, and after fatal/exit verify lock TTL behavior before any retry. |
-| Commit boundary | Inject immediately before and after `commitOrRelease()`: pre-commit active transactions must roll back; any interrupted/ambiguous commit attempt must emit `TRANSACTION_OUTCOME_UNKNOWN`, forbid retry, and require exact state verification plus approved-backup restoration. |
-| Zero fixtures | Delete all temporary nodes, aliases and controlled failure instrumentation; restore the named baseline snapshot and prove no residue. |
+| `pathauto.pattern.article.yml` | `9b11d35e8824ad218e5ac7882b6699ac2508720fd92e4728aa6287eaca63de88` |
+| `pathauto.pattern.forum_topic.yml` | `bb51371a84f6fdd14a9551bfebaec85b093b22983a6c855ef12e1c46c15686be` |
+| `apply-editorial-alias-policy-2026.sh` | `f5ae9ae8dd8fcfea48d1d5902bf1fd3cfff7b4aea90e8eeed346e142cf47b9eb` |
+| `editorial-canonical-aliases.php` | `dc70827c42ad1e5811aad955476ab154560330e1a67aeac9cc6bc3222578cc10` |
+
+The post-test rebase changes ancestry only for these inputs: PR #104 added two
+unrelated files and all four hashes remain exact. During the pass, two runtime
+defects were corrected within the existing PHP helper: the metadata query now
+uses `addExpression()` without incorrectly chaining its string return value,
+and the node-integrity snapshot hashes only stored fields, excluding computed
+fields such as `metatag`. The full matrix and rollback test were rerun or
+continued against those corrected bytes rather than against the failing
+intermediate versions.
+
+The first dry-run classified the two deliberately alias-free backfill nodes as
+`no alias` and planned exactly two creations. Apply created and verified those
+two aliases. The next dry-run planned zero operations and the repeated apply
+reported `NO_CHANGE`. A separate blocker plan classified an explicit manual
+alias without blocking it, then refused an unmarked manual alias, a numeric
+alias, a malformed percent-encoded alias, and both punctuation-only titles.
+The apply attempt with that exact plan also refused before any write.
+
+For the controlled failure, one eligible Article produced fingerprint
+`24f8b99eecd53c32cc481c45b6b22e2d7ef92d58a00a6a74758200613ca194ce`.
+Temporary, untracked `/tmp` instrumentation raised `E_USER_ERROR` immediately
+after the PathAlias insert. Apply exited non-zero with verified transaction
+rollback; the node still had no alias and the next dry-run reproduced the exact
+same fingerprint. The tracked Core PathAlias file stayed byte-identical at
+`d13c73313f3d3c8daa321b539edba7769043f5b12b46059841f25e791843956a`.
+
+The deliberately small Chromium suite ran five checks and passed `5/5`: one
+Article canonical plus Blog link, one Forum Topic canonical plus Forum link,
+one PR #103 homepage Article link, one anonymous unpublished denial, and one
+old Redirect after a title edit ending in unpublished denial.
+
+| Runtime case | Result | Evidence |
+| --- | --- | --- |
+| Published Article | Pass | One unique `/blog/article/article-canonique-principal` alias; canonical page, Blog View and PR #103 homepage all used it. The helper-created French backfill alias was `/blog/article/ecoute-et-improvisation`. |
+| Unpublished Article | Pass | Alias ownership was allowed; alias and `/node/<id>` were denied anonymously; Blog and homepage omitted the row. |
+| Published Forum Topic | Pass | One unique `/forum/topic/un-sujet-simple` alias; canonical page and Forum View used it. |
+| Unpublished Forum Topic | Pass | Alias ownership did not alter the existing unpublished access or View filters. |
+| French punctuation and case | Pass | Accents, straight and typographic apostrophes, ampersand, slash, repeated spaces and mixed case matched the slug table. |
+| Duplicate/colliding titles | Pass | Same-title and transliteration collisions used deterministic `-0`; no overwrite, owner transfer or cross-bundle collision occurred. |
+| Long unbroken title | Blocked | A 200-character token bottomed out at `/blog/article` or `/forum/topic`. It never claimed either hub or `/blog-0`/`/forum-0`, but it did not remain a child below `/blog/article/` or `/forum/topic/`. |
+| Title edit and Redirect | Pass | `/blog/article/souffle-initial` became `/blog/article/souffle-renouvele`; one 301 retained the old path and could not bypass later unpublished denial. |
+| Manual alias | Pass | Explicit `SKIP` stayed unchanged through title edit; unmarked provenance was preserved and blocked helper apply. |
+| Numeric/malformed alias | Pass | Both were classified and preserved; apply refused with no silent migration. |
+| Invalid title | Pass | Punctuation-only titles received no alias, hub claim, or numeric fallback and blocked apply. |
+| Helper lifecycle | Pass | Dry-run/apply/second dry-run/second apply proved create-only behavior and idempotence. No title, body, author, publication state or revision changed. |
+| Controlled rollback | Pass | Injected failure returned non-zero, verified root rollback, preserved the missing-alias state and reproduced the immutable plan fingerprint. |
+| Views, access and sitemap non-regression | Pass | No Blog/Forum View, access rule, publication default or Simple Sitemap state/configuration changed. |
+| PR #82 sitemap recognition | Deferred to #82 | This PR deliberately neither activates nor edits Simple Sitemap; #82 remains responsible for runtime inclusion recognition. |
+| Zero fixtures and environment cleanup | Pass | All runtime fixture nodes and their aliases/Redirects were removed, the snapshot was restored twice, the serving checkout returned to `release/prod`, and DDEV was stopped. |
+
+Cleanup matched the baseline: the normalized database dump SHA-256 was
+`e753afc47351ef4869fd87184b5df9602fa40650046e16b53836834cb4b89d7a`,
+the public-files archive SHA-256 was
+`4817197810907ded56075bfd15366c85b1d70ca53b4dad0a41096f46bb4dade6`,
+active configuration contained 314 objects with canonical hash
+`e96a6b849b5e15c6e16fde5b6494a9e57fe9f7161dd8398c819963ddfdfc2127`
+and serialized hash
+`5dc5f088dd497e83c5991257ff17dcd7da0039457ebfe79859dc3afdd5235f56`.
+Users remained 7, nodes 0, aliases 16, Redirects 0, modules 59, default/admin
+themes `olivero`/`claro`, front page `/node`, and maintenance mode false. The
+serving checkout is clean on the latest `release/prod`, and no DDEV project
+container remains running. Its final commit/tree fingerprint is
+`9ef3d4a2c260af9f3f2fcfe4ac584648bb592e0c` /
+`94316e6bedeae800078f5ecee755b4b2fd3f27dc`.
