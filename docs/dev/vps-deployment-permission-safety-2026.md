@@ -1,6 +1,6 @@
 # VPS Deployment Permission Safety
 
-Status date: 2026-09-02.
+Status date: 2026-09-03.
 
 This is a manual operations guard. It is not an automatic deployment system,
 does not authorize host access, and does not repair a checkout. PR #87 is now
@@ -40,7 +40,8 @@ The interface is:
 ```text
 check-web-runtime-permissions-2026.sh \
   [--project-root PATH] \
-  [--web-user USER]
+  [--web-user USER] \
+  [--php-fpm-worker-pid PID]
 ```
 
 Examples from a repository checkout are:
@@ -50,7 +51,8 @@ Examples from a repository checkout are:
 
 ./drupal/scripts/check-web-runtime-permissions-2026.sh \
   --project-root /srv/example-app/releases/20260902/drupal \
-  --web-user www-data
+  --web-user www-data \
+  --php-fpm-worker-pid "${PHP_FPM_WORKER_PID}"
 ```
 
 `/srv/example-app/releases/20260902/drupal` is a generic example, not a
@@ -66,6 +68,19 @@ indeterminate instead of risking a lookup or pretending that the supplementary
 group list is complete. `UNISONGES_PHP_BIN` may name an absolute, trusted PHP
 CLI when the project-compatible binary is not the default `php` in the
 checker's fixed system `PATH`.
+
+`--php-fpm-worker-pid` is optional. Without it, the checker retains the NSS and
+generic mandatory-access-control behavior described above. With it, the
+checker treats a fresh, strictly validated PHP-FPM pool worker as authoritative
+runtime-context evidence. It reads `/proc` only: the worker PID/start time,
+four-value UID and GID tuples, effective supplementary groups, executable,
+pool-worker command, AppArmor profile, Seccomp mode, zero capability sets, and
+its direct root PHP-FPM parent. Expected UID/GID values come from `--web-user`;
+no observed UID, GID, service version, group, or PID is hardcoded. The worker
+and parent start identities are captured before the other metadata and
+re-read before use; the full validated context is captured again after the
+scan. Missing, malformed, exited, reused, changed, confined, or unreproducible
+worker evidence is `INDETERMINATE`, never a fallback claim of success.
 
 The accepted project root must be non-empty, must not be `/` or another broad
 system root, must be inside a Git worktree, and must have tracked
@@ -100,14 +115,20 @@ identity. A privileged invocation drops to the resolved UID, primary GID, and
 locally complete supplementary-group set through an isolated Python process
 using numeric credential syscalls only. The child verifies its real, effective,
 saved, and filesystem IDs and verifies that access-bypassing capabilities are
-absent before opening a path. It does not use a login shell, name-based NSS
+absent before opening a path. With validated worker evidence, it reproduces the
+worker's exact UID, primary GID, and group set, and also proves that its own
+capabilities are zero, Seccomp mode is `0`, and AppArmor profile is exactly
+`unconfined`. A confined worker profile is not entered or bypassed: it makes the
+result indeterminate. The probe does not use a login shell, name-based NSS
 calls, PAM, a password, or privilege escalation of its own. A non-root
 deployment user that differs from the web user cannot prove allowed access and
 therefore produces exit `2`, although mode bits with no ACL can still establish
-a definite denial. Running as the web identity itself tests that process's
-actual kernel group set. The privileged probe tests the standard local account
-group set; a deployment that adds service-specific supplementary groups must
-validate that separate configuration and treat uncertainty as exit `2`.
+a definite denial. Without worker PID evidence, running as the web identity
+itself tests that process's actual kernel group set. The privileged probe tests
+the standard local account
+group set when no worker PID is supplied; a deployment that adds
+service-specific supplementary groups must either supply validated worker
+evidence or treat that uncertainty as exit `2`.
 
 Mode `640` is not rejected categorically. It passes when an effective probe
 proves that the web identity belongs to the owning group, and can also pass
@@ -136,10 +157,11 @@ Results are deliberately strict:
   switching, ACL/MAC context, Git/filesystem metadata, mount boundaries, PHP
   compatibility, or another environment limitation prevented proof.
 
-Both exit `1` and exit `2` stop deployment. The access probe covers the named
-UID/GIDs in the checker's current kernel security context; service-specific
-mandatory-access-control confinement must still be reviewed on the real host.
-The checker has no apply or repair mode.
+Both exit `1` and exit `2` stop deployment. Without worker evidence, the access
+probe covers the named UID/GIDs in the checker's current kernel security
+context and service-specific confinement remains unproven. With validated
+worker evidence, only the exactly matching unconfined context is accepted. The
+checker has no apply or repair mode.
 
 ## Safe deployment sequence
 
@@ -238,6 +260,11 @@ sudo --non-interactive -- \
 
 Continue only for `PASS` / exit `0`, after reviewing warnings. Exit `1` or `2`
 stops the deployment and requires a separate reviewed resolution.
+The invocation above remains supported. If NSS or mandatory-access-control
+state prevents proof, use the bounded fresh-worker discovery pattern in the
+PR #104 validation procedure below and add
+`--php-fpm-worker-pid "${PHP_FPM_WORKER_PID}"`; never reuse a previously
+observed PID.
 
 ### 8. Create the database backup only inside a scoped `umask 077` subshell
 
@@ -356,9 +383,10 @@ Every future deployment must verify, at minimum:
 Do not execute this procedure as part of static PR work. The owner must supply
 the final reviewed PR head in `EXPECTED_PR104_HEAD` and run the following as
 the checkout-owning deployment identity, with pre-authorized non-interactive
-privilege for only the checker. It begins in the production Drupal checkout,
-does not switch branches, extracts only the checker, performs no repair, and
-retains a private log. The SHA is intentionally not hardcoded here.
+privilege for the bounded read-only `/proc` discovery and checker invocations.
+It begins in the production Drupal checkout, does not switch branches, extracts
+only the checker, performs no repair, and retains a private log. The SHA is
+intentionally not hardcoded here.
 
 ```bash
 (
@@ -410,17 +438,102 @@ retains a private log. The SHA is intentionally not hardcoded here.
   bash --noprofile --norc -n -- "${CHECKER_COPY}"
 
   set +e
-  PRIVILEGED_UID="$(sudo --non-interactive -- /usr/bin/id -u 2>/dev/null)"
-  PRIVILEGE_STATUS=$?
+  WEB_PASSWD_ENTRY="$(/usr/bin/getent -s files passwd www-data 2>/dev/null)"
+  WEB_IDENTITY_STATUS=$?
   set -e
-  if ((PRIVILEGE_STATUS != 0)) || [[ "${PRIVILEGED_UID}" != "0" ]]; then
+  WEB_ACCOUNT=
+  WEB_UID=
+  WEB_GID=
+  WEB_EXTRA=
+  if ((WEB_IDENTITY_STATUS == 0)); then
+    IFS=: read -r WEB_ACCOUNT _ WEB_UID WEB_GID _ _ _ WEB_EXTRA <<<"${WEB_PASSWD_ENTRY}"
+    if [[ "${WEB_ACCOUNT}" != "www-data" || ! "${WEB_UID}" =~ ^[0-9]+$ \
+      || ! "${WEB_GID}" =~ ^[0-9]+$ || -n "${WEB_EXTRA:-}" ]]; then
+      WEB_IDENTITY_STATUS=1
+    fi
+  fi
+
+  # Discover a live worker immediately before the checker. This performs no
+  # request to create a worker; no observed PID is retained or hardcoded.
+  PHP_FPM_WORKER_PID=
+  WORKER_DISCOVERY_STATUS=1
+  if ((WEB_IDENTITY_STATUS == 0)); then
+    set +e
+    PHP_FPM_WORKER_PID="$(
+      sudo --non-interactive -- /usr/bin/python3 -I -S -c '
+import os
+import re
+import sys
+
+expected_uid, expected_gid = sys.argv[1:]
+wanted = {"Name", "Pid", "PPid", "Uid", "Gid"}
+
+def status(pid):
+    fields = {}
+    with open(f"/proc/{pid}/status", "r", encoding="ascii") as stream:
+        for line in stream:
+            key, separator, value = line.partition(":")
+            if separator and key in wanted:
+                if key in fields:
+                    raise ValueError
+                fields[key] = value.split()
+    if fields.keys() != wanted:
+        raise ValueError
+    return fields
+
+for pid in sorted(int(entry.name) for entry in os.scandir("/proc")
+                  if entry.name.isdecimal() and int(entry.name) > 1):
+    try:
+        worker = status(pid)
+        if (worker["Pid"] != [str(pid)]
+                or worker["Uid"] != [expected_uid] * 4
+                or worker["Gid"] != [expected_gid] * 4):
+            continue
+        if len(worker["PPid"]) != 1 or not worker["PPid"][0].isdecimal():
+            continue
+        parent_pid = int(worker["PPid"][0])
+        if parent_pid <= 1 or parent_pid == pid:
+            continue
+        command = open(f"/proc/{pid}/cmdline", "rb").read(4097)
+        command_name = command.split(b"\0", 1)[0]
+        if (len(command) > 4096 or not command_name.startswith(b"php-fpm: pool ")
+                or not command_name[len(b"php-fpm: pool "):]):
+            continue
+        worker_exe = os.path.realpath(f"/proc/{pid}/exe")
+        executable_name = os.path.basename(worker_exe)
+        if (re.fullmatch(r"php-fpm(?:[0-9]+(?:\.[0-9]+)*)?", executable_name) is None
+                or worker["Name"] != [executable_name]):
+            continue
+        parent = status(parent_pid)
+        if (parent["Pid"] != [str(parent_pid)]
+                or parent["Name"] != [executable_name]
+                or parent["Uid"] != ["0"] * 4):
+            continue
+        parent_exe = os.path.realpath(f"/proc/{parent_pid}/exe")
+        if parent_exe != worker_exe:
+            continue
+    except (IndexError, OSError, UnicodeError, ValueError):
+        continue
+    print(pid)
+    raise SystemExit(0)
+raise SystemExit(3)
+' "${WEB_UID}" "${WEB_GID}" 2>/dev/null
+    )"
+    WORKER_DISCOVERY_STATUS=$?
+    set -e
+  fi
+  if ((WEB_IDENTITY_STATUS != 0 || WORKER_DISCOVERY_STATUS != 0)) \
+    || [[ ! "${PHP_FPM_WORKER_PID}" =~ ^([2-9]|[1-9][0-9]+)$ ]]; then
     CHECKER_STATUS=2
-    printf '%s\n' 'Privilege preflight failed; checker was not run.' | tee -- "${LOG_PATH}"
+    printf '%s\n' \
+      'No fresh PHP-FPM www-data pool worker was proven; checker was not run.' \
+      | tee -- "${LOG_PATH}"
   else
     set +e
     sudo --non-interactive -- /bin/bash --noprofile --norc -- "${CHECKER_COPY}" \
       --project-root /var/www/unisonges/repo/drupal \
-      --web-user www-data 2>&1 | tee -- "${LOG_PATH}"
+      --web-user www-data \
+      --php-fpm-worker-pid "${PHP_FPM_WORKER_PID}" 2>&1 | tee -- "${LOG_PATH}"
     PIPELINE_STATUS=("${PIPESTATUS[@]}")
     set -e
     CHECKER_STATUS="${PIPELINE_STATUS[0]}"
@@ -485,6 +598,16 @@ retains a private log. The SHA is intentionally not hardcoded here.
 )
 ```
 
+The discovery step derives a versioned PHP-FPM executable name from `/proc` and
+accepts only a live pool worker whose complete UID/GID tuples match the local
+`www-data` account and whose direct root parent runs that same executable. For
+this host, the retained checker evidence must identify `/usr/sbin/php-fpm8.3`;
+the executable version and worker PID are not encoded in the checker or
+discovery logic. The checker repeats the stronger process validation and
+detects exit or PID reuse. If no such worker already exists, the procedure
+stops as `INDETERMINATE`; it does not make an HTTP request or restart PHP-FPM to
+create one.
+
 The exact expected status lines are:
 
 ```text
@@ -508,11 +631,24 @@ PR104_PERMISSION_ACTION=verification incomplete; deployment must stop until reso
 PR #104 must remain draft until the owner supplies the complete log and status
 from this real-VPS read-only procedure.
 
+An earlier read-only VPS run of the no-worker invocation found zero definite
+failures but returned `INDETERMINATE` for two proof limits: local NSS did not
+establish the complete worker group set, and enabled AppArmor did not reveal the
+worker profile. A separate read-only observation established that a live
+`php8.3-fpm` `www-data` pool worker had matching real/effective/saved/filesystem
+IDs, the expected supplementary groups, AppArmor `unconfined`, Seccomp `0`, and
+zero effective capabilities, with a direct root PHP-FPM parent. No observed PID
+is recorded because workers can restart. That observation motivated the
+optional PID evidence path, but it does not replace rerunning this updated
+checker with a freshly discovered worker.
+
 ## Read-only boundary and static validation
 
 The checker reads only Git metadata, tracked paths/modes, filesystem and parent
-directory metadata, selected runtime files, PHP parser results, and local
-user/group metadata. It does not change permissions or ownership, edit ACLs or
+directory metadata, selected runtime files, PHP parser results, local
+user/group metadata, and—when explicitly supplied—a PHP-FPM worker's `/proc`
+metadata. It never attaches to, signals, traces, enters namespaces of, or
+changes the worker. It does not change permissions or ownership, edit ACLs or
 tracked files, repair paths, update code, invoke dependency or Drupal tools,
 change caches/configuration/data, restart services, create a deployment, or
 make a network request.
@@ -533,6 +669,9 @@ deployment-owned `600` fail, restored `644` pass), matching and non-matching
 group `640`, `000`, a non-traversable parent, executable tooling, symlinked
 roots/runtime paths, PHP syntax failure, missing users, spaces and
 newline-bearing filenames, inaccessible Git metadata, inability to switch
-identity, and ACL uncertainty. The only outstanding PR #104 gate is the
-owner-run real-VPS read-only procedure above; no remote-host or runtime-resource
-action belongs in this entirely static change.
+identity, and ACL uncertainty. Synthetic process-context fixtures additionally
+cover valid evidence, malformed or mismatching ID/group records, missing and
+non-PHP processes, invalid parents, unconfined/confined AppArmor, identity
+changes and PID reuse, and credential-drop failure. The only outstanding PR
+#104 gate is the owner rerun of the real-VPS read-only procedure above; no
+remote-host or runtime-resource action belongs in this entirely static change.

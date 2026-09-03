@@ -13,6 +13,8 @@ PROJECT_ROOT_INPUT="${SCRIPT_DIR_INPUT}/.."
 WEB_USER=""
 WEB_USER_EXPLICIT=0
 PHP_BIN_INPUT="${UNISONGES_PHP_BIN:-}"
+PHP_FPM_WORKER_PID=""
+readonly PROC_ROOT="/proc"
 
 FAILURES=0
 WARNINGS=0
@@ -30,6 +32,9 @@ PHP_FILES_LINTED=0
 DIRECTORIES_CHECKED=0
 IDENTITY_LIMITATION_RECORDED=0
 LOCAL_GROUP_MEMBERSHIP_COMPLETE=0
+WORKER_CONTEXT_VALID=0
+WORKER_IDENTITY_STABLE=0
+WORKER_EVIDENCE_ERROR=""
 
 declare -A WEB_GROUP_IDS=()
 declare -A CHECKED_DIRECTORY_METADATA=()
@@ -151,6 +156,9 @@ Options:
                        component must be real directories, never symlinks.
   --web-user USER      Runtime account whose read/traversal access is checked.
                        Defaults to www-data only when that account exists.
+  --php-fpm-worker-pid PID
+                       Fresh PHP-FPM pool-worker PID used as authoritative
+                       runtime UID/GID/group and AppArmor evidence.
   -h, --help           Show this help.
 
 Environment:
@@ -466,6 +474,165 @@ object_access_metadata_kind() {
   esac
 }
 
+capture_php_fpm_worker_context() {
+  local output
+  local -a fields=()
+
+  WORKER_EVIDENCE_ERROR=""
+  if ! output="$("${ENV_BIN}" -i PATH=/usr/sbin:/usr/bin:/sbin:/bin \
+    "${PYTHON_BIN}" -I -S -B -c '
+import os
+import re
+import sys
+
+proc_root, pid_text, uid_text, gid_text = sys.argv[1:]
+pid = int(pid_text)
+
+def fail(message):
+    print(message)
+    raise SystemExit(2)
+
+def read_limited(path, binary=False):
+    mode = "rb" if binary else "r"
+    kwargs = {} if binary else {"encoding": "ascii"}
+    with open(path, mode, **kwargs) as stream:
+        value = stream.read(65537)
+    if len(value) > 65536:
+        fail("process metadata exceeds the safety limit")
+    return value
+
+def read_stat(process_id):
+    raw = read_limited(f"{proc_root}/{process_id}/stat")
+    marker = raw.rfind(") ")
+    if marker < 0 or not raw.startswith(f"{process_id} ("):
+        fail("process stat metadata is malformed")
+    values = raw[marker + 2:].split()
+    if len(values) < 20 or not values[1].isdigit() or not values[19].isdigit():
+        fail("process stat identity is malformed")
+    return values[1], values[19]
+
+required = {"Name", "Pid", "PPid", "Uid", "Gid", "Groups", "Seccomp",
+            "CapInh", "CapPrm", "CapEff", "CapAmb"}
+def read_status(process_id):
+    result = {}
+    for line in read_limited(f"{proc_root}/{process_id}/status").splitlines():
+        key, separator, value = line.partition(":")
+        if separator and key in required:
+            if key in result:
+                fail("process status contains duplicate fields")
+            result[key] = value.split()
+    if result.keys() != required:
+        fail("process status is missing required fields")
+    return result
+
+def exact_ids(values, expected):
+    return len(values) == 4 and all(value.isdigit() and value == expected for value in values)
+
+try:
+    worker_ppid, worker_start = read_stat(pid)
+    worker_dir = f"{proc_root}/{pid}"
+    worker = read_status(pid)
+    if worker["Pid"] != [pid_text] or worker["PPid"] != [worker_ppid]:
+        fail("worker PID or parent metadata is inconsistent")
+    if not exact_ids(worker["Uid"], uid_text):
+        fail("worker UID tuple does not match the web user")
+    if not exact_ids(worker["Gid"], gid_text):
+        fail("worker GID tuple does not match the web user")
+    groups = worker["Groups"]
+    if not groups or any(not value.isdigit() for value in groups) or len(groups) != len(set(groups)):
+        fail("worker supplementary-group metadata is malformed")
+    if gid_text not in groups:
+        fail("worker groups omit the primary GID")
+    if worker["Seccomp"] != ["0"]:
+        fail("worker Seccomp mode is not reproducible")
+    for field in ("CapInh", "CapPrm", "CapEff", "CapAmb"):
+        if (len(worker[field]) != 1 or re.fullmatch(r"[0-9A-Fa-f]+", worker[field][0]) is None
+                or int(worker[field][0], 16) != 0):
+            fail("worker capabilities are not an unprivileged zero set")
+
+    executable = os.path.realpath(f"{worker_dir}/exe")
+    if (not executable.startswith("/") or any(character in executable for character in "\r\n\0")
+            or re.fullmatch(r"php-fpm(?:[0-9]+(?:\.[0-9]+)*)?", os.path.basename(executable)) is None):
+        fail("worker executable is not PHP-FPM")
+    name = worker["Name"]
+    if name != [os.path.basename(executable)]:
+        fail("worker process name is not PHP-FPM")
+    command = read_limited(f"{worker_dir}/cmdline", binary=True).split(b"\0", 1)[0]
+    if not command.startswith(b"php-fpm: pool ") or not command[len(b"php-fpm: pool "):]:
+        fail("worker command is not a PHP-FPM pool worker")
+
+    profile = read_limited(f"{worker_dir}/attr/current").removesuffix("\n")
+    if not profile or any(character in profile for character in "\r\n\0"):
+        fail("worker AppArmor profile is unreadable or malformed")
+
+    parent_pid = int(worker_ppid)
+    if parent_pid <= 1 or parent_pid == pid:
+        fail("worker parent PID is invalid")
+    parent_ppid, parent_start = read_stat(parent_pid)
+    parent_dir = f"{proc_root}/{parent_pid}"
+    parent = read_status(parent_pid)
+    if (parent["Pid"] != [worker_ppid] or parent["PPid"] != [parent_ppid]
+            or parent["Name"] != name):
+        fail("parent process metadata is inconsistent")
+    if not exact_ids(parent["Uid"], "0"):
+        fail("PHP-FPM parent is not root")
+    parent_executable = os.path.realpath(f"{parent_dir}/exe")
+    if parent_executable != executable:
+        fail("worker and parent executables differ")
+    final_worker_ppid, final_worker_start = read_stat(pid)
+    final_parent_ppid, final_parent_start = read_stat(parent_pid)
+    if ((final_worker_ppid, final_worker_start) != (worker_ppid, worker_start)
+            or (final_parent_ppid, final_parent_start) != (parent_ppid, parent_start)):
+        fail("worker or parent identity changed while evidence was read")
+except (OSError, UnicodeError, ValueError):
+    fail("required process metadata is unavailable")
+
+print(worker_start)
+print(worker_ppid)
+print(parent_start)
+print(executable)
+print(" ".join(groups))
+print(profile)
+' "${PROC_ROOT}" "${PHP_FPM_WORKER_PID}" "${WEB_UID}" "${WEB_GID}" 2>/dev/null)"; then
+    WORKER_EVIDENCE_ERROR="${output:-required process metadata is unavailable}"
+    return 2
+  fi
+  mapfile -t fields <<<"${output}"
+  if ((${#fields[@]} != 6)); then
+    WORKER_EVIDENCE_ERROR="process evidence returned an unexpected result"
+    return 2
+  fi
+  CAPTURE_WORKER_EXECUTABLE="${fields[3]}"
+  CAPTURE_WORKER_GROUPS="${fields[4]}"
+  CAPTURE_WORKER_APPARMOR="${fields[5]}"
+  CAPTURE_WORKER_FINGERPRINT="${output}"
+}
+
+initialize_php_fpm_worker_context() {
+  if ! capture_php_fpm_worker_context; then
+    return 2
+  fi
+  WORKER_FINGERPRINT="${CAPTURE_WORKER_FINGERPRINT}"
+  WORKER_EXECUTABLE="${CAPTURE_WORKER_EXECUTABLE}"
+  WORKER_GROUPS="${CAPTURE_WORKER_GROUPS}"
+  WORKER_APPARMOR="${CAPTURE_WORKER_APPARMOR}"
+  set_web_group_set_from_numeric_list "${WORKER_GROUPS}" || {
+    WORKER_EVIDENCE_ERROR="worker group metadata cannot be represented safely"
+    return 2
+  }
+  WORKER_CONTEXT_VALID=1
+  WORKER_IDENTITY_STABLE=1
+  LOCAL_GROUP_MEMBERSHIP_COMPLETE=1
+}
+
+verify_php_fpm_worker_stable() {
+  if ! capture_php_fpm_worker_context \
+    || [[ "${CAPTURE_WORKER_FINGERPRINT}" != "${WORKER_FINGERPRINT}" ]]; then
+    WORKER_IDENTITY_STABLE=0
+    record_limitation "PHP-FPM worker PID ${PHP_FPM_WORKER_PID} exited, was reused, or changed during the permission scan."
+  fi
+}
+
 inspect_mandatory_access_context() {
   local apparmor_enabled="N"
   local current_security_context=""
@@ -477,6 +644,18 @@ inspect_mandatory_access_context() {
     elif [[ "${selinux_enforcing}" == "1" ]]; then
       record_limitation "SELinux is enforcing; this identity probe does not reproduce the PHP-FPM process domain."
     fi
+  fi
+
+  if ((WORKER_CONTEXT_VALID)); then
+    if [[ "${WORKER_APPARMOR}" != "unconfined" ]]; then
+      record_limitation "PHP-FPM worker AppArmor profile is confined and cannot be reproduced by the credential probe."
+    elif [[ ! -r /proc/self/attr/current ]] \
+      || ! read -r current_security_context </proc/self/attr/current; then
+      record_limitation "cannot compare the checker's AppArmor profile with the PHP-FPM worker."
+    elif [[ "${current_security_context}" != "unconfined" ]]; then
+      record_limitation "the checker and PHP-FPM worker AppArmor profiles differ; the access probe is not authoritative."
+    fi
+    return 0
   fi
 
   if [[ -r /sys/module/apparmor/parameters/enabled ]]; then
@@ -519,6 +698,7 @@ gid = int(sys.argv[2])
 groups = [int(value) for value in sys.argv[3].split(",") if value]
 action = sys.argv[4]
 path = sys.argv[5]
+strict_worker_context = sys.argv[6] == "1"
 
 try:
     os.setgroups(groups)
@@ -543,6 +723,12 @@ try:
         raise SystemExit(11)
     if any(int(status.get(field, ["1"])[0], 16) != 0 for field in ("CapInh", "CapPrm", "CapEff", "CapAmb")):
         raise SystemExit(11)
+    if strict_worker_context:
+        if status.get("Seccomp") != ["0"]:
+            raise SystemExit(11)
+        with open("/proc/self/attr/current", "r", encoding="ascii") as profile_file:
+            if profile_file.read() not in ("unconfined", "unconfined\n"):
+                raise SystemExit(11)
 except (OSError, ValueError):
     raise SystemExit(11)
 
@@ -565,7 +751,7 @@ except PermissionError:
 except OSError:
     raise SystemExit(11)
 ' "${WEB_UID}" "${WEB_GID}" "${WEB_GROUP_CSV}" \
-    "${access_type}" "${object_path}" 2>/dev/null; then
+    "${access_type}" "${object_path}" "${WORKER_CONTEXT_VALID}" 2>/dev/null; then
     return 0
   else
     probe_status=$?
@@ -989,6 +1175,14 @@ while (($#)); do
       WEB_USER_EXPLICIT=1
       shift
       ;;
+    --php-fpm-worker-pid)
+      (($# >= 2)) || die "--php-fpm-worker-pid requires a value."
+      [[ -z "${PHP_FPM_WORKER_PID}" ]] || die "--php-fpm-worker-pid may be specified only once."
+      [[ "$2" =~ ^([2-9]|[1-9][0-9]+)$ ]] \
+        || die "--php-fpm-worker-pid must be a decimal integer greater than 1."
+      PHP_FPM_WORKER_PID="$2"
+      shift
+      ;;
     -h|--help)
       usage
       exit 0
@@ -1106,7 +1300,11 @@ CURRENT_GROUP_OUTPUT="$(id -G)"
 ACCESS_PROOF_MODE="unavailable"
 if [[ -n "${WEB_USER}" ]]; then
   ((${#WEB_GROUP_IDS[@]} > 0)) || die "web user has no resolvable group membership: ${WEB_USER}"
-  if local_group_membership_is_complete; then
+  if [[ -n "${PHP_FPM_WORKER_PID}" ]]; then
+    if ! initialize_php_fpm_worker_context; then
+      record_limitation "PHP-FPM worker PID ${PHP_FPM_WORKER_PID} is not authoritative: ${WORKER_EVIDENCE_ERROR}"
+    fi
+  elif local_group_membership_is_complete; then
     LOCAL_GROUP_MEMBERSHIP_COMPLETE=1
   fi
 
@@ -1114,7 +1312,17 @@ if [[ -n "${WEB_USER}" ]]; then
     record_warning "the selected web user resolves to UID 0; review the service identity."
   fi
 
-  if [[ "${CURRENT_UID}" == "${WEB_UID}" ]]; then
+  if ((WORKER_CONTEXT_VALID)); then
+    if [[ "${CURRENT_UID}" != "0" ]]; then
+      record_identity_limitation_once "validated worker evidence requires a privileged numeric credential-drop probe; checker UID ${CURRENT_UID} cannot perform it."
+    elif [[ "${WORKER_APPARMOR}" != "unconfined" ]]; then
+      : # A confined worker cannot be reproduced; mandatory-access review records the limitation.
+    elif kernel_web_access_probe "/" identity; then
+      ACCESS_PROOF_MODE="credential-drop"
+    else
+      record_identity_limitation_once "the worker-matched credential-drop preflight failed; effective ${WEB_USER} access is indeterminate."
+    fi
+  elif [[ "${CURRENT_UID}" == "${WEB_UID}" ]]; then
     if set_web_group_set_from_numeric_list "${CURRENT_GROUP_OUTPUT}"; then
       ACCESS_PROOF_MODE="direct"
     else
@@ -1368,6 +1576,29 @@ done
 
 if ((RUNTIME_FILES == 0)); then
   record_failure "Git contains no selected tracked PHP, Twig, YAML, CSS, JavaScript, JSON, or executable shell files."
+fi
+
+if [[ -n "${PHP_FPM_WORKER_PID}" ]]; then
+  if ((WORKER_CONTEXT_VALID)); then
+    verify_php_fpm_worker_stable
+  fi
+  section "Runtime context evidence"
+  printf 'Runtime context source: PHP-FPM worker PID supplied\n'
+  printf 'Worker PID: %s\n' "${PHP_FPM_WORKER_PID}"
+  if ((WORKER_CONTEXT_VALID)); then
+    printf 'Worker UID/GID: %s/%s\n' "${WEB_UID}" "${WEB_GID}"
+    printf 'Worker supplementary groups: %s\n' "${WORKER_GROUPS}"
+    printf 'Worker executable: %s\n' "$(display_path "${WORKER_EXECUTABLE}")"
+    printf 'Worker AppArmor profile: %s\n' "$(display_path "${WORKER_APPARMOR}")"
+    printf 'Worker Seccomp/capabilities: 0/zero active sets\n'
+  else
+    printf 'Worker evidence: unavailable\n'
+  fi
+  if ((WORKER_IDENTITY_STABLE)); then
+    printf 'Worker identity stable: yes\n'
+  else
+    printf 'Worker identity stable: no\n'
+  fi
 fi
 
 assert_project_root_stable
