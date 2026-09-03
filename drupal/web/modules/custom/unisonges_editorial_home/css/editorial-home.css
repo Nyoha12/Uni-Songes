@@ -1,18 +1,18 @@
 /* The attached library is rendered only with the /accueil editorial block. */
-body.path-frontpage.section-accueil #unisonges-scrollframe.scrollframe {
+body.section-accueil #unisonges-scrollframe.scrollframe {
   background: #fffaf0 !important;
   border-color: rgba(67, 57, 40, 0.2) !important;
   box-shadow: none !important;
   color: #2d2922;
 }
 
-body.path-frontpage.section-accueil #unisonges-scrollframe > .scrollframe__inner {
+body.section-accueil #unisonges-scrollframe > .scrollframe__inner {
   padding: clamp(1.25rem, 3vw, 2.75rem) !important;
   overflow: visible !important;
 }
 
-body.path-frontpage.section-accueil .unisonges-editorial-home-intro,
-body.path-frontpage.section-accueil .unisonges-editorial-home {
+body.section-accueil .unisonges-editorial-home-intro,
+body.section-accueil .unisonges-editorial-home {
   --editorial-ink: #2d2922;
   --editorial-muted: #736b5d;
   --editorial-line: rgba(67, 57, 40, 0.24);
@@ -22,12 +22,12 @@ body.path-frontpage.section-accueil .unisonges-editorial-home {
   overflow-wrap: anywhere;
 }
 
-body.path-frontpage.section-accueil .unisonges-editorial-home-intro {
+body.section-accueil .unisonges-editorial-home-intro {
   max-width: 44rem;
   margin: 0 0 clamp(2rem, 5vw, 4rem);
 }
 
-body.path-frontpage.section-accueil .unisonges-editorial-home-intro__kicker {
+body.section-accueil .unisonges-editorial-home-intro__kicker {
   margin-bottom: 0.7rem;
   color: var(--editorial-muted);
   font-size: 0.76rem;
@@ -36,13 +36,13 @@ body.path-frontpage.section-accueil .unisonges-editorial-home-intro__kicker {
   text-transform: uppercase;
 }
 
-body.path-frontpage.section-accueil .unisonges-editorial-home-intro__deck {
+body.section-accueil .unisonges-editorial-home-intro__deck {
   max-width: 39rem;
   font-size: clamp(1.08rem, 2.2vw, 1.35rem);
   line-height: 1.6;
 }
 
-body.path-frontpage.section-accueil .unisonges-editorial-home-intro__link {
+body.section-accueil .unisonges-editorial-home-intro__link {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
@@ -52,7 +52,7 @@ body.path-frontpage.section-accueil .unisonges-editorial-home-intro__link {
   text-underline-offset: 0.24em;
 }
 
-body.path-frontpage.section-accueil .unisonges-editorial-home-intro a:focus-visible,
+body.section-accueil .unisonges-editorial-home-intro a:focus-visible,
 .unisonges-editorial-home :where(a, summary):focus-visible {
   outline: 3px solid var(--editorial-accent);
   outline-offset: 3px;
