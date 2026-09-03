@@ -1329,9 +1329,11 @@ function editorial_alias_transactional_storage_snapshot(
     }
 
     try {
-      $rows = $connection->select('information_schema.tables', 'table_info')
-        ->fields('table_info', ['table_name', 'table_type', 'engine'])
-        ->addExpression('CURRENT_USER()', 'current_account')
+      $query = $connection->select('information_schema.tables', 'table_info');
+      $query->fields('table_info', ['table_name', 'table_type', 'engine']);
+      // SelectQuery::addExpression() returns the selected alias, not $this.
+      $query->addExpression('CURRENT_USER()', 'current_account');
+      $rows = $query
         ->condition('table_schema', $database)
         ->condition('table_name', $table)
         ->execute()
