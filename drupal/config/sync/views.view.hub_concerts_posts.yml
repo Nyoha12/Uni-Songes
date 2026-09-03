@@ -4,8 +4,10 @@ status: true
 dependencies:
   config:
     - core.entity_view_mode.node.teaser
+    - field.storage.node.field_event_dates
     - node.type.concert
   module:
+    - datetime
     - node
     - user
 id: hub_concerts_posts
@@ -31,13 +33,22 @@ display:
         type: perm
         options:
           perm: 'access content'
+      cache:
+        type: none
+        options: {  }
       sorts:
-        created:
-          id: created
+        field_event_dates_value:
+          id: field_event_dates_value
+          table: node__field_event_dates
+          field: field_event_dates_value
+          plugin_id: datetime
+          order: ASC
+        nid:
+          id: nid
           table: node_field_data
-          field: created
-          plugin_id: date
-          order: DESC
+          field: nid
+          plugin_id: standard
+          order: ASC
       filters:
         status:
           id: status
@@ -52,6 +63,26 @@ display:
           plugin_id: bundle
           value:
             concert: concert
+        field_event_dates_end_value:
+          id: field_event_dates_end_value
+          table: node__field_event_dates
+          field: field_event_dates_end_value
+          plugin_id: datetime
+          operator: '>='
+          value:
+            min: ''
+            max: ''
+            value: now
+            type: offset
+      empty:
+        area_text_custom:
+          id: area_text_custom
+          table: views
+          field: area_text_custom
+          plugin_id: text_custom
+          empty: true
+          content: 'Aucun concert ou événement à venir pour le moment.'
+          tokenize: false
       style:
         type: default
         options: {  }
@@ -64,7 +95,7 @@ display:
         options: {  }
       display_extenders: {  }
     cache_metadata:
-      max-age: -1
+      max-age: 0
       contexts:
         - 'languages:language_interface'
         - url.query_args
@@ -85,7 +116,7 @@ display:
         filters: true
       display_extenders: {  }
     cache_metadata:
-      max-age: -1
+      max-age: 0
       contexts:
         - 'languages:language_interface'
         - url.query_args
