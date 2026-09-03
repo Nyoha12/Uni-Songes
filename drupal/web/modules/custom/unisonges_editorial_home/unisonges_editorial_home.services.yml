@@ -1,0 +1,18 @@
+services:
+  unisonges_editorial_home.builder:
+    class: Drupal\unisonges_editorial_home\EditorialHomeBuilder
+    arguments:
+      - '@entity_type.manager'
+      - '@entity.repository'
+      - '@views.executable'
+      - '@account_switcher'
+      - '@request_stack'
+      - '@date.formatter'
+      - '@language_manager'
+      - '@state'
+  unisonges_editorial_home.uninstall_validator:
+    class: Drupal\unisonges_editorial_home\EditorialHomeUninstallValidator
+    arguments:
+      - '@state'
+    tags:
+      - { name: module_install.uninstall_validator }

@@ -65,6 +65,7 @@ module:
   text: 0
   token: 0
   toolbar: 0
+  unisonges_editorial_home: 0
   unisonges_structure: 0
   update: 0
   user: 0

@@ -1,0 +1,104 @@
+{#
+/**
+ * @file
+ * Editorial homepage stream. The page shell owns the main landmark and H1.
+ */
+#}
+<div class="unisonges-editorial-home">
+  <div class="unisonges-editorial-home__layout">
+    <aside class="unisonges-editorial-home__rail" aria-label="{{ 'Navigation éditoriale'|t }}">
+      <details class="unisonges-editorial-home__disclosure">
+        <summary>{{ 'Articles par thème'|t }}</summary>
+        <nav class="unisonges-editorial-home__themes" aria-label="{{ 'Articles par thème'|t }}">
+          <ul>
+            <li>
+              <a href="{{ all_articles_url }}"{% if selected_theme is null and not theme_invalid %} aria-current="true"{% endif %}>{{ 'Tous les articles'|t }}</a>
+            </li>
+            {% for theme in themes %}
+              <li>
+                <a href="{{ theme.url }}"{% if theme.current %} aria-current="true"{% endif %}>{{ theme.name }}</a>
+              </li>
+            {% endfor %}
+          </ul>
+          {% if themes is empty %}
+            <p>{{ 'Aucun thème disponible pour le moment.'|t }}</p>
+          {% endif %}
+        </nav>
+      </details>
+
+      <details class="unisonges-editorial-home__disclosure">
+        <summary>{{ 'À propos d’Uni-Songes'|t }}</summary>
+        <div class="unisonges-editorial-home__about">
+          <p>{{ 'Cette page oriente vers l’association Uni-Songes, les artistes et partenaires qu’elle présente, les origines de sa démarche, son Blog et ses activités artistiques et pédagogiques.'|t }}</p>
+          <a href="{{ about_url }}">{{ 'Découvrir À propos'|t }}</a>
+        </div>
+      </details>
+    </aside>
+
+    <section class="unisonges-editorial-home__stream" aria-labelledby="unisonges-editorial-home-title">
+      <h2 id="unisonges-editorial-home-title">
+        {% if theme_filtered and selected_theme_name %}
+          {{ 'Articles — @theme'|t({'@theme': selected_theme_name}) }}
+        {% else %}
+          {{ 'Articles récents'|t }}
+        {% endif %}
+      </h2>
+      <p class="unisonges-editorial-home__ordering">{{ 'Du plus récent au plus ancien'|t }}</p>
+
+      {% if theme_invalid %}
+        <p class="unisonges-editorial-home__empty" role="status">{{ 'Le thème demandé n’est pas disponible.'|t }}</p>
+        <p class="unisonges-editorial-home__reset"><a href="{{ all_articles_url }}">{{ 'Voir tous les articles'|t }}</a></p>
+      {% elseif articles is empty %}
+        <p class="unisonges-editorial-home__empty" role="status">
+          {% if pager.page > 0 %}
+            {{ 'Cette page ne contient aucun article.'|t }}
+          {% elseif theme_filtered and selected_theme_name %}
+            {{ 'Aucun article publié pour le thème « @theme ».'|t({'@theme': selected_theme_name}) }}
+          {% else %}
+            {{ 'Aucun article publié pour le moment.'|t }}
+          {% endif %}
+        </p>
+        {% if pager.page > 0 %}
+          <p class="unisonges-editorial-home__reset"><a href="{{ collection_start_url }}">{{ 'Revenir à la première page'|t }}</a></p>
+        {% elseif theme_filtered %}
+          <p class="unisonges-editorial-home__reset"><a href="{{ all_articles_url }}">{{ 'Voir tous les articles'|t }}</a></p>
+        {% endif %}
+      {% else %}
+        <ul class="unisonges-editorial-home__articles">
+          {% for article in articles %}
+            <li>
+              <article class="unisonges-editorial-home__article{% if article.emphasized %} unisonges-editorial-home__article--newest{% endif %}">
+                <p class="unisonges-editorial-home__meta">
+                  <time datetime="{{ article.datetime }}">{{ article.date }}</time>
+                  {% if article.terms %}
+                    <span aria-hidden="true"> · </span>
+                    <span>{{ article.terms|join(', ') }}</span>
+                  {% endif %}
+                </p>
+                <h3>{{ article.title }}</h3>
+                {% if article.summary %}
+                  <div class="unisonges-editorial-home__summary">{{ article.summary }}</div>
+                {% endif %}
+                <a class="unisonges-editorial-home__read" href="{{ article.url }}">
+                  {{ 'Lire l’article'|t }}<span class="visually-hidden"> : {{ article.title }}</span>
+                </a>
+              </article>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+      {% if pager.previous or pager.next %}
+        <nav class="unisonges-editorial-home__pager" aria-label="{{ 'Pagination des articles'|t }}">
+          {% if pager.previous %}
+            <a href="{{ pager.previous }}" rel="prev">{{ 'Articles plus récents'|t }}</a>
+          {% endif %}
+          <span aria-current="page">{{ 'Page @page'|t({'@page': pager.page + 1}) }}</span>
+          {% if pager.next %}
+            <a href="{{ pager.next }}" rel="next">{{ 'Articles plus anciens'|t }}</a>
+          {% endif %}
+        </nav>
+      {% endif %}
+    </section>
+  </div>
+</div>

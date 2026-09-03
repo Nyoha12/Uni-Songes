@@ -1,0 +1,281 @@
+/* The attached library is rendered only with the /accueil editorial block. */
+body.section-accueil #unisonges-scrollframe.scrollframe {
+  background: #fffaf0 !important;
+  border-color: rgba(67, 57, 40, 0.2) !important;
+  box-shadow: none !important;
+  color: #2d2922;
+}
+
+body.section-accueil #unisonges-scrollframe > .scrollframe__inner {
+  padding: clamp(1.25rem, 3vw, 2.75rem) !important;
+  overflow: visible !important;
+}
+
+body.section-accueil .unisonges-editorial-home-intro,
+body.section-accueil .unisonges-editorial-home {
+  --editorial-ink: #2d2922;
+  --editorial-muted: #736b5d;
+  --editorial-line: rgba(67, 57, 40, 0.24);
+  --editorial-accent: #0f766e;
+  color: var(--editorial-ink);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  overflow-wrap: anywhere;
+}
+
+body.section-accueil .unisonges-editorial-home-intro {
+  max-width: 44rem;
+  margin: 0 0 clamp(2rem, 5vw, 4rem);
+}
+
+body.section-accueil .unisonges-editorial-home-intro__kicker {
+  margin-bottom: 0.7rem;
+  color: var(--editorial-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+body.section-accueil .unisonges-editorial-home-intro__deck {
+  max-width: 39rem;
+  font-size: clamp(1.08rem, 2.2vw, 1.35rem);
+  line-height: 1.6;
+}
+
+body.section-accueil .unisonges-editorial-home-intro__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--editorial-accent);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-underline-offset: 0.24em;
+}
+
+body.section-accueil .unisonges-editorial-home-intro a:focus-visible,
+.unisonges-editorial-home :where(a, summary):focus-visible {
+  outline: 3px solid var(--editorial-accent);
+  outline-offset: 3px;
+}
+
+.unisonges-editorial-home__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 15rem;
+  column-gap: clamp(2rem, 5vw, 4.5rem);
+  align-items: start;
+}
+
+.unisonges-editorial-home__rail {
+  grid-column: 2;
+  grid-row: 1;
+  border-top: 1px solid var(--editorial-line);
+}
+
+.unisonges-editorial-home__stream {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+}
+
+.unisonges-editorial-home__stream > h2 {
+  margin: 0 0 0.35rem;
+  font-family: inherit;
+  font-size: clamp(1.5rem, 3.6vw, 2.35rem);
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+
+.unisonges-editorial-home__ordering {
+  margin: 0 0 clamp(1.5rem, 3vw, 2.5rem);
+  color: var(--editorial-muted);
+  font-size: 0.78rem;
+}
+
+.unisonges-editorial-home__disclosure {
+  margin: 0;
+  border-bottom: 1px solid var(--editorial-line);
+}
+
+.unisonges-editorial-home__disclosure > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 44px;
+  padding: 0.9rem 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  letter-spacing: 0.035em;
+  list-style: none;
+}
+
+.unisonges-editorial-home__disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.unisonges-editorial-home__disclosure > summary::after {
+  content: "+";
+  flex: 0 0 auto;
+  color: var(--editorial-muted);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.unisonges-editorial-home__disclosure[open] > summary::after {
+  content: "−";
+}
+
+.unisonges-editorial-home__disclosure[open] > summary {
+  color: var(--editorial-accent);
+}
+
+.unisonges-editorial-home__themes,
+.unisonges-editorial-home__about {
+  padding: 0.15rem 0 1.2rem;
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.unisonges-editorial-home__themes ul,
+.unisonges-editorial-home__articles {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.unisonges-editorial-home__themes li + li {
+  border-top: 1px solid var(--editorial-line);
+}
+
+.unisonges-editorial-home__themes a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--editorial-accent);
+  font-weight: 650;
+  text-underline-offset: 0.24em;
+}
+
+.unisonges-editorial-home__themes a[aria-current="true"] {
+  color: var(--editorial-ink);
+  font-weight: 750;
+  text-decoration-thickness: 0.14em;
+}
+
+.unisonges-editorial-home__themes p {
+  margin: 0.65rem 0 0;
+  color: var(--editorial-muted);
+}
+
+.unisonges-editorial-home__about p {
+  margin: 0 0 0.8rem;
+}
+
+.unisonges-editorial-home__about a,
+.unisonges-editorial-home__read,
+.unisonges-editorial-home__reset a,
+.unisonges-editorial-home__pager a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--editorial-accent);
+  font-weight: 700;
+  text-underline-offset: 0.24em;
+}
+
+.unisonges-editorial-home__article {
+  padding: 1.55rem 0 1.8rem;
+  border-top: 1px solid var(--editorial-line);
+}
+
+.unisonges-editorial-home__articles > li:first-child .unisonges-editorial-home__article {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.unisonges-editorial-home__article h3 {
+  max-width: 36rem;
+  margin: 0 0 0.75rem;
+  font-family: inherit;
+  font-size: clamp(1.28rem, 2.7vw, 1.8rem);
+  font-weight: 500;
+  letter-spacing: -0.018em;
+}
+
+.unisonges-editorial-home__article--newest {
+  border-left: 2px solid var(--editorial-accent);
+}
+
+.unisonges-editorial-home__article--newest h3 {
+  font-size: clamp(1.42rem, 3vw, 2rem);
+}
+
+.unisonges-editorial-home__meta {
+  margin: 0 0 0.65rem;
+  color: var(--editorial-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.025em;
+}
+
+.unisonges-editorial-home__summary {
+  max-width: 42rem;
+  margin-bottom: 0.8rem;
+  line-height: 1.65;
+}
+
+.unisonges-editorial-home__summary > :last-child {
+  margin-bottom: 0;
+}
+
+.unisonges-editorial-home__read {
+  margin-top: 0.2rem;
+  font-size: 0.82rem;
+}
+
+.unisonges-editorial-home__empty {
+  padding: 1.25rem 0;
+  border-top: 1px solid var(--editorial-line);
+  color: var(--editorial-muted);
+}
+
+.unisonges-editorial-home__reset {
+  margin: -0.65rem 0 1.25rem;
+}
+
+.unisonges-editorial-home__pager {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.8rem 1.25rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--editorial-line);
+  font-size: 0.8rem;
+}
+
+.unisonges-editorial-home__pager span {
+  color: var(--editorial-muted);
+}
+
+@media (max-width: 62rem) {
+  .unisonges-editorial-home__layout {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 2rem;
+  }
+
+  .unisonges-editorial-home__rail,
+  .unisonges-editorial-home__stream {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .unisonges-editorial-home__rail {
+    margin-bottom: 0.25rem;
+  }
+
+  .unisonges-editorial-home__pager span {
+    order: -1;
+    width: 100%;
+  }
+}

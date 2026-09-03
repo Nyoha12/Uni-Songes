@@ -285,6 +285,14 @@ Drupal's config-entity lifecycle can also maintain core internal metadata such
 as the `entity.definitions.bundle_field_map` key-value entry. Those records are
 implementation metadata, not business content or feature-owned submissions.
 
+Compatibility with the later editorial-home feature is fail-closed. The synced
+Blog View can contain its third `editorial_home` display, but this helper derives
+and creates the original two-display Forum/Blog baseline whenever editorial-home
+is absent. When the editorial module, block and rollback state are all active,
+an install recheck accepts only the exact three-display variant. Partial
+editorial ownership is refused, so a fresh Forum/Blog install cannot create half
+of the homepage feature.
+
 A write-mode install or rollback holds both the custom
 `unisonges_forum_blog_mvp_config` lock and core's persistent `config_importer`
 lock. Both use a one-hour TTL and are renewed immediately before each applicable
@@ -306,6 +314,12 @@ dry-run.
 ### Rollback
 
 Rollback is dry-run first:
+
+If editorial-home is active, execute and verify its own exact rollback first.
+The Forum/Blog rollback deliberately refuses the reverse order because the
+homepage block depends on `views.view.blog_posts`; after the editorial rollback,
+this helper recognizes the restored two-display baseline and can remove the 14
+Forum/Blog entities normally.
 
 ```bash
 SITE_URI='https://approved-host.example'

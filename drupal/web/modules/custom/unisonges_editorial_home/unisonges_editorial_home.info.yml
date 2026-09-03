@@ -1,0 +1,14 @@
+name: 'Accueil éditorial Uni-Songes'
+type: module
+description: 'Provides the accessible editorial article stream for the homepage.'
+package: Custom
+core_version_requirement: ^11
+hidden: true
+dependencies:
+  - drupal:block
+  - drupal:node
+  - drupal:path_alias
+  - drupal:taxonomy
+  - drupal:text
+  - drupal:user
+  - drupal:views

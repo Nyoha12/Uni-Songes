@@ -1,0 +1,5 @@
+editorial_home:
+  version: 1.x
+  css:
+    theme:
+      css/editorial-home.css: {  }
