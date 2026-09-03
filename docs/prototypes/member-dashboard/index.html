@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Prototype fictif — compte membre Uni-Songes</title>
+    <link rel="stylesheet" href="prototype.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#contenu">Aller au contenu</a>
+
+    <header class="site-header">
+      <div class="site-header__inner">
+        <span class="wordmark">Uni-Songes</span>
+        <span class="site-header__context">Espace membre</span>
+      </div>
+    </header>
+
+    <main id="contenu" class="account-shell">
+      <p id="prototype-warning" class="prototype-notice">
+        <strong>Prototype statique.</strong> Toutes les personnes, dates,
+        commandes, propositions et contributions ci-dessous sont fictives. Les
+        liens de démonstration n’exécutent aucune action.
+      </p>
+      <p id="prototype-link-note" class="visually-hidden">
+        Dans ce prototype, ce lien ouvre uniquement la note de limite.
+      </p>
+
+      <div class="title-row">
+        <div>
+          <p class="eyebrow">Votre espace personnel</p>
+          <h1 id="titre-compte">Mon compte</h1>
+        </div>
+        <span class="avatar" aria-hidden="true">AR</span>
+      </div>
+
+      <nav class="section-nav" aria-label="Sections du compte">
+        <ul role="list">
+          <li><a href="#mon-compte">Mon compte</a></li>
+          <li><a href="#reservations">Mes réservations</a></li>
+          <li><a href="#droits">Mes séances</a></li>
+          <li><a href="#commandes">Mes commandes</a></li>
+          <li><a href="#propositions">Mes propositions</a></li>
+          <li><a href="#contributions">Mes contributions</a></li>
+        </ul>
+      </nav>
+
+      <section
+        id="mon-compte"
+        class="account-section"
+        aria-labelledby="titre-compte"
+      >
+        <div class="section-heading section-heading--profile">
+          <p class="section-intro">Identité et coordonnées liées au compte</p>
+          <a
+            class="action-link"
+            href="#prototype-note"
+            aria-describedby="prototype-link-note"
+          >
+            Modifier mon profil
+          </a>
+        </div>
+
+        <dl class="facts">
+          <div>
+            <dt>Nom d’utilisateur</dt>
+            <dd>alix.riviere</dd>
+          </div>
+          <div>
+            <dt>Adresse du compte</dt>
+            <dd>alix.riviere@example.invalid</dd>
+          </div>
+          <div>
+            <dt>Membre depuis</dt>
+            <dd><time datetime="2024-11-08">8 novembre 2024</time></dd>
+          </div>
+          <div>
+            <dt>Fuseau horaire</dt>
+            <dd>Europe/Paris</dd>
+          </div>
+        </dl>
+
+        <details class="state-sample">
+          <summary>Exemple si l’image ou le fuseau manque</summary>
+          <p>
+            Les initiales servent de repli visuel et la ligne du fuseau est
+            omise. Aucune image distante ni donnée de profil n’est inventée.
+          </p>
+        </details>
+      </section>
+
+      <section
+        id="reservations"
+        class="account-section"
+        aria-labelledby="titre-reservations"
+      >
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">Créneaux actuellement actifs</p>
+            <h2 id="titre-reservations">Mes réservations</h2>
+          </div>
+          <a
+            class="action-link"
+            href="#prototype-note"
+            aria-describedby="prototype-link-note"
+          >
+            Réserver un créneau
+          </a>
+        </div>
+
+        <p class="section-intro">
+          Cette liste décrit l’état courant. Elle ne constitue pas un historique
+          des cours effectués.
+        </p>
+
+        <ol class="record-list" role="list">
+          <li class="record">
+            <div class="record__heading">
+              <h3>Cours de didgeridoo · niveau débutant</h3>
+              <span class="status status--success">Réservation active</span>
+            </div>
+            <dl class="record__facts">
+              <div>
+                <dt>Date</dt>
+                <dd>
+                  <time datetime="2026-09-15T14:00:00+02:00"
+                    >15 septembre 2026 à 14 h</time
+                  >
+                </dd>
+              </div>
+              <div>
+                <dt>Modalité</dt>
+                <dd>En studio</dd>
+              </div>
+              <div>
+                <dt>Règlement</dt>
+                <dd>
+                  <span class="status status--paid">Réglée sur place</span>
+                </dd>
+              </div>
+            </dl>
+          </li>
+          <li class="record">
+            <div class="record__heading">
+              <h3>Cours de guimbarde · niveau intermédiaire</h3>
+              <span class="status status--success">Réservation active</span>
+            </div>
+            <dl class="record__facts">
+              <div>
+                <dt>Date</dt>
+                <dd>
+                  <time datetime="2026-09-22T10:30:00+02:00"
+                    >22 septembre 2026 à 10 h 30</time
+                  >
+                </dd>
+              </div>
+              <div>
+                <dt>Modalité</dt>
+                <dd>Visio · Google Meet</dd>
+              </div>
+              <div>
+                <dt>Règlement</dt>
+                <dd>
+                  <span class="status status--warning">À régler sur place</span>
+                </dd>
+              </div>
+            </dl>
+          </li>
+        </ol>
+
+        <details class="state-sample">
+          <summary>Exemples d’état vide et de donnée non active</summary>
+          <div class="empty-state">
+            <p><strong>Vous n’avez aucune réservation active.</strong></p>
+            <p>Aucun historique complet n’est disponible dans ce compte.</p>
+          </div>
+          <div class="inactive-example">
+            <span class="status status--neutral">Non active</span>
+            <p>
+              Ce libellé prudent ne permet pas de conclure à une annulation : la
+              source actuelle confond plusieurs causes.
+            </p>
+          </div>
+        </details>
+      </section>
+
+      <section
+        id="droits"
+        class="account-section"
+        aria-labelledby="titre-droits"
+      >
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">Disponibilités actuelles</p>
+            <h2 id="titre-droits">Mes séances ou droits utilisables</h2>
+          </div>
+          <a
+            class="action-link"
+            href="#prototype-note"
+            aria-describedby="prototype-link-note"
+          >
+            Voir les cours
+          </a>
+        </div>
+
+        <dl class="rights-list">
+          <div>
+            <dt>Séances disponibles</dt>
+            <dd>
+              <strong>2 séances</strong> · valables jusqu’au
+              <time datetime="2026-10-31">31 octobre 2026</time>
+            </dd>
+          </div>
+          <div>
+            <dt>Séances disponibles à régler sur place</dt>
+            <dd><strong>1 séance</strong></dd>
+          </div>
+        </dl>
+        <p class="data-note">
+          Ces nombres sont des soldes actuels, pas le détail des séances déjà
+          utilisées.
+        </p>
+
+        <details class="state-sample">
+          <summary>Exemples sans droit utilisable</summary>
+          <div class="empty-state">
+            <p><strong>Aucune séance utilisable pour le moment.</strong></p>
+          </div>
+          <div class="inactive-example">
+            <span class="status status--expired">Droits expirés</span>
+            <p>Une date échue ramène l’affichage utilisable à zéro.</p>
+          </div>
+        </details>
+      </section>
+
+      <section
+        id="commandes"
+        class="account-section"
+        aria-labelledby="titre-commandes"
+      >
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">Commandes récentes</p>
+            <h2 id="titre-commandes">Mes commandes</h2>
+          </div>
+          <a
+            class="action-link"
+            href="#prototype-note"
+            aria-describedby="prototype-link-note"
+          >
+            Voir toutes mes commandes
+          </a>
+        </div>
+
+        <ol class="record-list" role="list">
+          <li class="record">
+            <div class="record__heading">
+              <h3>Commande US-FICT-2048</h3>
+              <span class="status status--paid">Finalisée · payée</span>
+            </div>
+            <p>Pack de 4 cours débutant/intermédiaire · 1 × 180,00 €</p>
+            <p class="record__meta">
+              <time datetime="2026-08-10">10 août 2026</time> · Total 180,00 €
+            </p>
+            <a
+              class="record__link"
+              href="#prototype-note"
+              aria-label="Voir la commande US-FICT-2048"
+              aria-describedby="prototype-link-note"
+              >Voir la commande</a
+            >
+          </li>
+          <li class="record">
+            <div class="record__heading">
+              <h3>Commande US-FICT-2053</h3>
+              <span class="status status--warning"
+                >Enregistrée · à régler sur place</span
+              >
+            </div>
+            <p>Cours de guimbarde · 1 × 50,00 €</p>
+            <p class="record__meta">
+              <time datetime="2026-08-29">29 août 2026</time> · Total 50,00 €
+            </p>
+            <a
+              class="record__link"
+              href="#prototype-note"
+              aria-label="Voir la commande US-FICT-2053"
+              aria-describedby="prototype-link-note"
+              >Voir la commande</a
+            >
+          </li>
+          <li class="record">
+            <div class="record__heading">
+              <h3>Cours de didgeridoo</h3>
+              <span class="status status--cancelled">Commande annulée</span>
+            </div>
+            <p>Cours de didgeridoo · 1 × 50,00 €</p>
+            <p class="record__meta">
+              Créée le <time datetime="2026-07-18">18 juillet 2026</time> ·
+              Total 50,00 € · aucun numéro attribué
+            </p>
+            <a
+              class="record__link"
+              href="#prototype-note"
+              aria-label="Voir la commande annulée sans numéro"
+              aria-describedby="prototype-link-note"
+              >Voir la commande annulée</a
+            >
+          </li>
+        </ol>
+
+        <details class="state-sample">
+          <summary>Exemple si aucune commande n’existe</summary>
+          <div class="empty-state">
+            <p><strong>Vous n’avez encore passé aucune commande.</strong></p>
+            <p>
+              Les brouillons ne sont pas présentés comme des commandes passées.
+            </p>
+          </div>
+        </details>
+      </section>
+
+      <section
+        id="propositions"
+        class="account-section"
+        aria-labelledby="titre-propositions"
+      >
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">Idées envoyées à l’équipe</p>
+            <h2 id="titre-propositions">Mes propositions</h2>
+          </div>
+          <a
+            class="action-link"
+            href="#prototype-note"
+            aria-describedby="prototype-link-note"
+          >
+            Proposer un sujet ou une idée
+          </a>
+        </div>
+
+        <ol class="record-list" role="list">
+          <li class="record">
+            <div class="record__heading">
+              <h3>Les rythmes respiratoires au didgeridoo</h3>
+              <span class="status status--received">Reçue</span>
+            </div>
+            <p class="record__meta">
+              Sujet de discussion ·
+              <time datetime="2026-08-24">24 août 2026</time>
+            </p>
+          </li>
+          <li class="record">
+            <div class="record__heading">
+              <h3>Explorer les instruments à anche libre</h3>
+              <span class="status status--received">Reçue</span>
+            </div>
+            <p class="record__meta">
+              Thème d’article ·
+              <time datetime="2026-07-12">12 juillet 2026</time>
+            </p>
+          </li>
+        </ol>
+        <p class="data-note">
+          « Reçue » confirme seulement l’envoi. Aucun statut d’acceptation, de
+          refus ou de publication n’existe actuellement.
+        </p>
+
+        <details class="state-sample">
+          <summary>Exemple si aucune proposition n’existe</summary>
+          <div class="empty-state">
+            <p><strong>Vous n’avez envoyé aucune proposition.</strong></p>
+          </div>
+        </details>
+      </section>
+
+      <section
+        id="contributions"
+        class="account-section"
+        aria-labelledby="titre-contributions"
+      >
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">Commentaires publiés</p>
+            <h2 id="titre-contributions">Mes contributions</h2>
+          </div>
+          <a
+            class="action-link"
+            href="#prototype-note"
+            aria-describedby="prototype-link-note"
+          >
+            Parcourir le Forum
+          </a>
+        </div>
+
+        <ol class="record-list" role="list">
+          <li class="record">
+            <div class="record__heading">
+              <h3>Commentaire sur « Premiers sons à la guimbarde »</h3>
+              <span class="status status--published">Publié</span>
+            </div>
+            <p>
+              « La position de la langue change vraiment la couleur du son… »
+            </p>
+            <p class="record__meta">
+              Forum · <time datetime="2026-08-27">27 août 2026</time>
+            </p>
+            <a
+              class="record__link"
+              href="#prototype-note"
+              aria-describedby="prototype-link-note"
+              >Ouvrir la discussion</a
+            >
+          </li>
+          <li class="record">
+            <div class="record__heading">
+              <h3>Commentaire sur « Écouter le souffle »</h3>
+              <span class="status status--published">Publié</span>
+            </div>
+            <p>
+              « Merci pour l’exercice progressif proposé dans cet article… »
+            </p>
+            <p class="record__meta">
+              Blog · <time datetime="2026-07-30">30 juillet 2026</time>
+            </p>
+            <a
+              class="record__link"
+              href="#prototype-note"
+              aria-describedby="prototype-link-note"
+              >Ouvrir l’article</a
+            >
+          </li>
+        </ol>
+        <p class="data-note">
+          Une proposition n’est jamais reliée à un sujet ou à un article par
+          simple ressemblance de titre.
+        </p>
+
+        <details class="state-sample">
+          <summary>
+            Exemple si aucune contribution publiée n’est accessible
+          </summary>
+          <div class="empty-state">
+            <p>
+              <strong>Vous n’avez encore aucune contribution publiée.</strong>
+            </p>
+            <p>
+              Ce message ne révèle rien au sujet de contenus modérés ou retirés.
+            </p>
+          </div>
+        </details>
+      </section>
+
+      <aside
+        id="prototype-note"
+        class="prototype-footnote"
+        aria-labelledby="titre-note"
+      >
+        <h2 id="titre-note">Limite de ce prototype</h2>
+        <p>
+          Dans une future implémentation, chaque lien devra être généré depuis
+          une route Drupal déjà existante et affiché uniquement après son
+          contrôle d’accès. Ici, tous les liens d’action reviennent à cette
+          note : aucune réservation, commande ou donnée n’est créée ou modifiée.
+        </p>
+      </aside>
+    </main>
+  </body>
+</html>
