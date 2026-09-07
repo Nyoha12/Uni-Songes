@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>Boutique physique — prototype fictif Uni-Songes</title>
+    <link rel="stylesheet" href="prototype.css">
+    <script src="prototype.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#prototype-main">Aller au prototype</a>
+
+    <header class="prototype-header">
+      <div class="prototype-header__inner">
+        <a class="prototype-brand" href="#landing" data-state-target="landing">
+          <span>
+            <strong>Uni-Songes</strong>
+            <small>Fondation boutique · proposition</small>
+          </span>
+        </a>
+        <p class="prototype-header__status">Design uniquement · rien n’est vendu</p>
+      </div>
+    </header>
+
+    <div class="prototype-shell">
+      <aside class="prototype-sidebar" aria-label="Navigation du prototype">
+        <details class="state-switcher" open>
+          <summary>Choisir un état</summary>
+          <nav aria-label="États de la boutique">
+            <ol class="state-switcher__list">
+              <li><a href="#landing" data-state-link="landing">Accueil boutique</a></li>
+              <li><a href="#category" data-state-link="category">Catégorie</a></li>
+              <li><a href="#product-available" data-state-link="product-available">Produit disponible</a></li>
+              <li><a href="#product-unavailable" data-state-link="product-unavailable">Produit indisponible</a></li>
+              <li><a href="#product-variants" data-state-link="product-variants">Produit avec variations</a></li>
+              <li><a href="#cart-empty" data-state-link="cart-empty">Panier vide</a></li>
+              <li><a href="#cart-filled" data-state-link="cart-filled">Panier physique</a></li>
+              <li><a href="#delivery" data-state-link="delivery">Livraison</a></li>
+              <li><a href="#confirmation" data-state-link="confirmation">Confirmation</a></li>
+              <li><a href="#mobile" data-state-link="mobile">Aperçu mobile</a></li>
+            </ol>
+          </nav>
+        </details>
+
+        <div class="prototype-key">
+          <p><span class="fixture-badge">Fixture fictive</span></p>
+          <p>Chaque donnée de produit, prix, stock, livraison et commande est une démonstration.</p>
+        </div>
+      </aside>
+
+      <main id="prototype-main" class="prototype-main" tabindex="-1">
+        <p id="state-announcer" class="visually-hidden" aria-live="polite"></p>
+
+        <section
+          id="landing"
+          class="prototype-state"
+          data-prototype-state="landing"
+          data-state-title="Accueil boutique"
+        >
+          <div class="screen-bar">
+            <span>Écran proposé · /boutique</span>
+            <span class="fixture-badge">Fixture fictive</span>
+          </div>
+
+          <div class="editorial-hero">
+            <div class="editorial-hero__copy">
+              <p class="eyebrow">Objets choisis, esprit à définir</p>
+              <h1 id="landing-title" tabindex="-1">Une boutique à imaginer avec Uni-Songes</h1>
+              <p class="lead">
+                Cette composition pose une base calme et éditoriale. La propriétaire doit encore fournir
+                l’esprit de la boutique, les catégories, les produits, les photographies et toutes les
+                informations commerciales réelles.
+              </p>
+              <div class="button-row">
+                <a class="button button--primary" href="#category" data-state-target="category">Explorer la structure</a>
+                <a class="button button--quiet" href="#mobile" data-state-target="mobile">Voir l’aperçu mobile</a>
+              </div>
+            </div>
+            <div class="editorial-note" role="note" aria-label="Décisions attendues">
+              <p class="editorial-note__label">Avant publication</p>
+              <ul>
+                <li>Identité visuelle confirmée</li>
+                <li>Catalogue et stock réels</li>
+                <li>Livraison, taxes et retours validés</li>
+                <li>Gate de sécurité PayPal close</li>
+              </ul>
+            </div>
+          </div>
+
+          <section class="content-section" aria-labelledby="landing-categories-title">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Parcourir</p>
+                <h2 id="landing-categories-title">Une entrée simple par catégorie</h2>
+              </div>
+              <span class="fixture-badge">Fixture fictive</span>
+            </div>
+            <a class="category-panel" href="#category" data-state-target="category">
+              <span>
+                <small>À fournir par la propriétaire</small>
+                <strong>Catégorie à définir</strong>
+              </span>
+              <span aria-hidden="true">→</span>
+            </a>
+          </section>
+
+          <section class="content-section" aria-labelledby="landing-selection-title">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Sélection éditoriale</p>
+                <h2 id="landing-selection-title">Un produit présenté sans pression commerciale</h2>
+              </div>
+            </div>
+            <article class="product-card fixture-box">
+              <span class="fixture-badge">Fixture fictive</span>
+              <div class="image-placeholder image-placeholder--card" role="img" aria-label="Image produit à fournir, fixture fictive">
+                <span>Image produit à fournir</span>
+              </div>
+              <div class="product-card__body">
+                <p class="product-card__category">Catégorie à définir</p>
+                <h3>Produit exemple</h3>
+                <p class="product-card__copy">Description réelle à fournir. Aucun attribut produit n’est affirmé ici.</p>
+                <p class="stock stock--available"><span aria-hidden="true">●</span> Disponible · état fictif</p>
+                <div class="product-card__footer">
+                  <p class="price">00,00 € <span class="visually-hidden">prix fictif</span></p>
+                  <a class="text-link" href="#product-available" data-state-target="product-available">Voir l’anatomie de la fiche</a>
+                </div>
+              </div>
+            </article>
+          </section>
+        </section>
+
+        <section
+          id="category"
+          class="prototype-state"
+          data-prototype-state="category"
+          data-state-title="Catégorie"
+        >
+          <div class="screen-bar">
+            <span>Écran proposé · catégorie</span>
+            <span class="fixture-badge">Fixture fictive</span>
+          </div>
+          <nav class="breadcrumbs" aria-label="Fil d’Ariane de la catégorie">
+            <ol>
+              <li><a href="#landing" data-state-target="landing">Boutique</a></li>
+              <li aria-current="page">Catégorie à définir</li>
+            </ol>
+          </nav>
+          <header class="page-intro">
+            <p class="eyebrow">Catalogue provisoire</p>
+            <h1 id="category-title" tabindex="-1">Catégorie à définir</h1>
+            <p>Le nom, le texte éditorial et l’ordre des catégories seront fournis par la propriétaire.</p>
+          </header>
+
+          <div class="catalogue-listing">
+            <p class="catalogue-status">Un seul exemple est montré ; les filtres attendent le volume et les catégories réels.</p>
+            <div class="product-grid product-grid--category">
+              <article class="product-card fixture-box">
+                <span class="fixture-badge">Fixture fictive</span>
+                <div class="image-placeholder image-placeholder--card" role="img" aria-label="Image produit à fournir, fixture fictive">
+                  <span>Image produit à fournir</span>
+                </div>
+                <div class="product-card__body">
+                  <p class="product-card__category">Catégorie à définir</p>
+                  <h2>Produit exemple</h2>
+                  <p class="stock stock--available"><span aria-hidden="true">●</span> Disponible · état fictif</p>
+                  <div class="product-card__footer">
+                    <p class="price">00,00 € <span class="visually-hidden">prix fictif</span></p>
+                    <a class="text-link" href="#product-available" data-state-target="product-available">Consulter</a>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="product-available"
+          class="prototype-state"
+          data-prototype-state="product-available"
+          data-state-title="Produit disponible"
+        >
+          <div class="screen-bar">
+            <span>Écran proposé · produit disponible</span>
+            <span class="fixture-badge">Fixture fictive</span>
+          </div>
+          <nav class="breadcrumbs" aria-label="Fil d’Ariane du produit disponible">
+            <ol>
+              <li><a href="#landing" data-state-target="landing">Boutique</a></li>
+              <li><a href="#category" data-state-target="category">Catégorie à définir</a></li>
+              <li aria-current="page">Produit exemple</li>
+            </ol>
+          </nav>
+
+          <div class="product-detail">
+            <div class="fixture-box product-detail__visual">
+              <span class="fixture-badge">Fixture fictive</span>
+              <div class="image-placeholder image-placeholder--detail" role="img" aria-label="Image produit à fournir, fixture fictive">
+                <span>Image produit à fournir</span>
+                <small>Zone photographique sans ressource externe</small>
+              </div>
+            </div>
+            <div class="product-detail__content">
+              <p class="eyebrow">Catégorie à définir</p>
+              <h1 id="product-available-title" tabindex="-1">Produit exemple</h1>
+              <p class="price price--large">00,00 € <span class="fixture-badge">Fixture fictive</span></p>
+              <p class="stock stock--available"><span aria-hidden="true">●</span> Disponible · état fictif</p>
+              <p class="product-detail__description">
+                Le texte réel décrira uniquement les caractéristiques vérifiées du produit, sans promesse
+                environnementale, avis ou avantage inventé.
+              </p>
+              <dl class="product-facts fixture-box">
+                <div><dt>Livraison</dt><dd>Modalités à définir</dd></div>
+                <div><dt>Retrait local</dt><dd>À confirmer</dd></div>
+                <div><dt>Dimensions et poids</dt><dd>À fournir</dd></div>
+              </dl>
+              <form class="purchase-form fixture-box" id="available-product-form">
+                <span class="fixture-badge">Fixture fictive</span>
+                <label for="available-quantity">Quantité</label>
+                <input id="available-quantity" name="quantity" type="number" min="1" step="1" value="1" inputmode="numeric">
+                <button class="button button--primary" type="submit">Ajouter au panier fictif</button>
+                <p id="available-product-status" class="form-status" aria-live="polite"></p>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="product-unavailable"
+          class="prototype-state"
+          data-prototype-state="product-unavailable"
+          data-state-title="Produit indisponible"
+        >
+          <div class="screen-bar">
+            <span>Écran proposé · produit indisponible</span>
+            <span class="fixture-badge">Fixture fictive</span>
+          </div>
+          <nav class="breadcrumbs" aria-label="Fil d’Ariane du produit indisponible">
+            <ol>
+              <li><a href="#landing" data-state-target="landing">Boutique</a></li>
+              <li><a href="#category" data-state-target="category">Catégorie à définir</a></li>
+              <li aria-current="page">Produit exemple</li>
+            </ol>
+          </nav>
+
+          <div class="product-detail">
+            <div class="fixture-box product-detail__visual">
+              <span class="fixture-badge">Fixture fictive</span>
+              <div class="image-placeholder image-placeholder--detail" role="img" aria-label="Image produit à fournir, fixture fictive">
+                <span>Image produit à fournir</span>
+              </div>
+            </div>
+            <div class="product-detail__content">
+              <p class="eyebrow">Catégorie à définir</p>
+              <h1 id="product-unavailable-title" tabindex="-1">Produit exemple</h1>
+              <p class="price price--large">00,00 € <span class="fixture-badge">Fixture fictive</span></p>
+              <p class="stock stock--unavailable"><span aria-hidden="true">○</span> Indisponible · état fictif</p>
+              <p class="product-detail__description">
+                L’action d’achat est désactivée sans créer de rareté, de liste d’attente ou de promesse de réassort.
+              </p>
+              <div class="availability-panel fixture-box">
+                <span class="fixture-badge">Fixture fictive</span>
+                <button class="button button--disabled" type="button" disabled>Indisponible</button>
+                <a class="text-link" href="#category" data-state-target="category">Revenir à la catégorie</a>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="product-variants"
+          class="prototype-state"
+          data-prototype-state="product-variants"
+          data-state-title="Produit avec variations"
+        >
+          <div class="screen-bar">
+            <span>Écran proposé · variations à définir</span>
+            <span class="fixture-badge">Fixture fictive</span>
+          </div>
+          <nav class="breadcrumbs" aria-label="Fil d’Ariane du produit avec variations">
+            <ol>
+              <li><a href="#landing" data-state-target="landing">Boutique</a></li>
+              <li><a href="#category" data-state-target="category">Catégorie à définir</a></li>
+              <li aria-current="page">Produit exemple</li>
+            </ol>
+          </nav>
+
+          <div class="product-detail">
+            <div class="fixture-box product-detail__visual">
+              <span class="fixture-badge">Fixture fictive</span>
+              <div class="image-placeholder image-placeholder--detail" role="img" aria-label="Image produit à fournir, fixture fictive">
+                <span>Image produit à fournir</span>
+              </div>
+            </div>
+            <div class="product-detail__content">
+              <p class="eyebrow">Catégorie à définir</p>
+              <h1 id="product-variants-title" tabindex="-1">Produit exemple</h1>
+              <p class="price price--large">00,00 € <span class="fixture-badge">Fixture fictive</span></p>
+              <p class="stock stock--neutral"><span aria-hidden="true">◇</span> Disponibilité après sélection · fictive</p>
+              <p class="decision-note">
+                Aucun nom de taille, couleur ou autre attribut n’est inventé. Les contrôles ne seront créés que pour des variations réelles.
+              </p>
+              <form class="variant-form fixture-box" id="variant-product-form">
+                <span class="fixture-badge">Fixture fictive</span>
+                <fieldset>
+                  <legend>Variation à définir</legend>
+                  <label for="variant-option">Option fictive</label>
+                  <select id="variant-option" name="variant" aria-describedby="variant-help">
+                    <option value="">Sélectionner</option>
+                    <option value="placeholder">Option à définir — fixture fictive</option>
+                  </select>
+                  <p id="variant-help">La sélection démontre seulement le comportement accessible du contrôle.</p>
+                </fieldset>
+                <button id="variant-add-button" class="button button--primary" type="submit" disabled>Ajouter au panier fictif</button>
+                <p id="variant-product-status" class="form-status" aria-live="polite">Sélection requise.</p>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="cart-empty"
+          class="prototype-state"
+          data-prototype-state="cart-empty"
+          data-state-title="Panier vide"
+        >
+          <div class="screen-bar">
+            <span>Écran proposé · panier vide</span>
+            <span class="fixture-badge">Fixture fictive</span>
+          </div>
+          <div class="empty-state fixture-box">
+            <span class="fixture-badge">Fixture fictive</span>
+            <div class="empty-state__symbol" aria-hidden="true">○</div>
+            <p class="eyebrow">Panier physique séparé</p>
+            <h1 id="cart-empty-title" tabindex="-1">Votre panier est vide</h1>
+            <p>Aucun cours, billet, droit de réservation ou objet n’est ajouté par ce prototype.</p>
+            <a class="button button--primary" href="#landing" data-state-target="landing">Revenir à la boutique</a>
+          </div>
+        </section>
+
+        <section
+          id="cart-filled"
+          class="prototype-state"
+          data-prototype-state="cart-filled"
+          data-state-title="Panier physique"
+        >
+          <div class="screen-bar">
+            <span>Écran proposé · panier physique</span>
+            <span class="fixture-badge">Fixture fictive</span>
+          </div>
+          <header class="page-intro">
+            <p class="eyebrow">Commande physique isolée</p>
+            <h1 id="cart-filled-title" tabindex="-1">Votre panier</h1>
+            <p>Ce panier fictif ne contient aucun cours, billet ou droit de réservation.</p>
+          </header>
+
+          <div class="checkout-layout">
+            <div class="cart-list">
+              <article class="cart-item fixture-box">
+                <span class="fixture-badge">Fixture fictive</span>
+                <div class="image-placeholder image-placeholder--cart" role="img" aria-label="Image produit à fournir, fixture fictive">
+                  <span>Image produit à fournir</span>
+                </div>
+                <div class="cart-item__content">
+                  <p class="product-card__category">Catégorie à définir</p>
+                  <h2>Produit exemple</h2>
+                  <p class="stock stock--available"><span aria-hidden="true">●</span> Disponible · état fictif</p>
+                  <label for="cart-quantity">Quantité</label>
+                  <input id="cart-quantity" name="cart-quantity" type="number" min="1" step="1" value="1" inputmode="numeric">
+                  <button id="remove-cart-item" class="text-button" type="button">Retirer l’exemple fictif</button>
+                </div>
+                <p class="price">00,00 € <span class="visually-hidden">prix fictif</span></p>
+              </article>
+              <p id="cart-status" class="form-status" aria-live="polite"></p>
+            </div>
+
+            <aside class="order-summary fixture-box" aria-labelledby="cart-summary-title">
+              <span class="fixture-badge">Fixture fictive</span>
+              <h2 id="cart-summary-title">Résumé du panier fictif</h2>
+              <dl>
+                <div><dt>Sous-total</dt><dd>00,00 €</dd></div>
+                <div><dt>Livraison</dt><dd>À définir</dd></div>
+                <div class="order-summary__total"><dt>Total</dt><dd>Calculé plus tard</dd></div>
+              </dl>
+              <p>Aucun tarif de livraison n’est simulé avant une adresse et une méthode réelles.</p>
+              <a class="button button--primary" href="#delivery" data-state-target="delivery">Continuer vers la livraison</a>
+            </aside>
+          </div>
+        </section>
+
+        <section
+          id="delivery"
+          class="prototype-state"
+          data-prototype-state="delivery"
+          data-state-title="Livraison"
+        >
+          <div class="screen-bar">
+            <span>Écran proposé · étape livraison</span>
+            <span class="fixture-badge">Fixture fictive</span>
+          </div>
+          <nav class="checkout-progress" aria-label="Progression du checkout fictif">
+            <ol>
+              <li>Panier</li>
+              <li aria-current="step">Livraison</li>
+              <li aria-disabled="true">Paiement et revue à concevoir</li>
+              <li>Confirmation</li>
+            </ol>
+          </nav>
+          <p class="checkout-scope-note">Démonstration abrégée de la livraison : les étapes de paiement et de revue restent à concevoir.</p>
+          <header class="page-intro">
+            <p class="eyebrow">Étape 2 sur 4 · démonstration</p>
+            <h1 id="delivery-title" tabindex="-1">Choisir la livraison</h1>
+            <p id="delivery-data-note">Les champs sont désactivés : aucune donnée personnelle ne peut être saisie ou envoyée.</p>
+          </header>
+
+          <div id="delivery-form" class="checkout-layout">
+            <div class="delivery-form__main">
+              <fieldset id="delivery-address" class="form-panel fixture-box" disabled>
+                <legend>Adresse de livraison fictive</legend>
+                <span class="fixture-badge">Fixture fictive</span>
+                <div class="field-grid field-grid--two">
+                  <div class="field">
+                    <label for="delivery-given-name">Prénom</label>
+                    <input id="delivery-given-name" type="text" aria-describedby="delivery-data-note">
+                  </div>
+                  <div class="field">
+                    <label for="delivery-family-name">Nom</label>
+                    <input id="delivery-family-name" type="text" aria-describedby="delivery-data-note">
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="delivery-address-line">Adresse</label>
+                  <input id="delivery-address-line" type="text" aria-describedby="delivery-data-note">
+                </div>
+                <div class="field-grid field-grid--two">
+                  <div class="field">
+                    <label for="delivery-postal-code">Code postal</label>
+                    <input id="delivery-postal-code" type="text" aria-describedby="delivery-data-note">
+                  </div>
+                  <div class="field">
+                    <label for="delivery-locality">Ville</label>
+                    <input id="delivery-locality" type="text" aria-describedby="delivery-data-note">
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="delivery-country">Pays</label>
+                  <select id="delivery-country" disabled aria-describedby="delivery-data-note">
+                    <option value="">Pays à définir</option>
+                  </select>
+                </div>
+              </fieldset>
+
+              <fieldset class="form-panel fixture-box">
+                <legend>Mode de remise</legend>
+                <span class="fixture-badge">Fixture fictive</span>
+                <label class="delivery-choice">
+                  <input type="radio" name="delivery-method" value="delivery">
+                  <span>
+                    <strong>Livraison à définir</strong>
+                    <small>Transporteur, zone, tarif, suivi et délai non sélectionnés.</small>
+                  </span>
+                  <span>Tarif à définir</span>
+                </label>
+                <label class="delivery-choice delivery-choice--disabled">
+                  <input type="radio" name="delivery-method" value="pickup" disabled>
+                  <span>
+                    <strong>Retrait local à confirmer</strong>
+                    <small>Option inactive tant que lieu, horaires et processus ne sont pas validés.</small>
+                  </span>
+                  <span>Décision requise</span>
+                </label>
+              </fieldset>
+              <p id="delivery-status" class="form-status" aria-live="polite"></p>
+            </div>
+
+            <aside class="order-summary fixture-box" aria-labelledby="delivery-summary-title">
+              <span class="fixture-badge">Fixture fictive</span>
+              <h2 id="delivery-summary-title">Résumé de la livraison fictive</h2>
+              <dl>
+                <div><dt>Produit exemple</dt><dd>00,00 €</dd></div>
+                <div><dt>Livraison</dt><dd>À définir</dd></div>
+                <div class="order-summary__total"><dt>Total</dt><dd>Non calculé</dd></div>
+              </dl>
+              <button id="delivery-continue" class="button button--primary" type="button">Voir la confirmation fictive</button>
+              <p>Aucun paiement n’est demandé ou simulé.</p>
+            </aside>
+          </div>
+        </section>
+
+        <section
+          id="confirmation"
+          class="prototype-state"
+          data-prototype-state="confirmation"
+          data-state-title="Confirmation"
+        >
+          <div class="screen-bar">
+            <span>Écran proposé · confirmation</span>
+            <span class="fixture-badge">Fixture fictive</span>
+          </div>
+          <div class="confirmation-panel fixture-box">
+            <span class="fixture-badge">Fixture fictive</span>
+            <div class="confirmation-panel__mark" aria-hidden="true">✓</div>
+            <p class="eyebrow">Démonstration uniquement</p>
+            <h1 id="confirmation-title" tabindex="-1">Commande confirmée</h1>
+            <p class="lead">
+              Aucune commande, aucun paiement, aucune réservation de stock et aucune expédition n’ont été créés.
+            </p>
+            <dl class="confirmation-facts">
+              <div><dt>Numéro de commande</dt><dd>Non généré dans le prototype</dd></div>
+              <div><dt>Date</dt><dd>Non générée dans le prototype</dd></div>
+              <div><dt>Paiement</dt><dd>Non simulé</dd></div>
+              <div><dt>Préparation</dt><dd>Non simulée</dd></div>
+              <div><dt>Adresse</dt><dd>Non enregistrée</dd></div>
+              <div><dt>Suivi</dt><dd>Affiché uniquement avec une expédition réelle</dd></div>
+              <div><dt>Facture ou reçu</dt><dd>Accès à définir juridiquement et techniquement</dd></div>
+            </dl>
+            <div class="button-row button-row--center">
+              <a class="button button--primary" href="#landing" data-state-target="landing">Retour à l’accueil boutique</a>
+              <a class="button button--quiet" href="#cart-empty" data-state-target="cart-empty">Voir le panier vide</a>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="mobile"
+          class="prototype-state"
+          data-prototype-state="mobile"
+          data-state-title="Aperçu mobile"
+        >
+          <div class="screen-bar">
+            <span>Fixture de test · 320 px</span>
+            <span class="fixture-badge">Fixture fictive</span>
+          </div>
+          <header class="page-intro">
+            <p class="eyebrow">Reflow et hiérarchie</p>
+            <h1 id="mobile-title" tabindex="-1">Aperçu mobile de la boutique</h1>
+            <p>Cette vignette complète le reflow réel de tous les écrans à 320 px ; elle ne représente pas une route publique.</p>
+          </header>
+
+          <div class="mobile-stage">
+            <div class="phone-frame fixture-box" role="group" aria-label="Aperçu fictif dans une largeur de 320 pixels">
+              <span class="fixture-badge">Fixture fictive</span>
+              <div class="phone-frame__header">
+                <strong>Uni-Songes</strong>
+                <button class="phone-frame__menu" type="button" data-mobile-menu>Menu</button>
+              </div>
+              <div class="phone-frame__content">
+                <p class="eyebrow">Catégorie à définir</p>
+                <p class="phone-frame__title">Produit exemple</p>
+                <div class="image-placeholder image-placeholder--mobile" role="img" aria-label="Image produit à fournir, fixture fictive">
+                  <span>Image produit à fournir</span>
+                </div>
+                <p class="price price--large">00,00 € <span class="visually-hidden">prix fictif</span></p>
+                <p class="stock stock--available"><span aria-hidden="true">●</span> Disponible · état fictif</p>
+                <button class="button button--primary" type="button" data-mobile-demo-action>Action fictive</button>
+                <p id="mobile-action-status" class="form-status" aria-live="polite"></p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <footer class="prototype-footer">
+      <p>
+        Prototype statique de découverte · aucune ressource externe · aucune donnée réelle · aucune configuration Commerce modifiée.
+      </p>
+    </footer>
+  </body>
+</html>
