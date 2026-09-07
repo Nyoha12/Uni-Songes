@@ -342,25 +342,80 @@ sont statiques : elles ne remplacent pas la validation différée ci-dessous.
 
 ## Matrice runtime différée
 
-À exécuter après déploiement, avec un vrai navigateur et le serveur public. Les
-quatre colonnes rendent explicites les combinaisons cache × agrégation :
+Selon la consigne de reprise, le contrôle reste à planifier avec Terminal 3 /
+#94, seul propriétaire de DDEV et du checkout servant. La fin de #94 n’autorise
+aucun démarrage automatique.
+La reprise de #106 ne lance ni DDEV, Docker, Drush, navigateur, Mailpit ou VPS.
 
-| Contrôle | Froid / agg. off | Froid / agg. on | Chaud / agg. off | Chaud / agg. on | État |
-|---|:---:|:---:|:---:|:---:|---|
-| `GET /favicon.ico` retourne 200 | à faire | à faire | à faire | à faire | différé |
-| `GET` de l’URL favicon du thème retourne 200 | à faire | à faire | à faire | à faire | différé |
-| Content-Type correct pour les ICO | à faire | à faire | à faire | à faire | différé |
-| Les deux URL exposent la même identité | à faire | à faire | à faire | à faire | différé |
-| Page d’accueil anonyme | à faire | à faire | à faire | à faire | différé |
-| Page ordinaire | à faire | à faire | à faire | à faire | différé |
-| Page de connexion | à faire | à faire | à faire | à faire | différé |
-| Page d’administration authentifiée sous Gin | à faire | à faire | à faire | à faire | différé |
-| Onglet navigateur desktop | à faire | à faire | à faire | à faire | différé |
-| Onglet navigateur mobile | à faire | à faire | à faire | à faire | différé |
-| Aucun 404 Nginx pour le favicon | à faire | à faire | à faire | à faire | différé |
-| Aucune requête d’icône dupliquée | à faire | à faire | à faire | à faire | différé |
-| Aucun warning PHP | à faire | à faire | à faire | à faire | différé |
-| Aucun recul des attachements `<head>` | à faire | à faire | à faire | à faire | différé |
+| Contrôle ciblé ultérieur | Preuve attendue | État |
+|---|---|---|
+| `GET /favicon.ico` et `GET /themes/custom/unisonges_theme/favicon.ico` | 200, corps ICO de 15 086 octets, MIME `image/vnd.microsoft.icon` ou `image/x-icon`, corps identiques et SHA-256 `f5afb9d…6893` | différé |
+| Head d’une page publique et de la connexion | une seule déclaration favicon effective vers l’ICO du thème, cible accessible, aucun lien concurrent ; autres attachements conservés | différé |
+| Head d’une page d’administration authentifiée sous Gin | favicon natif du thème actif accessible, aucune déclaration concurrente ni régression ; ne pas imposer l’icône publique à Gin | différé |
+| Coexistence #103 / #94 | préserver la meta `robots` éditoriale lorsqu’elle s’applique et les attachements Core ; aucun changement visuel du header, des titres, du contenu ou du footer | différé |
+| Interface du navigateur desktop puis mobile | constater directement le favicon de l’onglet lorsque l’interface l’affiche, sur chrome clair/sombre ; distinguer cette preuve d’une capture du contenu de page | différé |
+| Cache et réseau | un chargement froid puis un chargement chaud, pas de boucle ou doublon contradictoire de requêtes d’icône ; pas de 404 favicon ni de warning PHP dans les journaux autorisés | différé |
+
+Consigner l’origine testée, le SHA servi, le navigateur et le réglage
+d’agrégation. Réutiliser les passages agrégation off/on coordonnés par le
+propriétaire du runtime ; ne pas ouvrir une nouvelle campagne complète ni
+modifier ces réglages depuis ce worktree. La validation HTTP publique reste
+distincte d’une réponse locale.
+
+Une capture de page permet de vérifier le contenu, le header et le footer,
+mais elle ne prouve ni le head DOM, ni la réponse réseau de l’ICO, ni l’icône
+réellement affichée dans la barre d’onglets. Vérifier le head et les réponses
+séparément ; pour le chrome du navigateur, utiliser une observation directe ou
+une capture de la fenêtre incluant les onglets. Si l’interface mobile masque
+le favicon, noter cette limite sans déclarer ce contrôle réussi.
 
 Ne pas passer la PR en « ready » et ne pas la fusionner avant la réussite de
 cette matrice.
+
+## Reprise statique du 7 septembre 2026
+
+La référence distante `release/prod`, vérifiée après fetch ciblé et par l’API
+GitHub de la branche, vaut `9ef3d4a2c260af9f3f2fcfe4ac584648bb592e0c`.
+Elle inclut #103 et #104. #94 reste ouverte en brouillon au SHA
+`3cebbbf36ebd26ef5a5d0e04e26b1e0f06a6bfd5`. Le worktree de #106 était propre,
+sur `codex-add-favicon-site-identity`, au commit initial validé
+`74948fabd749ce751d941c08e1d0bc898599fb21`, également présent sur GitHub.
+L’audit du 2 septembre ci-dessus reste une preuve historique.
+
+- Les deux ICO locaux ont été comparés avec `cmp`, entre eux, au commit initial
+  et à la branche distante. Leur SHA-256 complet reste
+  `f5afb9d46a4c95190806cec55d53e8598ac7dc5812abaca9563eff1f27056893`.
+  Les preuves de génération et de parsing 16/32/48 sont réutilisées, sans
+  nouvelle génération, téléchargement d’asset ou installation.
+- Le PNG source conserve son SHA-256
+  `e707617df3ec97c9e4320793714cd7dc798fead9ee8779eed8bc9288587aee72`.
+  Le lien `mark-latest.png` et le template du header sont identiques au commit
+  validé et à la base actuelle.
+- `composer.json`, `composer.lock`, les réglages favicon et les mécanismes du
+  thème concernés sont inchangés. Les références verrouillées Core 11.3.3 et
+  Barrio 5.5.20 restent celles de l’audit initial : la sélection native du
+  favicon du thème et la conservation du head restent applicables.
+- #103 ajoute dans `EditorialHomeBuilder.php` un attachement `html_head`
+  `unisonges_editorial_home_state_robots` (`noindex,follow`) pour certains états
+  filtrés ou non canoniques. Il ne déclare aucune icône. Le script de fermeture
+  des messages du thème sur les pages de compte reste inchangé. Aucun de ces
+  attachements ne doit être remplacé pour intégrer le favicon.
+- Les fichiers et le contrat de #94 concernent le `main`, le footer et la
+  région de footer dans le scrollframe. Ils ne modifient pas `html.html.twig`
+  ni le mécanisme favicon ; aucun attachement head supplémentaire n’est requis.
+  La recherche ciblée dans les réglages Metatag n’a trouvé aucune icône
+  concurrente.
+- Le mapping Scaffold de Core dans le lock ne contient aucun des deux chemins
+  ICO. Le projet ne définit que `web-root: web/` pour Scaffold. Le script
+  `deploy-staging.sh` conserve la mise à jour Git puis Composer ; aucune règle
+  suivie de copie, suppression ou remplacement ne cible ces icônes. Aucune
+  modification Scaffold supplémentaire n’est nécessaire sur cette base. Cette
+  conclusion ne décrit pas d’éventuels réglages locaux ou serveur non suivis.
+
+Les changements de base ne recoupent aucun des trois fichiers de #106 : aucun
+rebase ni force-push n’est nécessaire. Seule cette documentation est actualisée
+pour la coordination et le contrôle réel restant. Les contrôles de reprise
+restent ciblés : comparaison binaire et hashes, références de thème/head,
+Scaffold suivi, diff exact, UTF-8/NFC, espaces du texte et motifs de secrets
+dans le seul contenu de #106. Aucun secret ni chantier Composer de #82 n’est
+consulté ; aucun autre worktree n’est utilisé.
