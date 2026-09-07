@@ -268,6 +268,7 @@ if (!is_array($settings)
   || ($settings['confirmation_title'] ?? NULL) !== 'Demande enregistrée'
   || ($settings['confirmation_message'] ?? NULL)
     !== $expected_translation['settings']['confirmation_message']
+  || ($settings['confirmation_exclude_token'] ?? NULL) !== TRUE
   || ($settings['limit_total'] ?? NULL) !== 30
   || ($settings['limit_total_interval'] ?? NULL) !== 3600
   || ($settings['limit_user'] ?? NULL) !== 5

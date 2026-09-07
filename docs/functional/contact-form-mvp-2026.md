@@ -32,11 +32,13 @@ il n'est pas modifié. Le bloc suit la convention des blocs propres au thème
 `unisonges_theme` et utilise la région `content` avec la condition native
 `request_path` limitée à `/contact`.
 
-Le mode page autonome du Webform est désactivé. Les anciennes routes propres au
-Webform ne deviennent donc pas un second point d'entrée public. Lors de la
-première application, Webform peut supprimer ses seuls alias historiques
-`/form/contact`; le script autorise cette conséquence ciblée, mais vérifie que
-l'alias `/contact` et tous les alias sans rapport restent inchangés.
+Le mode page autonome du Webform est désactivé : `/webform/contact` ne devient
+donc pas un second formulaire public et les routes de résultats restent soumises
+aux accès privés décrits ci-dessous. La route native de confirmation générique
+est auditée séparément dans la section Accès. Lors de la première application,
+Webform peut supprimer ses seuls alias historiques `/form/contact`; le script
+autorise cette conséquence ciblée, mais vérifie que l'alias `/contact` et tous
+les alias sans rapport restent inchangés.
 
 ### Webform existant
 
@@ -49,6 +51,21 @@ doublon.
 
 Le dépôt comporte aussi le Webform de réservation de cours. Il est hors
 périmètre et reste inchangé.
+
+### Configuration principale et traduction française
+
+La configuration principale et l'override français existant
+`language/fr/webform.webform.contact.yml` portent le même titre (`Contact`) et
+le même message de confirmation (`Votre message a été envoyé.`). L'override est
+hors du périmètre des cinq fichiers et reste inchangé. Le helper le lit comme
+pré-requis, compare sa forme exacte avant toute écriture et échoue fermé en cas
+de dérive ; il ne tente pas de le corriger.
+
+Le code verrouillé de Drupal applique l'override de la langue d'interface après
+la configuration principale. Toute modification future de ces textes doit donc
+être coordonnée avec le propriétaire de l'override et autorisée dans un
+périmètre distinct, faute de quoi le rendu français pourrait diverger. Aucun
+fichier de traduction n'est modifié silencieusement par ce MVP.
 
 ### Intégration statique des PR #78 et #80 fusionnées
 
@@ -111,14 +128,28 @@ dépend pas de la bibliothèque compte. Le bloc Contact ne comporte aucune
 condition de rôle : ses rendus anonyme et connecté restent indépendants de la
 présentation du compte.
 
-### Isolation de la PR #103 concurrente
+### Isolation de la PR #103 fusionnée
 
-La PR #103 possède ses fichiers d'accueil éditorial et n'est pas modifiée ici.
-Son bloc `unisonges_editorial_home`, UUID
+La PR #103 est désormais présente dans `release/prod` et ses fichiers d'accueil
+éditorial ne sont pas modifiés ici. Son bloc `unisonges_editorial_home`, UUID
 `8e6e9ece-878e-4bf8-b09e-a7638827a132`, utilise son propre plugin et le chemin
 `/accueil`. Elle ne déclare aucun Webform, aucun espace de soumission et aucun
 fichier Contact. Son ID, son UUID, sa route et son stockage restent donc
 indépendants de `contact` et de `unisonges_contact_form`.
+
+### Isolation de la PR #94 en retest
+
+La PR #94 est ouverte, en brouillon et en retest ; elle n'est ni fusionnée ni
+une dépendance fonctionnelle du formulaire Contact. Ses six fichiers de pied de
+page et de thème ne chevauchent aucun des cinq fichiers Contact. La version
+proposée conserve un seul rendu de `page.content` dans `main`, n'ajoute aucun
+chemin de messages et ne modifie ni le Webform `contact`, ni son bloc, ni son
+stockage.
+
+Terminal 3 et la PR #94 possèdent toutefois exclusivement les ressources
+runtime pendant leur retest. Cette exclusivité reporte la matrice Contact sans
+conditionner le fonctionnement ou la fusion future du formulaire au contenu de
+la PR #94.
 
 ### JavaScript historique
 
@@ -191,6 +222,18 @@ jetons de consultation, mise à jour ou suppression sont désactivés. La page
 autonome du Webform est désactivée et le bloc est restreint à `/contact`. Un
 visiteur ne reçoit donc aucun chemin lui permettant d'énumérer, consulter,
 modifier ou supprimer une demande après envoi.
+
+Le code verrouillé de Webform ferme bien la page autonome du formulaire
+`/webform/contact` lorsque `page: false` et refuse les chargements par jeton
+quand `token_view`, `token_update` et `token_delete` sont faux. Il déclare
+néanmoins toujours la route générique `/webform/contact/confirmation`, dont
+l'accès `webform.view` est assimilé à la création. Avec la confirmation inline
+actuelle et `confirmation_exclude_token: true`, cette URL ne reçoit aucun jeton,
+n'affiche aucune valeur soumise et ne donne aucun accès aux résultats ; elle
+peut seulement afficher le texte statique de confirmation. Si « aucune route
+Webform autonome » doit aussi interdire cette page générique, un contrôle de
+route hors des cinq fichiers et une décision propriétaire sont indispensables.
+Le présent MVP ne prétend pas la fermer silencieusement.
 
 `results_disabled` reste faux pour conserver les soumissions en base et
 permettre leur examen administratif. Le rôle existant `administrator` est
@@ -304,6 +347,12 @@ configuration dans une transaction de base de données. Il vérifie ensuite que
 la page, les soumissions, les rôles, les alias non concernés et toutes les
 configurations hors allowlist sont inchangés.
 
+La PR #104 est fusionnée et fournit le contrôle de permissions du checkout. Sur
+un futur staging explicitement autorisé sous `/var/www`, ce contrôle doit
+retourner `PASS` avant tout bootstrap Drupal ou réchauffement de cache du
+lanceur Contact. Il s'agit d'un garde opérationnel conditionnel, pas d'une
+dépendance fonctionnelle, et il n'est pas exécuté dans ce worktree.
+
 Lors d'une passe ultérieure explicitement autorisée, depuis l'environnement de
 staging approuvé et le répertoire `drupal` :
 
@@ -378,8 +427,14 @@ Les contrôles hors runtime exécutés sur le diff comprennent :
   destination inline dans `main`, sans bloc Contact supplémentaire ;
 - contrôle de la PR #99 fusionnée : route `/contact`, bibliothèque Contact et
   sélecteurs hors de la portée authentification/compte ;
-- contrôle de la PR #103 concurrente : fichiers, ID, UUID, bloc, route et
+- contrôle de la PR #103 fusionnée : fichiers, ID, UUID, bloc, route et
   espace de stockage indépendants ;
+- contrôle statique de la PR #94 ouverte : aucun chevauchement de fichiers,
+  aucun nouveau chemin de messages et aucune dépendance fonctionnelle Contact ;
+- lecture des sources verrouillées Drupal 11.3.3 et Webform 6.3.0-beta7 : accès
+  aux formulaires et soumissions, jetons, routes, validation des champs requis,
+  e-mail, options fermées, longueurs, confirmation inline et override de langue ;
+- unicité dans la base actuelle de 398 UUID et de 69 IDs de blocs ;
 - `bash -n` et ShellCheck sur le lanceur ;
 - `php -l` sur le helper ;
 - `git diff --check`, garde de cinq fichiers, recherche de secrets et contrôle
@@ -393,82 +448,40 @@ runtime Drupal restent ceux de la matrice ci-dessous.
 
 Les implémentations source Forum/Blog, menu public final, inscription visiteur,
 intégrité des bibliothèques, titres sémantiques, cycle inline des messages de la
-PR #100 et présentation authentification/compte de la PR #99 sont fusionnées
-dans `release/prod`. Le présent changement est rebasé sur cet état. Il ne reste
-aucun prérequis de fusion avant la matrice Contact.
+PR #100, présentation authentification/compte de la PR #99, accueil éditorial de
+la PR #103 et garde opérationnel de la PR #104 sont fusionnés dans
+`release/prod` à `3e53bc5b3d1b3ded9a207bc2e16ec48aa84b9bdf`. La branche Contact
+locale est rebasée sur cet état.
 
-La validation runtime reste en attente uniquement parce que la PR #98 possède
-actuellement en exclusivité DDEV et les autres ressources runtime. Aucun DDEV,
-Docker, Drush, Chromium, Playwright, Mailpit, navigateur ou VPS n'est utilisé
-pour ce rafraîchissement statique. La PR #85 reste en brouillon et aucune
-activation de production n'est revendiquée.
+La validation runtime reste en attente uniquement parce que Terminal 3 et la
+PR #94 possèdent actuellement DDEV et le checkout servant. La fusion de la PR
+#94 n'est pas requise : ses ressources doivent seulement être explicitement
+libérées avant le test Contact. Aucun DDEV, Docker, Drush, Chromium, Playwright,
+Mailpit, navigateur, serveur local ou VPS n'est utilisé pour ce rafraîchissement
+statique. La PR #85 reste en brouillon ; cette préparation technique ne vaut ni
+autorisation de publication, ni preuve d'activation en production.
 
 ### Ordre runtime restant
 
-1. attendre que la PR #98 libère les ressources runtime ;
-2. récupérer `release/prod`, rebaser à nouveau la PR #85 si la base a avancé et
-   répéter les gardes statiques ;
-3. dans le DDEV local autorisé, confirmer le bloc de messages fusionné
-   `content/-8`, puis exécuter le dry-run et l'application Contact ciblée, sans
+1. attendre la libération explicite des ressources par Terminal 3 / PR #94 ;
+2. récupérer `release/prod` et, seulement si sa tête a avancé, actualiser la
+   branche puis répéter les gardes affectés ;
+3. dans le DDEV local autorisé, lancer le dry-run et l'application ciblée, sans
    import complet ou partiel ;
-4. exécuter les scénarios visiteur, utilisateur, administrateur et affichage,
-   y compris la confirmation inline, les erreurs de champ et le chemin global
-   de messages de la PR #100 ;
-5. exécuter le second dry-run, la seconde application idempotente, le rollback,
-   la réapplication et le nettoyage des soumissions de test.
+4. exécuter la matrice compacte ci-dessous ;
+5. exécuter le no-op, le rollback, la réapplication et le nettoyage des données
+   de test.
 
-Mailpit doit rester inutilisé pendant toute cette matrice, puisque le Contact
-ne possède aucun gestionnaire d'e-mail.
+| Axe | Contrôles runtime à effectuer |
+| --- | --- |
+| Soumission et validation | Sur `/contact`, soumission valide anonyme puis authentifiée ; champs requis ; e-mail invalide ; objet forgé hors liste ; messages de 19 et 5 001 caractères ; charge HTML/script sans exécution ; conservation normale des valeurs non sensibles après erreur. |
+| Accès | Propriétaire, autre compte et autre visiteur incapables d'énumérer, lire, modifier ou supprimer une soumission ; accès direct aux résultats et par jeton refusé ; aucune seconde page de formulaire sur `/webform/contact` ou `/form/contact` ; observer séparément la route statique `/webform/contact/confirmation` documentée ci-dessus ; administrateur capable d'examiner puis supprimer une demande. |
+| Limites | 30 soumissions terminées par heure globalement ; 5 par heure par UID ou état anonyme Webform/session ; protection immédiate contre le double clic ; confirmer et documenter qu'il ne s'agit ni d'une limite IP, ni d'une protection contre le renouvellement de session. |
+| Messages et affichage | Formulaire une seule fois et uniquement sur `/contact` ; erreurs adjacentes ; confirmation inline unique ; chemin global PR #100 unique dans `main`, sans toast ni message retardé ; aucune bibliothèque/classe PR #99 ; accueil PR #103 isolé ; clavier, affichages desktop/mobile, accessibilité, débordement, console et avertissements PHP. |
+| Opérations | Dry-run sans écriture ; apply ; second dry-run ; second apply no-op ; rollback fermant le Webform et désactivant le bloc tout en conservant les soumissions ; réapplication ; aucune dérive hors allowlist ; zéro soumission de test après nettoyage. |
 
-### Visiteur anonyme
-
-- `/contact` charge et le formulaire est visible ;
-- une demande valide réussit ;
-- une adresse e-mail invalide est rejetée ;
-- les champs obligatoires manquants sont rejetés ;
-- une valeur d'objet hors liste est rejetée côté serveur ;
-- un message trop long est rejeté ;
-- une charge HTML/script est traitée sans exécution ni rendu dangereux ;
-- le visiteur ne peut consulter aucun résultat ;
-- les limites par visiteur et globale fonctionnent.
-
-### Utilisateur authentifié
-
-- une demande valide réussit ;
-- l'utilisateur ne peut énumérer ni consulter les autres soumissions ;
-- aucune permission générale d'administration Webform ne lui est accordée.
-
-### Administrateur
-
-- l'administrateur peut examiner les soumissions ;
-- l'administrateur peut supprimer une soumission ;
-- les données privées n'apparaissent dans aucun cache ou balisage public.
-
-### Affichage et intégration
-
-- le formulaire apparaît uniquement sur `/contact`, sans doublon ;
-- les erreurs de champ, la confirmation inline et l'unique chemin global de
-  messages fusionné par la PR #100 s'affichent correctement et une seule fois ;
-- aucune classe, bibliothèque ou présentation authentification/compte de la
-  PR #99 ne s'applique à `/contact`, que le visiteur soit anonyme ou connecté ;
-- rendu desktop et mobile sous Chromium ;
-- navigation intégrale au clavier ;
-- erreurs et confirmation accessibles ;
-- aucun débordement horizontal ;
-- aucune erreur de console ;
-- aucun avertissement PHP.
-
-### Opérations
-
-- dry-run ciblé ;
-- application ;
-- second dry-run ;
-- seconde application idempotente ;
-- rollback ;
-- réapplication ;
-- aucune dérive de configuration sans rapport ;
-- zéro soumission fixture après nettoyage ;
-- Mailpit reste inutilisé, car aucun gestionnaire d'e-mail sortant n'existe.
+Mailpit doit rester inutilisé pendant toute cette matrice, puisque le Contact ne
+possède aucun gestionnaire d'e-mail.
 
 ## Suivis hors périmètre
 
@@ -480,3 +493,12 @@ ne possède aucun gestionnaire d'e-mail.
 - décider séparément d'une éventuelle protection anti-spam supplémentaire ;
 - retirer séparément le JavaScript historique non référencé si sa suppression
   est approuvée.
+
+Avant publication, le propriétaire doit accepter explicitement les limites
+anti-abus résiduelles, faire approuver l'information de confidentialité et le
+processus de conservation, puis autoriser le déploiement après une matrice
+runtime entièrement réussie. Aucun destinataire e-mail n'est requis pour ce MVP
+à stockage privé ; il ne deviendrait nécessaire que pour une livraison e-mail
+future séparément approuvée. La décision sur la fermeture de la route générique
+de confirmation Webform reste également explicite si son accessibilité statique
+est jugée incompatible avec le contrat produit.
