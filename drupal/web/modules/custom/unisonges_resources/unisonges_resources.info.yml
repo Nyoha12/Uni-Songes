@@ -1,0 +1,5 @@
+name: 'Uni-Songes Resources'
+type: module
+description: 'Provides the guarded, manifest-backed public Resources hub.'
+package: Custom
+core_version_requirement: '^11'

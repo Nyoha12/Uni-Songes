@@ -1,0 +1,73 @@
+{#
+/**
+ * @file
+ * Flat public rendering for a validated Resources manifest.
+ *
+ * The route title supplies the page's only H1. Every manifest value below is
+ * rendered through Twig auto-escaping; editorial_note is never exposed.
+ */
+#}
+<div class="unisonges-resources">
+  <div class="unisonges-resources__introduction">
+    <p>
+      Ces liens conduisent vers des sites externes décrits de façon factuelle.
+      Leur présence n’implique ni partenariat ni approbation de l’ensemble de
+      leur contenu.
+    </p>
+    <p class="unisonges-resources__external-note">
+      Un symbole visuel <span aria-hidden="true">↗</span> accompagne chaque
+      destination externe ; les liens s’ouvrent dans le même onglet.
+    </p>
+  </div>
+
+  {% if themes|length > 1 %}
+    <nav class="unisonges-resources__themes" aria-label="Parcourir les ressources par thème">
+      <span>Thèmes :</span>
+      <a href="{{ all_themes_url }}"{% if active_theme is null %} aria-current="page"{% endif %}>
+        Tous les thèmes
+      </a>
+      {% for theme in themes %}
+        <a href="{{ theme.url }}"{% if active_theme is same as(theme.label) %} aria-current="page"{% endif %}>
+          {{ theme.label }}
+        </a>
+      {% endfor %}
+    </nav>
+  {% endif %}
+
+  {% for group in groups %}
+    <section class="unisonges-resources__group" aria-labelledby="unisonges-resources-theme-{{ loop.index }}">
+      <h2 id="unisonges-resources-theme-{{ loop.index }}">{{ group.theme }}</h2>
+      <div class="unisonges-resources__list">
+        {% for resource in group.resources %}
+          <article class="unisonges-resources__item">
+            <h3>
+              <a class="unisonges-resources__link" href="{{ resource.url }}" rel="external noreferrer">
+                {{ resource.title }}
+                <span class="unisonges-resources__external-mark" aria-hidden="true">↗</span>
+                <span class="visually-hidden"> — site externe</span>
+              </a>
+            </h3>
+            <p class="unisonges-resources__description">{{ resource.description }}</p>
+            <ul class="unisonges-resources__metadata" aria-label="Métadonnées">
+              <li>{{ resource.theme }}</li>
+              <li>{{ resource.type }}</li>
+              <li>{{ resource.language }}</li>
+              {% if resource.audience is defined %}
+                <li>{{ resource.audience }}</li>
+              {% endif %}
+            </ul>
+            <p class="unisonges-resources__url">
+              <span>Adresse du site :</span>
+              <bdi dir="ltr">{{ resource.url }}</bdi>
+            </p>
+            {% if resource.last_verified is defined %}
+              <p class="unisonges-resources__verification">
+                Dernière vérification : <time datetime="{{ resource.last_verified }}">{{ resource.last_verified }}</time>
+              </p>
+            {% endif %}
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+  {% endfor %}
+</div>

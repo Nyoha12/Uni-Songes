@@ -1,0 +1,30 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * @file
+ * Theme hooks for the guarded Uni-Songes Resources hub.
+ */
+
+/**
+ * Implements hook_theme().
+ */
+function unisonges_resources_theme(
+  array $existing,
+  string $type,
+  string $theme,
+  string $path,
+): array {
+  return [
+    'unisonges_resources_page' => [
+      'variables' => [
+        'groups' => [],
+        'themes' => [],
+        'active_theme' => NULL,
+        'all_themes_url' => NULL,
+      ],
+      'template' => 'unisonges-resources-page',
+    ],
+  ];
+}

@@ -1,0 +1,166 @@
+.unisonges-resources {
+  --resources-ink: #0b1220;
+  --resources-muted: #293548;
+  --resources-accent: #053630;
+  --resources-line: rgb(15 23 42 / 18%);
+  min-width: 0;
+  color: var(--resources-ink);
+}
+
+.unisonges-resources,
+.unisonges-resources * {
+  box-sizing: border-box;
+}
+
+.unisonges-resources__introduction {
+  max-width: 68ch;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--resources-line);
+}
+
+.unisonges-resources__introduction p {
+  margin-top: 0;
+}
+
+.unisonges-resources__external-note,
+.unisonges-resources__metadata,
+.unisonges-resources__url,
+.unisonges-resources__verification {
+  color: var(--resources-muted);
+}
+
+.unisonges-resources__themes {
+  display: flex;
+  margin: 1.25rem 0 2rem;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0 1rem;
+  border-bottom: 1px solid var(--resources-line);
+}
+
+.unisonges-resources__themes > span {
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.unisonges-resources__themes a,
+.unisonges-resources__link {
+  display: inline-flex;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  align-items: center;
+  color: var(--resources-accent);
+  font-weight: 650;
+  overflow-wrap: anywhere;
+  text-underline-offset: 0.2em;
+}
+
+.unisonges-resources .unisonges-resources__themes a,
+.unisonges-resources .unisonges-resources__themes a:visited,
+.unisonges-resources .unisonges-resources__link,
+.unisonges-resources .unisonges-resources__link:visited {
+  color: var(--resources-accent);
+}
+
+.unisonges-resources .unisonges-resources__themes a:hover,
+.unisonges-resources .unisonges-resources__themes a:active,
+.unisonges-resources .unisonges-resources__link:hover,
+.unisonges-resources .unisonges-resources__link:active {
+  color: var(--resources-accent);
+  text-decoration-thickness: 0.14em;
+}
+
+.unisonges-resources__themes a[aria-current="page"] {
+  font-weight: 800;
+  text-decoration-thickness: 0.14em;
+}
+
+.unisonges-resources__themes a:focus-visible,
+.unisonges-resources__link:focus-visible {
+  outline: 0.1875rem solid var(--resources-accent);
+  outline-offset: 0.1875rem;
+}
+
+.unisonges-resources__group + .unisonges-resources__group {
+  margin-top: 2.75rem;
+}
+
+.unisonges-resources__group h2,
+.unisonges-resources__item h3,
+.unisonges-resources__description,
+.unisonges-resources__url,
+.unisonges-resources__metadata li {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.unisonges-resources__list {
+  border-top: 1px solid var(--resources-muted);
+}
+
+.unisonges-resources__item {
+  min-width: 0;
+  padding: 1rem 0 1.25rem;
+  border-bottom: 1px solid var(--resources-line);
+}
+
+.unisonges-resources__item h3,
+.unisonges-resources__description {
+  max-width: 65ch;
+  margin: 0 0 0.5rem;
+}
+
+.unisonges-resources__metadata {
+  display: flex;
+  padding: 0;
+  margin: 0 0 0.5rem;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.6rem;
+  font-size: 0.88rem;
+  list-style: none;
+}
+
+.unisonges-resources__metadata li + li::before {
+  margin-right: 0.6rem;
+  content: "·";
+}
+
+.unisonges-resources__url {
+  margin: 0 0 0.4rem;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 0.78rem;
+}
+
+.unisonges-resources__verification {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 40rem) {
+  .unisonges-resources__themes,
+  .unisonges-resources__metadata {
+    display: block;
+  }
+
+  .unisonges-resources__themes a {
+    width: 100%;
+  }
+
+  .unisonges-resources__metadata li + li::before {
+    display: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .unisonges-resources__introduction,
+  .unisonges-resources__themes,
+  .unisonges-resources__list,
+  .unisonges-resources__item {
+    border-color: CanvasText;
+  }
+
+  .unisonges-resources__themes a:focus-visible,
+  .unisonges-resources__link:focus-visible {
+    outline-color: Highlight;
+  }
+}

@@ -1,0 +1,6 @@
+unisonges_resources.page:
+  title: 'Ressources'
+  description: 'Liens externes sélectionnés par Uni-Songes.'
+  route_name: unisonges_resources.page
+  menu_name: main
+  weight: 25

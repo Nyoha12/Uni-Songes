@@ -1,0 +1,4 @@
+hub:
+  css:
+    theme:
+      css/resources-hub.css: {}
