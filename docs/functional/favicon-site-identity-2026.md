@@ -2,7 +2,10 @@
 
 ## Statut et décision
 
-Cette phase est exclusivement statique. Elle fournit un favicon Uni-Songes
+La livraison fournit uniquement deux fichiers ICO et cette documentation.
+La phase statique initiale a été complétée par le contrôle runtime ciblé du
+7 septembre 2026, explicitement autorisé après la libération de DDEV par #94.
+Elle fournit un favicon Uni-Songes
 sans modifier le logo de l’en-tête, les routes, le CSS, le JavaScript ou les
 templates de page.
 
@@ -21,8 +24,10 @@ Deux copies strictement identiques de l’ICO sont suivies :
 - `drupal/web/favicon.ico` répond au chemin conventionnel `/favicon.ico`, dont
   l’absence et la 404 de production sont le symptôme confirmé de départ.
 
-La PR doit rester en brouillon tant que la matrice HTTP et navigateur différée
-n’a pas été exécutée.
+Les critères HTTP/head/cache de cette reprise sont satisfaits localement dans
+un vrai Chromium, avec JavaScript activé. #106 peut passer prête pour revue,
+sans autorisation de merge. L’observation visuelle de l’onglet et le HTTP de
+production ne sont pas revendiqués ; leurs limites sont précisées ci-dessous.
 
 ## Audit initial
 
@@ -336,41 +341,49 @@ Les deux exclusions binaires font l’objet du parseur ICO strict, de `cmp` et d
 la régénération byte-for-byte ci-dessus ; une recherche d’espaces textuels dans
 leurs octets de pixels n’aurait pas de sens.
 
-Aucune commande DDEV, Docker, Drush ou Chromium n’a été exécutée et aucun VPS
-n’a été contacté. Aucun staging ou déploiement n’a été effectué. Ces preuves
-sont statiques : elles ne remplacent pas la validation différée ci-dessous.
+Pendant la phase statique initiale, aucune commande DDEV, Docker, Drush ou
+Chromium n’a été exécutée et aucun VPS n’a été contacté. Ces preuves historiques
+sont conservées sans nouvelle génération ; le contrôle runtime ultérieur est
+consigné séparément ci-dessous. Aucun staging ou déploiement n’a été effectué.
 
-## Matrice runtime différée
+## Matrice runtime ciblée — 7 septembre 2026
 
-Selon la consigne de reprise, le contrôle reste à planifier avec Terminal 3 /
-#94, seul propriétaire de DDEV et du checkout servant. La fin de #94 n’autorise
-aucun démarrage automatique.
-La reprise de #106 ne lance ni DDEV, Docker, Drush, navigateur, Mailpit ou VPS.
+La nouvelle autorisation explicite transférait temporairement le runtime à
+#106, après restauration et arrêt par #94. Elle remplace, pour ce contrôle
+seulement, l’interdiction de démarrage de la reprise statique précédente.
 
-| Contrôle ciblé ultérieur | Preuve attendue | État |
+| Contrôle | Résultat observé | État |
 |---|---|---|
-| `GET /favicon.ico` et `GET /themes/custom/unisonges_theme/favicon.ico` | 200, corps ICO de 15 086 octets, MIME `image/vnd.microsoft.icon` ou `image/x-icon`, corps identiques et SHA-256 `f5afb9d…6893` | différé |
-| Head d’une page publique et de la connexion | une seule déclaration favicon effective vers l’ICO du thème, cible accessible, aucun lien concurrent ; autres attachements conservés | différé |
-| Head d’une page d’administration authentifiée sous Gin | favicon natif du thème actif accessible, aucune déclaration concurrente ni régression ; ne pas imposer l’icône publique à Gin | différé |
-| Coexistence #103 / #94 | préserver la meta `robots` éditoriale lorsqu’elle s’applique et les attachements Core ; aucun changement visuel du header, des titres, du contenu ou du footer | différé |
-| Interface du navigateur desktop puis mobile | constater directement le favicon de l’onglet lorsque l’interface l’affiche, sur chrome clair/sombre ; distinguer cette preuve d’une capture du contenu de page | différé |
-| Cache et réseau | un chargement froid puis un chargement chaud, pas de boucle ou doublon contradictoire de requêtes d’icône ; pas de 404 favicon ni de warning PHP dans les journaux autorisés | différé |
+| `GET /favicon.ico` | 200, `image/x-icon`, 15 086 octets, SHA-256 attendu | PASS local |
+| `GET /themes/custom/unisonges_theme/favicon.ico` | 200, `image/x-icon`, corps identique au fichier racine et au commit validé | PASS local |
+| Public `/` et connexion anonyme `/user/login` | un seul `rel="icon"` natif, type déclaré `image/vnd.microsoft.icon`, URL du thème accessible ; autres attachements conservés | PASS |
+| Administration authentifiée `/admin` | thème effectivement Claro ; un seul favicon natif `/core/misc/favicon.ico`, 200, inchangé par rapport au témoin | PASS Claro uniquement |
+| Cache | passage #106 : pages publique/connexion `X-Drupal-Cache: MISS` puis `HIT` ; favicon public réellement reçu hors cache puis depuis le cache disque | PASS |
+| Réseau et journaux du passage final | une seule requête favicon native par page/passage, aucune déclaration concurrente, 404 favicon, erreur PHP ou exception JavaScript consignée | PASS |
+| Interface d’onglet desktop/mobile, claire/sombre | Chromium headless ne donne pas accès au chrome de la fenêtre | observation manuelle restante |
 
-Consigner l’origine testée, le SHA servi, le navigateur et le réglage
-d’agrégation. Réutiliser les passages agrégation off/on coordonnés par le
-propriétaire du runtime ; ne pas ouvrir une nouvelle campagne complète ni
-modifier ces réglages depuis ce worktree. La validation HTTP publique reste
-distincte d’une réponse locale.
+La connexion et l’administration réutilisaient déjà une icône en cache lors
+de leur premier passage : il ne s’agit pas de trois caches favicon froids
+indépendants. L’administration est normalement non cacheable côté Drupal.
+Les quatre GET explicites des deux fichiers confirment tous le même corps :
 
-Une capture de page permet de vérifier le contenu, le header et le footer,
-mais elle ne prouve ni le head DOM, ni la réponse réseau de l’ICO, ni l’icône
-réellement affichée dans la barre d’onglets. Vérifier le head et les réponses
-séparément ; pour le chrome du navigateur, utiliser une observation directe ou
-une capture de la fenêtre incluant les onglets. Si l’interface mobile masque
-le favicon, noter cette limite sans déclarer ce contrôle réussi.
+```text
+f5afb9d46a4c95190806cec55d53e8598ac7dc5812abaca9563eff1f27056893
+```
 
-Ne pas passer la PR en « ready » et ne pas la fusionner avant la réussite de
-cette matrice.
+L’agrégation CSS et JS est restée activée ; aucun passage agrégation off n’est
+revendiqué. Gin n’était pas le thème actif de cet environnement et n’a pas été
+testé. Aucun favicon public ne lui est imposé. Le module éditorial n’était pas
+activé : la meta robots conditionnelle de #103 reste vérifiée par lecture du
+source fusionné, sans prétendre l’avoir exercée. Aucun changement non fusionné
+de #94 n’a été repris.
+
+Une capture du contenu de page ne prouve pas le favicon de l’onglet. Ici les
+preuves viennent du DOM et du réseau d’un vrai navigateur, sans observation
+visuelle de sa barre d’onglets et sans nouvelle infrastructure. Cette dernière
+observation reste manuelle. Les réponses locales ne prouvent pas le HTTP
+public après déploiement : statut/MIME/hash et journaux Nginx de production
+resteront à contrôler dans le cadre autorisé du déploiement, sans VPS ici.
 
 ## Reprise statique du 7 septembre 2026
 
@@ -418,4 +431,115 @@ pour la coordination et le contrôle réel restant. Les contrôles de reprise
 restent ciblés : comparaison binaire et hashes, références de thème/head,
 Scaffold suivi, diff exact, UTF-8/NFC, espaces du texte et motifs de secrets
 dans le seul contenu de #106. Aucun secret ni chantier Composer de #82 n’est
-consulté ; aucun autre worktree n’est utilisé.
+consulté ; aucun autre worktree n’est utilisé pendant cette reprise statique.
+
+## Exécution réelle, preuves et restitution
+
+### Source et préparation
+
+Le contrôle a servi la base fusionnée `release/prod`
+`9ef3d4a2c260af9f3f2fcfe4ac584648bb592e0c` depuis le checkout servant propre
+`/workspaces/Uni-Songes`, avec uniquement les deux ICO copiés depuis le HEAD
+#106 `56c7afd40408af07789a50173e464912836c3d94`. Aucun changement de branche ou
+rebase n’était nécessaire. Le code applicatif testé est donc celui de la base
+actuelle, avec les octets exacts de #106 ; ni #82 ni les preuves #113 n’ont été
+utilisés. Le complément documentaire ne change pas ces entrées runtime.
+
+- DDEV était arrêté, sans processus Drush/navigateur actif ni autre propriétaire
+  runtime constaté ; un verrou exclusif temporaire a été tenu pendant le test.
+- Les fichiers publics, réglages DDEV et fichiers settings ont été sauvegardés
+  sans afficher leur contenu ; manifeste des chemins, modes, propriétaires et
+  hashes pertinents avant toute mutation. Les deux chemins ICO étaient absents
+  du checkout servant initial.
+- Démarrage avec `ddev start --skip-hooks`, puis sauvegarde fraîche
+  `ddev snapshot --name pr106-favicon-before-20260907-2001 --skip-hooks`
+  avant l’activation du thème et les connexions de test.
+- Configuration initiale réelle : Olivero public, Claro administration, front
+  `/node`, zéro node et zéro fichier géré. Activation temporaire du thème
+  Uni-Songes et de sa base Barrio, avec `favicon.use_default=true` et feature
+  favicon active. Claro est resté inchangé. Aucun contenu, utilisateur ou bloc
+  créé ; seul le compte administrateur existant a servi au contrôle authentifié.
+- Aucun import de configuration, Composer, téléchargement d’asset, installation
+  d’outil, génération graphique, paiement, appel Google/email ou VPS demandé.
+
+Le premier témoin a déclenché le cron automatique existant. Le zéro affiché
+par Drush était son override CLI (`DrupalBoot8.php`), pas la configuration web
+stockée à 10 800 secondes. Des avertissements de verrou cron, non PHP, sont
+apparus à cette préparation ; le journal confirme la synchronisation Google
+désactivée. Une garde temporaire de `system.cron_last` a empêché sa relance.
+Cette garde et toutes les conséquences en base ont ensuite été annulées par
+restauration du snapshot. Aucun cron n’a été lancé explicitement.
+
+### Navigateur et comparaison
+
+Origine locale : `http://127.0.0.1:8080`. Chromium déjà installé
+`140.0.7339.16`, CDP, JavaScript activé, viewport 1440 × 1000. Témoin réussi
+20:12:18–20:12:28 UTC ; passage #106 20:13:23–20:13:34 UTC le 7 septembre 2026.
+Le pilote initial avec interception Fetch expirait ; le passage probant utilise
+le navigateur sans cette interception, avec `--disable-dev-shm-usage` et
+résolution DNS externe bloquée. Aucune réponse externe n’est enregistrée.
+Il ne s’agit pas d’un correctif des scripts du site.
+
+Le témoin et le passage final utilisent tous deux Uni-Songes/Claro ; seule la
+présence des deux ICO change, suivie de `ddev drush cache:rebuild`. Comparaison
+des six heads DOM correspondants : tous les éléments restent identiques après
+exclusion du seul lien favicon et normalisation étroite du suffixe CSS de cache
+`?tl0fri` → `?tl0g5p`, également présent dans deux `noscript` Claro. Les liens
+Core, métadonnées, scripts, styles et placeholders résolus sont conservés.
+Le script de connexion `unisongesAuthMessageDismiss` garde son SHA-256
+`0751b7f2669d33c8126f403deba7b8b70dc532e60ea358e7e1d4e87b40c80b4c`.
+Titres et H1 identiques entre témoin et test ; cette base minimale ne rendait
+pas de H1 sur public/connexion, sans changement attribuable aux ICO.
+
+L’identité Claro est aussi confirmée par `drupalSettings.ajaxPageState.theme`.
+Ce champ n’est pas exposé sur public/connexion ; leurs assets, le script de
+connexion et les réglages actifs corroborent le rendu Uni-Songes. La revue
+indépendante des deux captures DOM/réseau confirme les six comparaisons :
+290 réponses enregistrées au total, 245 HTTP 200 et 45 HTTP 304, aucune erreur
+HTTP ni exception JavaScript. Les GET explicites d’ICO sont consignés à part.
+Sur le passage final, les seules nouvelles entrées watchdog sont deux notices
+de connexion ; zéro nouvelle erreur PHP ou warning. Les journaux PHP-FPM et
+Nginx dédiés sont vides, sans erreur dans le journal conteneur de ce passage.
+
+Les quatre corps HTTP sauvegardés ont le hash attendu et une structure ICO
+valide, DIB/BGRA32 16/32/48. Les preuves de génération initiales sont réutilisées.
+Le PNG source garde `e707617df3ec97c9e4320793714cd7dc798fead9ee8779eed8bc9288587aee72` ;
+le lien `mark-latest.png` est inchangé et le template de header garde
+`4810c8117e34a9c59bce47a30a6993033db617d61d4306d7d85f20673f36099b`.
+
+### Preuves locales et nettoyage
+
+Les preuves ciblées sont conservées hors Git dans le répertoire privé
+`/tmp/pr106-favicon-runtime.KY90e2`, séparé des preuves #113. Les sauvegardes
+privées ne doivent pas être jointes à la PR. Principales empreintes SHA-256 :
+
+| Preuve | SHA-256 |
+|---|---|
+| `baseline-browser.json` | `13c2803da1a7adc0836fc1b26a43ea05985122b0c4e46ac22ac3ddeb7cc006d6` |
+| `icons-browser.json` | `fad09a0cf477805c7247d436a7a0262bafb08f839459937632e1c41c04f7f7db` |
+| `validation-summary.json` | `d2c870f6159276f4b2dbdbb129c716078ad0a2227c4e59fd64123166aacfad65` |
+| État runtime initial et restauré, `cmp = 0` | `64ed907aa79897ccfeb230604114ef09c53a72e92ee06348c82985973c5a14af` |
+| Manifeste fichiers initial et final, `cmp = 0` | `3a30a6c51eaf95a39aaf1f0214e5d8ca886a7ed25fd3eed6ef3b00d382002147` |
+
+La commande `ddev snapshot restore pr106-favicon-before-20260907-2001
+--skip-hooks` a restauré la base. Le relevé retrouve exactement Olivero/Claro,
+les réglages et compteurs initiaux (0 node, 7 lignes users, 0 fichier géré,
+8 sessions, dernier watchdog 150), ainsi que l’état cron initial. Les deux ICO
+temporaires et les seuls répertoires de cache générés (`css`, `js`, `php/twig`)
+ont été déplacés vers les preuves privées, sans suppression de fichier public
+préexistant. Les profils navigateur et le lien de connexion de test ont été
+retirés. Source, header, pages, fichiers publics, settings et Composer sont
+identiques au manifeste initial, modes et propriétaires compris.
+
+`ddev stop --skip-hooks` est terminé à 20:17 UTC ; statut `stopped`, aucun
+conteneur web/db ni navigateur de test actif, verrou runtime libéré.
+Le checkout servant est propre, toujours sur `release/prod` au SHA initial.
+L’environnement est explicitement rendu disponible, sans redémarrage prévu.
+Seule cette documentation est actualisée dans la branche #106 ; les deux ICO
+restent identiques au commit initial validé. Aucun merge.
+
+Contrôles finaux ciblés : garde exacte des trois fichiers, 22 PR ouvertes
+comparées par noms de fichiers sans chevauchement, hashes ICO/source/header,
+UTF-8/NFC, `git diff --check` textuel et recherche de motifs de secrets dans
+le seul contenu documentaire — PASS. Aucun YAML ou Twig modifié ; les preuves
+de parsing et de génération inchangées ne sont pas rejouées inutilement.
