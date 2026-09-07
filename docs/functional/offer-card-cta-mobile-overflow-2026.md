@@ -10,19 +10,25 @@ line-height, letter-spacing, interaction-state style, markup, JavaScript,
 library, configuration, navigation, account, reservation, Commerce, or
 background file changes.
 
-The audited base is `origin/release/prod` at
-`2ffa2538204f0705dadf6faebceef8c77ebcbfc2`, the merge of PR #95. The change is
-limited to:
+The initial audited base was `origin/release/prod` at
+`2ffa2538204f0705dadf6faebceef8c77ebcbfc2`, the merge of PR #95. The 2026-09-07
+revalidation compares the existing correction at
+`8817fa7d0c2c4529e72ea2f865d8d2e1a11d6152` with current production base
+`3e53bc5b3d1b3ded9a207bc2e16ec48aa84b9bdf`. The canonical stylesheet is
+byte-identical between these two production bases. No rebase or CSS adjustment
+is needed; this follow-up updates the evidence and runtime handoff only. The
+complete PR remains limited to:
 
 ```text
 docs/functional/offer-card-cta-mobile-overflow-2026.md
 drupal/web/themes/custom/unisonges_theme/css/styles.css
 ```
 
-No DDEV, Docker, Drush, Chromium, Mailpit, or VPS resource was used. PR #87
-retains exclusive ownership of runtime resources. The resulting PR must remain
-draft until a combined Chromium pass with PR #92 completes the deferred matrix
-below.
+No DDEV, Docker, Drush, browser, local server, Mailpit, or VPS resource was used.
+Terminal 3 / PR #94 exclusively owns DDEV and the serving checkout. PR #110
+remains draft pending the combined runtime matrix with #92/#89 below. Release
+of #94's resources does not trigger any runtime launch by this task. No other
+worktree, including #82 and its local changes, is accessed.
 
 ## CSS and cascade audit
 
@@ -57,8 +63,9 @@ Every rule that can match the class was inspected:
 | `.unisonges-detail-section p > a` and states           | `0-1-2` / `0-2-2` | A pre-existing colour precedence for four paragraph-wrapper consumers; it does not set geometry and this PR does not alter it.                       |
 | Later intro/detail `p` readability rules               |           `0-1-1` | Set paragraph wrappers to `max-width: 68ch`; direct anchors keep `max-width: 100%`.                                                                  |
 
-There is no later box-sizing, width, padding, border, display or white-space
-override for the exact selector. No pseudo-element box-sizing rule matches an
+Apart from the mobile `width: 100%` and higher-specificity paragraph maximum
+documented above, no later rule changes the CTA box sizing, width, padding,
+border, display or white-space. No pseudo-element box-sizing rule matches an
 offer-card CTA.
 
 ## Complete consumer inventory
@@ -73,6 +80,12 @@ offer-card CTA.
 | PR #92 Concert card CTA               | Direct `a.unisonges-offer-card__cta`, `inline-flex`                                                           | Auto/stretch in the column-flex card, capped at `100%`                                 | Padding and border are on the interactive anchor          | `article.card.unisonges-offer-card` in the canonical grid                              | Anchor receives `width: 100%` in the one-column grid                                    |
 | PR #92 D’Jam/Orchestre action         | Direct `a.btn.unisonges-offer-card__cta`; the later exact CTA rule wins shared `.btn` presentation properties | Auto/shrink-to-fit, capped at `100%`                                                   | Exact CTA padding/border; no `.btn--cta`                  | `nav.actions-row.unisonges-detail-section` in normal block flow                        | Each exact CTA receives `width: 100%`; `.btn--cta` is never matched                     |
 
+In column-flex cards, the declared `inline-flex` CTA is blockified as a flex
+item and stretches across its track. In intro/detail block flow, `inline-flex`
+uses shrink-to-fit sizing instead. The paragraph maximum applies to wrappers
+inside `.node-body`, `.unisonges-page-intro` or `.unisonges-detail-section`;
+it does not apply to a direct anchor.
+
 No current producer emits a `button.unisonges-offer-card__cta`. The component
 guide permits a link, button or wrapper, but its two examples are direct
 anchors. Current tracked Twig and standalone HTML have no exact-class producer;
@@ -86,10 +99,13 @@ is unchanged; a producer migration or descendant hit-area change would be a
 separate accessibility change and is deferred for runtime review. Direct-anchor
 consumers keep the complete painted pill as their interactive target.
 
-### Current content-architecture output
+### Versioned content-architecture producers
 
-All 35 producers below are paragraph wrappers with one inner anchor. They are
-stored as `full_html`; the exported filter does not strip the class.
+All 35 producers below are paragraph wrappers with one inner anchor in
+`drupal/scripts/apply-content-architecture-2026.sh`. The script writes
+`full_html`; the exported filter does not strip the class. Their source lines
+are unchanged in the current production base. This is a source inventory, not
+a claim about the database or active rendered output inspected in this phase.
 
 | Page                              | Parent and source locations                                             | Complete CTA set                                                                                                                                  |
 | --------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -105,10 +121,13 @@ stored as `full_html`; the exported filter does not strip the class.
 | `/a-propos`                       | Five cards at 579, 584, 589, 594, 599                                   | Découvrir l’association; Voir les artistes et partenaires; Découvrir l’origine; Découvrir le Blog; Voir les services et prestations               |
 | `/association`                    | Five cards at 633, 638, 643, 648, 653                                   | Voir les cours; Voir les stages; Voir les concerts; Voir les artistes; Voir les prestations                                                       |
 
-The current `/blog` body has no exact-class CTA; `/a-propos` has the card that
-links to it. The current home output is the seven-wrapper `/accueil` row above.
-PR #103 can replace that promotional home body with its own editorial component,
-but it introduces no exact-class consumer.
+The scripted `/blog` body has no exact-class CTA; `/a-propos` has the card that
+links to it. The `/accueil` row records seven legacy promotional wrappers.
+Merged PR #103 supplies an installer that replaces that body with its editorial
+intro and component, which contain no exact-class consumer. Its own stylesheet
+also changes the home scrollframe's inner padding. The active home content and
+library attachment are deferred runtime checks; the canonical shell fixtures
+below do not model the editorial-home alternative.
 
 The other current runtime producer is the theme preprocess hook: a published
 full Stage with an accessible published `ticket_stage` and usable variation gets
@@ -118,7 +137,10 @@ paragraph, not this CTA. Concert nodes cannot enter that Stage-only branch.
 
 ### PR #92 prospective output
 
-PR #92 has exactly six files, none modified here:
+The #92 contract was read from the following immutable Git head on 2026-09-07:
+`28b13c0046062bd2b7193ff003e79fe0d4168df0`. Its documentation and five Twig
+files were read as Git objects, without accessing its worktree. It has exactly
+six files, none modified here:
 
 ```text
 docs/functional/public-hub-components-2026.md
@@ -161,11 +183,20 @@ min-height: calc(2.65rem + 0.68rem + 0.68rem + 2px);
 overflow-wrap: anywhere;
 ```
 
-Base placement makes both the mobile `width: 100%` and the all-width
-`max-width: 100%` measure the painted border box. That covers paragraph wrappers,
-direct anchors and PR #92’s anchors even when a long label reaches the maximum
-at tablet or desktop width. For an ordinary desktop CTA, `width` remains `auto`,
-so box-sizing does not affect its intrinsic outer width.
+Base placement makes the mobile `width: 100%` measure the painted border box.
+Direct anchors, including all six #92 links, also retain an effective
+`max-width: 100%` at every width. Paragraph wrappers instead have the later
+`max-width: 68ch` where the paragraph readability selectors match; the base
+`max-width: 100%` does not win that cascade.
+
+Let `C` be the parent's content width and `K` the font-dependent `68ch` cap.
+Mobile wrappers have painted width `min(C, K) <= C`. Desktop wrappers use
+shrink-to-fit sizing or card stretch, with `anywhere` enabling intrinsic
+shrinking; their painted width stays at most `min(C, K)` when the available
+width accommodates the padding, border and a text unit. Ordinary desktop
+labels below the applicable caps retain their auto outer width. A long wrapper
+actually bound by `68ch` has its painted cap reduced from `K + 35.6px` to `K`
+at a 16px root, so parity is not claimed for those constrained labels.
 
 `box-sizing` also applies to `min-height`. Leaving the old value unchanged would
 shrink a one-line CTA by about `22.88px`. The replacement expresses the exact
@@ -186,7 +217,8 @@ emergency wrapping. Unlike `break-word`, its opportunities participate in
 min-content sizing, which is required for the anonymous flex text item of a
 direct anchor and the nested flex item of a paragraph wrapper. Ordinary French
 labels with spaces keep their normal wrap opportunities. No font, weight,
-line-height, letter-spacing or normal label geometry changes.
+line-height or letter-spacing changes; unconstrained ordinary labels retain
+their geometry.
 
 No `overflow: hidden`, arbitrary percentage, JavaScript, `!important`, or
 unrelated selector is added.
@@ -201,7 +233,7 @@ horizontal border  = 2 × 1px     = 2px
 content-box excess                  35.6px
 ```
 
-For actual page geometry, the fixed scrollframe border box is
+For the canonical non-editorial page shell, the fixed scrollframe border box is
 `min(980px, viewport - 32px)`. Removing its two borders and the
 `.scrollframe__inner` horizontal padding gives `frame - 42px`. Card tracks then
 use the canonical one/two/three-column grid and `1.1rem` gaps; card content
@@ -209,9 +241,14 @@ width removes the card’s border and breakpoint-specific padding. Detail-panel
 content width similarly removes its own border and padding and respects the
 existing `840px` maximum.
 
-“Bound” rows deliberately use a label whose intrinsic size reaches `width` or
-`max-width`. “Stretch” rows model the normal column-flex card consumer. The
-desktop Stage short row uses the previously recorded outer width.
+Mobile rows have a declared `100%` width. Above 640px, the max-bound token rows
+model direct anchors whose old `break-word` min-content size exceeded the
+available width. An ordinary spaced French label can already shrink and wrap
+with `width: auto`; it need not reach that old content-box maximum. “Stretch”
+rows model the column-flex card consumer. The desktop Stage short row reuses
+the previously recorded outer width; no new browser measurement was made.
+Numeric wrapper rows assume the `68ch` cap is not binding; the symbolic
+`min(C, K)` calculation above covers a binding cap without inventing font metrics.
 
 | Fixture                                                      | Containing block | Declared/effective width  | Before border box | Before positive overflow | After border box | After positive overflow |
 | ------------------------------------------------------------ | ---------------: | ------------------------- | ----------------: | -----------------------: | ---------------: | ----------------------: |
@@ -222,16 +259,23 @@ desktop Stage short row uses the previously recorded outer width.
 | 768px tablet, short CTA, two-card row                        |          297.8px | `auto` / stretch          |           297.8px |                        0 |          297.8px |                       0 |
 | 768px tablet, max-bound token in detail parent               |            652px | `auto`, `max-width: 100%` |           687.6px |                   35.6px |            652px |                       0 |
 | 1440px desktop, short Stage CTA                              |            840px | `auto`                    |         197.953px |                        0 |        197.953px |                       0 |
-| 1440px desktop, max-bound long French CTA                    |            840px | `auto`, `max-width: 100%` |           875.6px |                   35.6px |            840px |                       0 |
+| 1440px desktop, long spaced French CTA                       |            840px | `auto` / shrink-to-fit    |             840px |                        0 |            840px |                       0 |
 | 960px at 150% equivalent width, three-card row               |          243.2px | `auto` / stretch          |           243.2px |                        0 |          243.2px |                       0 |
 | 720px at 200% equivalent width, max-bound token              |            604px | `auto`, `max-width: 100%` |           639.6px |                   35.6px |            604px |                       0 |
 | 320px physical at 150% equivalent width, token               |        105.333px | `100%`                    |         140.933px |                   35.6px |        105.333px |                       0 |
 | 320px physical at 200% equivalent width, token               |             52px | `100%`                    |            87.6px |                   35.6px |             52px |                       0 |
 | Nested 240px parent with 24px padding and 1px borders, token |            190px | `100%`                    |           225.6px |                   35.6px |            190px |                       0 |
 
-All 13 cases have zero positive overflow after the change. The short, long
-French and unbroken-token variants share the same outer-width calculation;
+All 13 cases have zero positive overflow after the change. The mobile short,
+long French and unbroken-token variants share the same outer-width calculation;
 `anywhere` lets the token shrink and wrap inside the resulting content area.
+
+The 2026-09-07 review retains 12 numeric fixtures unchanged and corrects the
+desktop spaced-French fixture's before value from `875.6px` to `840px`
+(`0px` overflow already before the fix). This corrects the earlier model's
+classification, not the CSS. Text fitting assumes enough room for one rendered
+text unit; actual glyph metrics, line counts and document overflow require the
+runtime cells below. Mathematical containment is not a Chromium pass.
 
 At a `16px` root, the minimum painted height is unchanged:
 
@@ -253,21 +297,35 @@ PR #92 changes no CSS and explicitly documented this follow-up. Its direct
 Concert, D’Jam and Orchestre anchors receive containment only when they carry
 the exact class. Its six files remain untouched.
 
-PR #103’s editorial links and disclosures use a separate module stylesheet.
+Merged PR #103’s editorial links and disclosures use a separate module stylesheet.
 Merged PR #99 account controls and PR #100 messages remain outside the exact
 selector. Reservation portal, tunnel, cart, checkout, Contact, navigation and
 background families remain unchanged.
 
-The refreshed pre-commit open-PR audit found 20 draft PRs. Its canonical JSON
+The original 2026-09-02 pre-commit open-PR audit found 20 draft PRs. Its canonical JSON
 serialization of PR numbers and sorted filenames had SHA-256
 `98450f3119feebbd4841453e9059e5814fed8f05f1309d539f7bc9ff9abe8054`.
-None changed either file in this PR. The only semantic overlaps were expected:
-PR #92 adds exact-class consumers, while PR #87 contains the unchanged
-content-architecture producers and owns runtime resources.
+None changed either file in this PR at that time. PR #92 adds exact-class
+consumers, while now-merged PR #87 changed the artists body without altering
+the 35 architecture CTA producer lines.
+
+The #89 documentation was read at
+`811bc6ce392f85e41a6736581090ce9bc1d6e0ac`. Its dynamic Concert View remains
+separate from #92's static cards: main node content has weight `-3`, followed
+by the View block at `50`. Body and View empty/populated combinations are
+pending combined runtime checks, not static evidence of rendered output.
+
+The #94 footer contract was read at
+`3352898c0dc762dc8802519d63b11fc1fe32ca23`. Its include attaches the dedicated
+`unisonges_theme/public-footer` library and `css/public-footer.css`. It has no
+exact CTA consumer. Its footer rules and auth-main layout guard remain wholly
+in #94; no footer correction is copied into `styles.css` here.
 
 ## Static validation
 
-The final source passed the following deterministic checks on 2026-09-02:
+The initial source passed the following checks on 2026-09-02. The revalidation
+below distinguishes reused evidence from new checks and corrects the one
+before-width fixture classification described above:
 
 | Check                 | Result                                                                                                                                                                          |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -292,10 +350,37 @@ on base and head; globally rewriting it would violate the narrow scope. The
 changed declaration ranges are checked independently, and this report is checked
 as a whole.
 
+### Revalidation on 2026-09-07
+
+The production branch has advanced, but the canonical CSS, Stage producer and
+35 architecture CTA source lines used by this correction are unchanged. The
+existing #110 CSS is also byte-identical to its original commit. This makes a
+documentation-only commit useful; rebasing or rewriting the CSS would not add
+validation evidence. The remote #110 head was verified as `8817fa7d0c2c4529e72ea2f865d8d2e1a11d6152`
+before this follow-up; publication uses an ordinary fast-forward push.
+
+| Evidence                   | Reused or new result                                                                                                                                                                                                          |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Canonical input comparison | New byte comparisons against production `3e53bc5`: the existing correction applies unchanged; no missing shared stylesheet or producer change to import.                                                                      |
+| Numeric fixtures           | 12 original rows reused; one desktop spaced-label before value corrected. Independent shell/box arithmetic confirms 13/13 after-overflow values are zero under the stated assumptions.                                        |
+| Wrapper cascade            | New explicit `0-1-1` paragraph-cap audit and 90 symbolic width/cap/sizing combinations pass; `68ch` is kept in font-relative terms.                                                                                           |
+| Desktop and target height  | Existing ordinary Stage width `197.953125px` reused; algebra confirms painted minimum `66.16px` before/after and distinguishes the one-line inner link's approximately `19.52px`.                                             |
+| CSS syntax and balance     | New parse with already cached CSSTree 3.2.1, PostCSS 8.5.26 and Stylelint 17.0.0; geometry declaration grammar and independent brace/comment/string checks pass. No dependencies installed.                                   |
+| Scope and #95              | Exact reconstruction from current production CSS changes only the original base CTA box sizing, minimum height and wrapping. Every other CSS byte, including `.btn--cta`, Webform, header and background rules, is identical. |
+| Integration review         | New read-only reviews confirm the pinned #92/#89/#94 contracts, unchanged architecture producers and merged #103's separate active-home path.                                                                                 |
+| Open PR files              | A new audit of all 21 open PRs finds no other PR changing either allowed path; #110 remains draft.                                                                                                                            |
+
+Formatting checks use the already cached Prettier 3.6.2, with the historical
+whole-stylesheet warning reused from the initial audit. Only the report is
+formatted. The final publication guards pass for the doc-only follow-up diff,
+the complete PR's exact two paths, whitespace and added-line credentials.
+The independent review found documentation corrections, all reflected above,
+and no need to alter CSS or the historical wrapper hit area.
+
 ## Deferred combined runtime matrix
 
 No row below is claimed as executed in this static phase. Keep the PR draft
-until combined Chromium validation with PR #92 covers:
+until combined Chromium validation with PR #92/#89 covers:
 
 | Runtime surface                        | Required coverage                                                                                                                                                        |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -303,7 +388,7 @@ until combined Chromium validation with PR #92 covers:
 | Stage product CTA                      | Available/unavailable Stage states, direct anchor, known and fallback price paths, no add-to-cart regression                                                             |
 | PR #92 Concert cards                   | Both cards at 320px and every standard width; one/two/three-column regimes; long and unbroken labels                                                                     |
 | PR #92 D’Jam and Orchestre actions     | Both actions on both pages; exact CTA plus `.btn`; confirm no `.btn--cta` state crossover                                                                                |
-| Architecture and home/Blog integration | Current home wrappers and the PR #103 editorial-home alternative; Blog has no unexpected CTA                                                                             |
+| Architecture and home/Blog integration | Versioned legacy home wrappers and the merged PR #103 editorial-home alternative, according to active content; Blog has no unexpected CTA                                |
 | Negative controls                      | Contact, auth/account, messages, reservation portal/tunnel, Commerce cart/checkout, navigation, disclosures and background                                               |
 
 Run each applicable surface at desktop, tablet, mobile, `390px`, `360px`, the
@@ -324,5 +409,18 @@ French, long translated and unbroken-token labels. Confirm:
 - no regression occurs in `.btn--cta` or the historical Webform focus fix;
 - there is no PHP warning/error, browser page error or console error.
 
-Only that combined pass can lift the draft gate. This PR is not to be merged by
-this phase.
+Record the following cells separately on the same identified combined #92/#89/#110
+build. Each cell remains **pending**:
+
+| Cell | Surface and conditions                                                                                           | Required real observations                                                                                            |
+| ---- | ---------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| C1   | `/concerts`: editorial body empty/populated crossed with View empty/populated; both #92 anchors                  | Static cards before the View, no duplicate output; CTA containment at 320/360/390/640px and tablet/desktop            |
+| C2   | `/djam` and `/orchestre-des-reveurs`: body empty/populated; both anchors on each page                            | Full-row mobile links; ordinary desktop widths; long translations and unbroken tokens                                 |
+| C3   | Each actually active architecture wrapper and available Stage direct anchor                                      | Measure wrapper, child link and parent separately; retain ordinary height and real target area                        |
+| C4   | All applicable consumers at 100/150/200% reflow, plus one/two/three-card rows                                    | Painted boxes inside parents, safe wrapping, no page or scrollframe horizontal overflow                               |
+| I1   | Each of the six #92 links, Stage link and representative `p > a` wrapper                                         | Keyboard traversal, focus/focus-visible, visited, hover, active, forced colors, accessible name and exact destination |
+| I2   | `.btn--cta` and historical Webform controls from #95; negative account/message/header/background/tunnel controls | No interaction regression; no PHP warning/error, browser page error or console error                                  |
+
+Only that combined pass can lift the draft gate. Terminal 3 / #94 owns the
+runtime resources; this task does not launch them automatically after #94.
+This PR is not to be merged by this phase.
