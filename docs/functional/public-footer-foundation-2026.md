@@ -13,11 +13,14 @@ vérification de la ref GitHub, rebase sans conflit sur `origin/release/prod`
 `9ef3d4a2c260af9f3f2fcfe4ac584648bb592e0c`. Cette base comprend notamment
 #99/#100 et #103, fusionnée le 3 septembre au commit `36b023c`.
 
-Tous les résultats finaux se rapportent à cette base. Cette phase reste
-strictement statique : aucun DDEV, Docker, Drush, Chromium, Playwright, Mailpit,
-navigateur ou VPS n’est utilisé. Terminal 1 / PR #113 possède seul DDEV et le
-checkout servant. Le runtime de #94 reste différé, soumis à une nouvelle
-autorisation même après la fin de #113 ; la PR demeure en brouillon.
+La nouvelle autorisation du 7 septembre confie ensuite le runtime exclusivement
+à #94, après restauration et arrêt par le terminal 1. Le head testé est
+`3cebbbf36ebd26ef5a5d0e04e26b1e0f06a6bfd5` ; la base distante n’a pas changé,
+donc aucun nouveau rebase. La validation réelle ci-dessous démontre trois
+blocages : repli sur sortie finalement vide, contraste des blocs configurés,
+ordre visuel des messages de compte. La PR reste en brouillon. Cette reprise
+ne modifie que ce compte rendu, pas les trois Twig. Aucun travail sur les alias,
+#90, les worktrees/preuves #113 ou #82, aucun VPS ni service transactionnel externe.
 
 ## Audit du shell existant
 
@@ -63,8 +66,9 @@ son centrage/largeur/z-index et l’overflow de l’inner (`:1540–1554`).
 `css/auth-account.css:43–65` borne la largeur/hauteur du frame des comptes et
 définit l’inner flex. `editorial-home.css:2–12` garde le même frame sur
 `body.section-accueil`, avec padding adaptatif et inner overflow-visible ; sa
-grille interne gère le rail et les Articles. Les dimensions calculées, le
-repliement et l’absence effective de piège restent à vérifier en runtime.
+grille interne gère le rail et les Articles. Les dimensions calculées et
+l’absence de piège ont été contrôlées dans la passe réelle ci-dessous ; elles
+ne règlent pas les trois blocages constatés.
 
 ### Région Drupal et comportement de Bootstrap Barrio
 
@@ -73,8 +77,9 @@ fichier `unisonges_theme.info.yml` déclare seulement les régions `header`,
 `primary_menu`, `content` et `footer`. L’audit conservé du 2 septembre comptait
 19 blocs synchronisés Uni-Songes, aucun dans `footer` ; ce total historique
 précède #103. Son nouveau bloc est explicitement dans `content`, poids 0.
-La configuration active n’a pas été interrogée ici : la présence d’un fichier
-YAML ne prouve pas l’état Drupal actuellement déployé.
+Lors de l’audit statique, la configuration active n’avait pas été interrogée.
+Le snapshot local de cette passe ne contient aucun bloc Uni-Songes en footer ;
+cela ne prouve toujours pas l’état de production.
 
 Composer verrouille Bootstrap Barrio 5.5.20. Son template de page fournit son
 propre footer et cinq régions `footer_*`, mais les deux templates de page du
@@ -82,13 +87,13 @@ sous-thème remplacent ce template. Barrio n’ajoute donc aucun footer autour d
 leur sortie. Les blocs `bootstrap_barrio_powered` et `olivero_powered`
 appartiennent à d’autres thèmes et ne peuplent pas la région Uni-Songes.
 
-La classe `.site-footer` et la classe `.container` sont déjà définies dans la
-feuille du thème. Les utilitaires `d-flex` et `flex-column` sont fournis par
-Bootstrap 5 : le sous-thème hérite de Bootstrap Barrio 5.5.20, qui requiert
-`twbs/bootstrap ^5`, verrouillé ici en 5.3.8, et la configuration synchronisée
-sélectionne sa bibliothèque `production`. Ils sont appliqués seulement à `main` afin de
-préserver l’ordre flex de #99 sans nouveau style. La liste du footer se replie
-naturellement lorsque la largeur diminue.
+La classe `.site-footer` et la classe `.container` sont définies dans la feuille
+du thème. L’hypothèse statique sur `d-flex`/`flex-column` est infirmée : la
+présence de Bootstrap 5.3.8 dans Composer et du réglage `production` ne prouve
+pas son chargement. Barrio ne lit ce réglage qu’avec le module
+`bootstrap_library`, absent de la configuration fusionnée ; sinon il attend
+`bootstrap_barrio_source`, également absent. Chromium calcule donc
+`main { display: block }`. Aucun asset n’a été ajouté pour masquer cet écart.
 
 ### Landmarks, messages, comptes et navigation existants
 
@@ -102,11 +107,11 @@ message, ni destination tardive, ni contournement JavaScript. Le chemin des
 messages reste donc unique, dans le contenu principal, sans wrapper fixe ou
 toast.
 
-Les classes `main.d-flex.flex-column` validées lors de la première passe sont
-conservées. #99 définit le titre à `order: -30` et les messages à `order: -20`,
-avec les poids de blocs source −7 et −8. Les fixtures vérifient le main flex et
-le chemin de messages, mais ne prouvent pas l’effet des wrappers de région
-Drupal/Barrio sur cet ordre visuel : cela reste un test runtime. Le formulaire,
+Les classes `main.d-flex.flex-column` de la première passe sont conservées,
+mais sans effet flex réel. #99 définit le titre à `order: -30` et les messages
+à `order: -20`, avec les poids de blocs source −7 et −8. La comparaison runtime
+confirme que le nouveau main interrompt le flex de l’inner : les messages
+précèdent maintenant le titre. C’est une régression de #94. Le formulaire,
 ses actions et le compte restent dans `page.content`, le footer après `main`
 et hors de tout formulaire. Aucun fichier de #99/#100 n’est modifié.
 
@@ -114,8 +119,8 @@ et hors de tout formulaire. Aucun fichier de #99/#100 n’est modifié.
 liste et son pager restent sous `page.content` dans `main`, avant le footer.
 Les fixtures utilisent maintenant le template éditorial réellement fusionné.
 Les gardes du helper #103 verrouillent les configurations titre/messages/contenu,
-pas le texte des shells : elles restent intactes. L’activation du bloc et son
-marqueur de déploiement exigent Drupal ; leur présence dans Git ne suffit pas.
+pas le texte des shells : elles restent intactes. Le helper fusionné a désormais
+activé le bloc et son marqueur dans la base locale sauvegardée, sans import.
 
 La source serveur du menu principal reste l’unique bloc
 `system_menu_block:main`, rendu une fois par `page.primary_menu` dans le header.
@@ -176,9 +181,9 @@ landmark et un contenu utile lorsque la région est vide. Le défaut corrigé le
 7 septembre était le test booléen du tableau brut : des métadonnées `#cache`
 ou des enfants `#access: false` suffisaient à masquer le repli. Le test porte
 désormais sur la sortie, sans `striptags` ni `raw` : un contenu « 0 » ou non
-textuel reste accepté. Les wrappers vides, placeholders/lazy builders et la
-propagation cache/attachments par le vrai renderer restent à vérifier dans
-Drupal ; la simulation ci-dessous ne les reproduit pas.
+textuel reste accepté. La simulation ne reproduit pas les wrappers vides et
+placeholders : les tests Drupal démontrent que ce choix n’assure pas le repli
+final dans ces cas. Les métadonnées sont conservées dans les probes réelles.
 
 Les liens visibles dans le cas de repli sont exactement :
 
@@ -196,7 +201,7 @@ approuvé doivent faire l’objet d’une décision explicite du propriétaire d
 contenu. Aucun texte ne doit être repris du site Cloudflare historique et aucun
 lien ne devra être publié avant cette validation.
 
-## Validation statique
+## Validation statique conservée, avant runtime
 
 Les preuves de la session précédente (Twig 3/3, quatre fixtures chaîne,
 unicité/ordre HTML, revues indépendantes) servent de base. La reprise réutilise
@@ -211,7 +216,8 @@ Nouvelles vérifications ciblées :
 - les quatre fixtures chaîne sont conservées ; huit formes de render arrays
   sont créées comme vrais tableaux PHP, transportées en JSON et rendues par un
   filtre factice limité à `#markup`, `#plain_text`, enfants et `#access: false` ;
-- normal/accueil × ces dix cas : 20 documents HTML, un main flex, un contenu,
+- normal/accueil × ces dix cas : 20 documents HTML, un main portant les classes
+  utilitaires, un contenu,
   un header, une source de navigation, un drawer, un chemin de messages, un
   footer frère suivant et un exemplaire de chaque ID BGFX ;
 - un appel de `|render` par footer ; zéro ou un contenu configuré, jamais le
@@ -234,193 +240,13 @@ PHP/Twig de Drupal et ne prouve ni cacheabilité, ni activation #103, ni wrapper
 réels, ni géométrie calculée. La revue indépendante ciblée confirme l’intégration
 structurelle #103 et conserve ces limites explicites, notamment l’ordre #99.
 
-### Reproduction exacte des fixtures
+### Reproduction des fixtures statiques
 
-Depuis ce worktree, le harness réutilise les deux caches déjà présents en
-lecture seule ; aucune installation et aucun fichier de sortie ne sont requis.
-Le PHP CLI crée uniquement les données, sans chargement de Drupal.
-
-```bash
-node - \
-  /home/vscode/.npm/_npx/f25bb07afff48db4/node_modules/twig \
-  /home/vscode/.npm/_npx/a2fa10d1427fa9f6/node_modules/html-validate <<'NODE'
-const fs = require('node:fs');
-const path = require('node:path');
-const { execFileSync } = require('node:child_process');
-const Twig = require(process.argv[2]);
-const { HtmlValidate } = require(process.argv[3]);
-const root = path.resolve('drupal/web/themes/custom/unisonges_theme/templates');
-const sources = ['page.html.twig', 'page--front.html.twig', 'includes/_footer.html.twig'];
-const expectedLinks = [
-  ['/cours-et-stages', 'Cours & Stages'], ['/ateliers', 'Projets collectifs'],
-  ['/a-propos', 'À propos'], ['/blog', 'Blog'], ['/contact', 'Contact'],
-];
-const ok = (value, message) => { if (!value) throw new Error(message); };
-const visible = element => element.textContent
-  .replaceAll('&amp;', '&').replace(/\s+/gu, ' ').trim();
-const escape = value => String(value).replaceAll('&', '&amp;')
-  .replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
-let renderCalls = 0;
-let safeMarkup;
-Twig.extend(core => { safeMarkup = core.Markup; });
-// Simulation limitée : pas de theme wrappers, cache, lazy builder ou placeholder.
-function renderArray(value) {
-  if (value == null || value === false) return '';
-  if (typeof value !== 'object') return String(value);
-  if (value['#access'] === false) return '';
-  if ('#plain_text' in value) return escape(value['#plain_text']);
-  if ('#markup' in value) return String(value['#markup']);
-  return Object.entries(value).filter(([key]) => !key.startsWith('#'))
-    .map(([, child]) => renderArray(child)).join('');
-}
-Twig.extendFilter('render', value => {
-  renderCalls++;
-  return safeMarkup(renderArray(value));
-});
-Twig.extendFilter('t', (value, params = []) =>
-  Object.entries(params[0] || {}).reduce((text, [key, replacement]) =>
-    text.replaceAll(key, String(replacement)), value));
-Twig.extendFunction('attach_library', () => '');
-Twig.extendFunction('path', route => ({
-  '<front>': '/', 'user.page': '/user', 'user.login': '/user/login',
-  'user.logout': '/user/logout', 'user.register': '/user/register',
-})[route] || '/fixture');
-Twig.extendFunction('include', function (file) {
-  return this.template.importFile(file).render(this.context, { isInclude: true });
-});
-for (const source of sources) {
-  const filename = path.join(root, source);
-  ok(typeof Twig.compile(fs.readFileSync(filename, 'utf8'), {
-    filename, settings: {'twig options': {namespaces: {unisonges_theme: root}}},
-  }) === 'function', 'compile ' + source);
-}
-const marker = '<div data-fixture-region="configured">Région configurée</div>';
-const phpCases = JSON.parse(execFileSync('php', ['-r', `
-$marker = '<div data-fixture-region="configured">Région configurée</div>';
-echo json_encode([
-  'array-empty' => [[], false, 0],
-  'cache-only' => [['#cache' => ['tags' => ['config:block_list']]], false, 0],
-  'empty-markup' => [['#markup' => '', '#attached' => ['library' => []]], false, 0],
-  'whitespace' => [['#markup' => " \n\t"], false, 0],
-  'denied' => [['block' => ['#access' => false, '#markup' => $marker]], false, 0],
-  'nested' => [['#cache' => ['contexts' => ['user.permissions']],
-    'block' => ['#markup' => $marker]], true, 1],
-  'zero' => [['#markup' => '0'], true, 0],
-  'nontext' => [['#markup' => '<hr>'], true, 0],
-], JSON_THROW_ON_ERROR);
-`], {encoding: 'utf8'}));
-const cases = [
-  ['empty', ['', false, 0]], ['populated', [marker, true, 1]],
-  ...Object.entries(phpCases),
-];
-const editorial = Twig.twig({
-  path: path.resolve('drupal/web/modules/custom/unisonges_editorial_home/'
-    + 'templates/unisonges-editorial-home.html.twig'),
-  async: false, rethrow: true,
-}).render({
-  all_articles_url: '/accueil', collection_start_url: '/accueil',
-  about_url: '/a-propos', selected_theme: null, theme_invalid: false,
-  theme_filtered: false, selected_theme_name: '', themes: [],
-  articles: [1, 2].map(i => ({
-    title: 'Article ' + i, url: '/node/' + i, datetime: '2026-09-07',
-    date: '7 septembre 2026', terms: [], emphasized: i === 1,
-    summary: '<p>Résumé de fixture.</p>',
-  })),
-  pager: {page: 1, previous: '/accueil', next: '/accueil?page=2'},
-});
-const validator = new HtmlValidate({
-  extends: ['html-validate:recommended'],
-  rules: {'no-redundant-role': 'off', 'void-style': 'off', 'no-trailing-whitespace': 'off'},
-});
-(async () => {
-  let total = 0;
-  for (const [kind, shell] of [['normal', 'page.html.twig'], ['front', 'page--front.html.twig']]) {
-    const template = Twig.twig({
-      path: path.join(root, shell), async: false,
-      namespaces: {unisonges_theme: root}, rethrow: true,
-    });
-    for (const [state, [footer, populated, markers]] of cases) {
-      const name = kind + '-' + state;
-      const fixtureNav = '<nav data-fixture-nav="main" aria-label="Navigation principale"></nav>';
-      renderCalls = 0;
-      const fragment = template.render({
-        site_name: 'Uni-Songes', logo: '', logged_in: false,
-        page: {
-          header: '<p data-unexpected-header>Ne doit pas être rendu</p>',
-          highlighted: '', help: '',
-          navigation: populated ? fixtureNav : '',
-          primary_menu: populated ? '' : fixtureNav,
-          content: '<div class="unisonges-system-messages" data-drupal-messages>'
-            + '<div class="messages__wrapper"></div></div>'
-            + '<div class="unisonges-page-title-block" data-fixture-content="main"><h1>Fixture</h1></div>'
-            + (kind === 'front' ? editorial : '<form class="auth-account-form" action="/user/login" method="post">'
-              + '<label for="fixture-name">Nom</label><input type="text" id="fixture-name" name="name">'
-              + '<button type="submit">Se connecter</button></form>'),
-          footer,
-        },
-      });
-      ok(renderCalls === 1, name + ': render filter called once');
-      const html = '<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">'
-        + '<title>Fixture</title></head><body><a href="#main-content">Éviter</a>'
-        + fragment + '</body></html>';
-      const report = await validator.validateString(html, name + '.html');
-      const diagnostics = report.results.flatMap(result => result.messages);
-      // Reproduit aussi avec le shell origin/release/prod sans footer :
-      // html-validate inclut le drawer <aside hidden> parmi les landmarks.
-      const inherited = diagnostic => kind === 'front'
-        && diagnostic.ruleId === 'unique-landmark' && diagnostic.selector === '#mobile-drawer';
-      ok(diagnostics.filter(inherited).length === (kind === 'front' ? 1 : 0),
-        name + ': inherited drawer diagnostic');
-      ok(diagnostics.every(inherited), name + ': unexpected HTML diagnostics '
-        + JSON.stringify(diagnostics));
-      const dom = (await validator.getParserFor(name + '.html')).parseHtml(html);
-      const count = selector => dom.querySelectorAll(selector).length;
-      for (const [selector, expected] of [
-        ['main', 1], ['main#main-content.d-flex.flex-column', 1],
-        ['footer', 1], ['footer.site-footer > .container > p', 1],
-        ['#unisonges-scrollframe.scrollframe', 1], ['.scrollframe__inner', 1],
-        ['.scrollframe .scrollframe', 0], ['main footer, form footer', 0],
-        ['.scrollframe__inner > main#main-content + footer.site-footer', 1],
-        ['.unisonges-system-messages[data-drupal-messages]', 1],
-        ['main .unisonges-system-messages', 1], ['[data-unexpected-header]', 0],
-        ['header .unisonges-system-messages, footer .unisonges-system-messages', 0],
-        ['a[href="#main-content"]', 1], ['header.site-header', 1],
-        ['[data-fixture-nav]', 1], ['#mobile-drawer', 1], ['[data-fixture-content]', 1],
-        ['#unisonges-bgfx', 1], ['#unisonges-bgfx-scroll', 1], ['#unisonges-bgfx-layer', 1],
-        ['#unisonges-bgfx > #unisonges-bgfx-scroll > #unisonges-bgfx-layer', 1],
-        ['[data-fixture-region]', markers], ['h1', 1],
-        ['footer h1, footer h2, footer h3, footer form', 0],
-        ['main .auth-account-form', kind === 'normal' ? 1 : 0],
-        ['main .unisonges-editorial-home', kind === 'front' ? 1 : 0],
-        ['main .unisonges-editorial-home__articles > li', kind === 'front' ? 2 : 0],
-        ['main .unisonges-editorial-home__pager', kind === 'front' ? 1 : 0],
-        ['main .unisonges-editorial-home__disclosure', kind === 'front' ? 2 : 0],
-        ['footer .unisonges-editorial-home', 0],
-      ]) ok(count(selector) === expected, name + ': ' + selector);
-      const ids = dom.querySelectorAll('[id]').map(node => node.getAttributeValue('id'));
-      ok(ids.length === new Set(ids).size, name + ': unique IDs');
-      ok(dom.querySelectorAll('[tabindex]').every(node =>
-        Number(node.getAttributeValue('tabindex')) <= 0), name + ': tabindex');
-      ok(!/mentions-legales|politique-confidentialite/u.test(html), name + ': legal route');
-      const footerNode = dom.querySelector('footer');
-      ok(visible(footerNode.querySelector('.container > p')) === 'Uni-Songes', name + ': identity');
-      const links = footerNode.querySelectorAll('a').map(node =>
-        [node.getAttributeValue('href'), visible(node)]);
-      ok(JSON.stringify(links) === JSON.stringify(populated ? [] : expectedLinks),
-        name + ': exact footer links');
-      ok(footerNode.querySelectorAll('nav').filter(node =>
-        node.getAttributeValue('aria-label') === 'Navigation de pied de page').length === (populated ? 0 : 1),
-        name + ': exclusive fallback');
-      if (state === 'zero') ok(visible(footerNode).endsWith('0'), name + ': zero retained');
-      if (state === 'nontext') ok(count('footer hr') === 1, name + ': nontext retained');
-      console.log('FIXTURE OK ' + name);
-      total++;
-    }
-  }
-  console.log('TWIG 3/3; FIXTURES/DOM ' + total + '/20 OK; HTML: zero new diagnostics, 10 inherited drawer diagnostics');
-})().catch(error => { console.error(error.message); process.exitCode = 1; });
-NODE
-```
+Le harness intégral reste versionné dans ce document au commit
+`3cebbbf36ebd26ef5a5d0e04e26b1e0f06a6bfd5` (`git show
+3cebbbf:docs/functional/public-footer-foundation-2026.md`). Il utilise les caches
+Twig.js et html-validate existants, sans installation. Ses 20 résultats restent
+des preuves de simulation ; les contre-exemples Drupal ci-dessous les complètent.
 
 ## Revue clavier et landmarks
 
@@ -437,40 +263,160 @@ pied de page du site et bénéficie du rôle implicite `contentinfo`. La navigat
 de repli possède un nom accessible propre. Les liens sont dans une liste
 sémantique verticale et peuvent revenir à la ligne sans largeur imposée.
 
-## Matrice Drupal et navigateur différée
+## Validation réelle du 7 septembre 2026
 
-Terminal 1 / PR #113 possède seul DDEV et le checkout servant. Sa libération
-ne déclenche aucun runtime de #94 : une nouvelle autorisation est obligatoire.
-Aucun runtime n’est revendiqué et la PR reste en brouillon.
+### Préparation isolée et preuves
 
-Séquence de reprise sous cette future autorisation :
+Checkout servant initial `/workspaces/Uni-Songes`, branche `release/prod`,
+propre à `9ef3d4a`. DDEV et router arrêtés, aucun autre test actif. Snapshot frais
+`pr94-footer-before-runtime-20260907`, export SQL, archive des fichiers publics
+et empreintes pris avant les fixtures. État initial : 314 configurations,
+59 modules, thèmes Olivero/Claro, front `/node`, maintenance désactivée,
+7 comptes locaux, 0 node, 16 alias, 4 produits locaux, 0 commande/soumission.
+Aucun de ces contenus préexistants n’a été supprimé pour préparer les tests.
 
-1. vérifier la disponibilité auprès de #113, le checkout approuvé et le SHA de
-   base ; actualiser la branche seulement si nécessaire et relancer les gardes
-   affectées avant de consigner le SHA testé ;
-2. sur Drupal local approuvé, tester une région footer vide puis peuplée d’un
-   bloc contrôlé ; routes dans l’ordre accueil, Basic page, page courte, page
-   longue, réservation, Blog, Forum, Contact, panier Commerce, connexion,
-   inscription, mot de passe et compte ; chacune desktop → tablette → mobile ;
-3. tester l’accueil #103 avec zéro/un/plusieurs Articles, longue liste,
-   pagination et chacun des deux panneaux fermé/ouvert ; couvrir les états
-   réels de région décrits ci-dessous et les caches froid/chaud ;
-4. contrôler les logs et la console pendant les parcours, restaurer l’état
-   initial de la région et refaire un smoke accueil/Basic page. Consigner les
-   preuves avant toute décision de passage hors brouillon.
+Les API Drupal ont préparé le thème, ses quatre blocs du shell et les quatre
+hubs exacts nécessaires aux helpers fusionnés. Leurs gardes sont restées
+intactes : Forum/Blog puis accueil #103, en maintenance, dry-run puis apply
+avec sauvegarde et, pour #103, token exact. Les extensions requises par leur
+inventaire ont été activées temporairement ; aucun import de configuration.
+L’ordre initial d’activation de Redirect/Sitemap ajoutait deux extra-fields au
+formulaire Forum : cet essai a été annulé par la transaction du helper, puis
+la préparation ordonnée a réussi. Aucun fichier de ces fonctionnalités modifié.
 
-| Contrôle restant | Preuve attendue |
+Un bloc de probe temporaire, non suivi, a fourni les états de région ; six
+Basic pages et douze Articles ont servi aux parcours. Les deux alias de fixture
+Contact/réservation pointaient directement vers les routes Drupal existantes,
+sans modifier les alias initiaux. Aucun paiement, soumission, email, accès
+Google, Mailpit ou VPS. Le module et les données de probe ne font pas partie
+de la PR.
+
+Preuves locales durables :
+`/workspaces/Uni-Songes/.git/pr94-runtime-20260907.HD21qnVF/`.
+Les scripts ciblés `region-probe.php`, `block-cache-probe.php`, `browser.cjs`,
+les JSON/HTML, captures et logs des helpers y sont conservés. Ils réutilisent
+Drupal 11.3.3, PHP 8.3.31, Twig PHP 3.22.2, Chromium 140.0.7339.16 et les caches
+Playwright 1.62.0/html-validate 9.7.1, sans installation de dépendance.
+Les dumps et états d’authentification restent locaux, jamais publiés dans Git.
+
+### Région réelle, cache et BigPipe
+
+Trois Twig compilés par le moteur PHP réel ; 16 probes de région avec/sans
+wrapper ; 54 observations navigateur (9 états × 3 rôles × froid/chaud),
+complétées par les cas normaux, région sans bloc placé et image corrigée.
+
+| État réel | Résultat final |
 | --- | --- |
-| Région réellement vide, métadonnées seules, tous blocs refusés | Cinq liens de repli ; pas de fausse région peuplée |
-| Région peuplée, cache/attachments | Sortie une fois, aucun repli ; propagation du cache et des bibliothèques correcte |
-| Wrappers vides, lazy builders/placeholders | Décision de repli correcte après rendu Drupal ; pas de double rendu |
-| Activation #103 et ses états Article/pager/panneaux | Bloc réellement activé ; contenu complet dans main, footer ensuite |
-| #99/#100 avec vrais wrappers Drupal/Barrio | Titre/messages/formulaire dans l’ordre prévu ; un seul chemin inline, hors footer |
-| DOM et arbre accessible, drawer fermé/ouvert | Un main, un footer, navigation nommée ; examiner le diagnostic hérité du drawer |
-| Clavier, lien d’évitement, dernier cran, tactile | Focus visible ; cible `#main-content` ; footer entièrement atteignable |
-| Desktop/tablette/mobile, pages courtes et longues | Header fixe utilisable, BGFX autonome et bords sûrs ; aucun overflow horizontal ni scroll imbriqué effectif |
-| Réservation, Contact, Commerce et compte | Formulaires/actions utilisables ; footer après tout le contenu |
-| Logs PHP et console | Aucun warning/erreur nouveau |
+| Aucun bloc placé, bloc vide, bloc refusé | Identité et cinq liens exacts ; pass |
+| Métadonnées seules sans wrapper | Repli et métadonnées conservés ; pass |
+| Bloc réel à métadonnées seules | Wrapper vide, repli absent ; **bloquant** |
+| Texte visible ou « 0 » | Sortie une fois, aucun repli ; contraste insuffisant |
+| Image enfant du bloc | Une image chargée, 40 × 40 px, aucun repli ; pass |
+| Lazy visible | Sortie une fois, aucun repli, attachments conservés ; pass rendu |
+| Lazy vide, ou lazy privé refusé à l’anonyme | Sortie finalement vide, repli absent ; **bloquant** |
 
-Le CTA Blog de #103 et le lien Blog du footer ont des fonctions distinctes ;
-aucun thème, pager ou composant éditorial n’est copié dans le footer.
+Les 21 probes du vrai BlockViewBuilder vérifient un maximum d’un appel de
+build/lazy par rendu, ainsi que les tags de bloc/probe, contextes de rôle/query
+et de compte pour le lazy privé, et les bibliothèques/settings attachés.
+Les traces HTTP montrent les caches HIT/MISS et la stabilité des résultats.
+Aucun texte membre/admin n’apparaît chez l’anonyme ; chaque rôle reçoit sa
+sortie attendue. Le flux BigPipe membre contient start/stop et des substitutions
+dans les deux cas lazy visible/vide ; aucun placeholder ne subsiste dans le DOM,
+aucune exception de rendu anticipé n’est observée sur ces requêtes.
+
+`trim()` examine ici un wrapper ou placeholder, pas la visibilité finale.
+Retirer des balises ne serait pas une correction sûre : cela perdrait les
+images et ne résoudrait pas le rendu différé. La décision de repli exige une
+politique de rendu autorisée au-delà des seuls Twig actuels.
+
+Le premier probe d’image plaçait ses attributs à la racine du bloc, où Drupal
+les transférait au wrapper : il ne prouvait pas une image visible. Le probe
+corrigé utilise un enfant image ; six passages froid/chaud sur trois rôles
+confirment une seule image chargée. Les premiers 404 Contact et 403 compte
+provenaient respectivement d’une chaîne d’alias de fixture et d’un lien de
+connexion à usage unique réutilisé ; les reprises ciblées retournent 200,
+avec UID 2 et surface propriétaire vérifiés. Ces essais restent dans les logs.
+
+### Navigateur et comparaison à la base
+
+Parcours : accueil sans Article puis 12 Articles (10 + pager vers les 2
+suivants), Basic courte/longue, Blog, Forum, Contact réel, réservation, panier
+vide, connexion, inscription, réinitialisation et compte propriétaire.
+Footer toujours frère après main, hors formulaire ; un contenu, un header,
+une source de menu, un drawer, IDs BGFX/scrollframe et cible skip conservés.
+Le message de test apparaît une fois dans main, jamais dans le footer.
+
+Les comportements accueil/longue page/connexion ont été regroupés aux tailles
+1440×900, 768×1024, 390×844, 320×740 et 640×450. Ce dernier viewport contrôle
+le reflow équivalent à 200 % d’une fenêtre 1280×900 ; ce n’est pas une commande
+de zoom natif de l’interface du navigateur. Les 25 observations géométriques
+de branche passent : footer entièrement atteignable en fin de scrollframe,
+pas d’overflow horizontal ni de scroller imbriqué. Header/BGFX restent fixes.
+Les panneaux fermés/ouverts restent dans main. Le drawer se ferme avec Échap
+après sa transition et rend le focus au bouton. Les cinq liens du footer sont
+parcourus avec Tab et restent visibles ; le skip mène au contenu et le Tab
+suivant au premier champ de connexion. Aucun formulaire n’a été utilisé pour
+effectuer une réservation, un paiement ou un envoi de message.
+
+Deux problèmes visuels restent :
+
+- Barrio donne à `.site-footer .content` du blanc à 65 %, et aux liens du blanc
+  à 80 %, sur le fond clair du frame (`rgb(255,250,240)` + noir à 2 % du footer).
+  Contrastes calculés depuis les styles réels : environ **1,06:1 / 1,07:1**.
+  Les captures confirment un contenu presque invisible. Ces règles héritées
+  rendent le cas configuré non acceptable ; aucun CSS correctif ajouté.
+- Sur les cinq tailles, la base affiche **titre → messages → formulaire**,
+  la branche **messages → titre → formulaire**. Le nouvel ancêtre main non
+  flex introduit cette régression #99, malgré l’unique chemin inline #100.
+  Reprendre la classe `scrollframe__inner` sur main changerait la structure et
+  le padding du footer ; ajouter Bootstrap changerait les assets. Aucune de
+  ces décisions n’est introduite silencieusement ici.
+
+HTML et arbre accessible comparés sur les mêmes fixtures base/branche :
+`unique-landmark` sur le drawer sans nom est strictement hérité. Fermé, il est
+absent de l’arbre accessible ; ouvert, son complément non nommé apparaît
+dans les deux versions. Le rail #103 reste nommé. Les diagnostics sur styles
+inline BGFX et attributs `hidden` sont également identiques ; aucune exclusion
+générale n’a masqué ces résultats. La branche ajoute l’unique `contentinfo`.
+Les requêtes finales ne produisent aucun HTTP 5xx ni erreur console nouvelle.
+Les dépréciations ECA/Entity pendant la préparation sont distinguées des tests
+du footer ; l’unique entrée PHP du watchdog est antérieure à cette reprise
+et vient d’un ancien `php:eval` Drush, pas des pages testées.
+
+### Décision et point de reprise
+
+La revue indépendante confirme les trois blocages et ne trouve aucun correctif
+Twig sûr dans le périmètre imposé. PR #94 reste **brouillon**, sans modification
+des trois templates testés et sans merge. Avant une nouvelle passe, il faut
+autoriser une solution ciblée pour la décision de rendu différé, le contraste
+du bloc et le flex du main, ou décider explicitement d’un autre contrat de
+structure. Rejouer ensuite ces cellules, leurs caches et la comparaison auth ;
+les preuves sans changement restent réutilisables. Le zoom navigateur natif
+reste distinct du contrôle de reflow équivalent effectué ici.
+
+### Restauration et libération
+
+Le snapshot frais a été restauré, puis le checkout servant remis sur sa branche
+initiale `release/prod` à `9ef3d4a`, propre. Les six pages, douze Articles,
+huit alias et autres données de probe ont disparu avec cette restauration ;
+les sept comptes, seize alias et quatre produits locaux préexistants sont
+inchangés. Les configurations, thèmes, front `/node`, maintenance et empreintes
+d’entités correspondent exactement au relevé initial (`cmp` des deux JSON).
+
+- Dump SQL normalisé, avant/après restauration :
+  `e753afc47351ef4869fd87184b5df9602fa40650046e16b53836834cb4b89d7a`.
+- 314 configurations actives, empreinte canonique :
+  `e96a6b849b5e15c6e16fde5b6494a9e57fe9f7161dd8398c819963ddfdfc2127`.
+- Archives normalisées des fichiers publics, identiques avant/après :
+  `8ddca913cb61f995cf210bcbb878ff17a7af2c4c69a53eef9677568a514b47e1`.
+
+Le module temporaire et les seuls fichiers générés pendant les tests ont été
+déplacés dans le dossier de preuves privé, hors de l’arbre servi ; ils restent
+récupérables. Les deux fichiers publics initiaux et leurs dossiers sont
+préservés. Aucun retrait de données d’un autre travail. DDEV et router sont
+arrêtés, Chromium fermé : environnement explicitement libéré, sans lancement
+automatique de #90 ou d’une autre validation.
+
+Gardes finales : diff exact des quatre fichiers autorisés, aucun changement des
+trois Twig dans cette reprise, UTF-8/NFC, `git diff --check`, scan des ajouts
+pour secrets ; aucun recouvrement avec les fichiers des 21 autres PR ouvertes.
