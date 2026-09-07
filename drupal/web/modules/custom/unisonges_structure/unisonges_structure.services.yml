@@ -1,3 +1,6 @@
+parameters:
+  unisonges_structure.booking_calendar_state.lease_seconds: 120
+
 services:
   logger.channel.unisonges_booking_sync:
     parent: logger.channel_base
@@ -5,10 +8,9 @@ services:
 
   unisonges_structure.google_calendar_client:
     class: Drupal\unisonges_structure\GoogleCalendar\GoogleCalendarClient
-    arguments:
-      - '@http_client'
-      - '@config.factory'
-      - '@logger.channel.unisonges_booking_sync'
+
+  unisonges_structure.google_calendar_activation_boundary:
+    class: Drupal\unisonges_structure\GoogleCalendar\GoogleCalendarActivationBoundary
 
   unisonges_structure.booking_calendar_sync:
     class: Drupal\unisonges_structure\GoogleCalendar\BookingCalendarSyncService
@@ -19,3 +21,41 @@ services:
       - '@datetime.time'
       - '@logger.channel.unisonges_booking_sync'
       - '@unisonges_structure.google_calendar_client'
+      - '@unisonges_structure.google_calendar_activation_boundary'
+
+  unisonges_structure.booking_calendar_state.clock:
+    class: Drupal\unisonges_structure\GoogleCalendar\State\DrupalClock
+    arguments:
+      - '@datetime.time'
+
+  unisonges_structure.booking_calendar_state.transition_policy:
+    class: Drupal\unisonges_structure\GoogleCalendar\State\BookingSyncTransitionPolicy
+
+  unisonges_structure.booking_calendar_state.retry_policy:
+    class: Drupal\unisonges_structure\GoogleCalendar\State\BookingSyncRetryPolicy
+
+  unisonges_structure.booking_calendar_state.failure_classifier:
+    class: Drupal\unisonges_structure\GoogleCalendar\State\BookingSyncFailureClassifier
+
+  unisonges_structure.booking_calendar_state.lifecycle:
+    class: Drupal\unisonges_structure\GoogleCalendar\State\BookingSyncLifecycle
+    arguments:
+      - '@unisonges_structure.booking_calendar_state.clock'
+      - '@unisonges_structure.booking_calendar_state.transition_policy'
+      - '@unisonges_structure.booking_calendar_state.retry_policy'
+      - '@unisonges_structure.booking_calendar_state.failure_classifier'
+      - '%unisonges_structure.booking_calendar_state.lease_seconds%'
+
+  unisonges_structure.booking_calendar_state.repository:
+    class: Drupal\unisonges_structure\GoogleCalendar\State\BookingSyncStateRepository
+    arguments:
+      - '@database'
+      - '@unisonges_structure.booking_calendar_state.lifecycle'
+
+  unisonges_structure.booking_calendar_state.diagnostics:
+    class: Drupal\unisonges_structure\GoogleCalendar\State\BookingSyncDiagnosticReader
+    arguments:
+      - '@database'
+
+  unisonges_structure.booking_calendar_state.legacy_classifier:
+    class: Drupal\unisonges_structure\GoogleCalendar\State\LegacyBookingSyncClassifier
