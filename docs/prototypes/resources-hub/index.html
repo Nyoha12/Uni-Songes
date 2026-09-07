@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ressources — prototype fictif Uni-Songes</title>
+    <link rel="stylesheet" href="prototype.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#prototype-main"
+      >Aller au contenu du prototype</a
+    >
+
+    <p class="prototype-status" role="note">
+      Prototype statique · toutes les ressources, catégories et dates sont
+      fictives
+    </p>
+
+    <header class="prototype-header">
+      <div class="prototype-header__inner">
+        <span class="wordmark">Uni-Songes</span>
+
+        <div class="menu-preview menu-preview--wide">
+          <ul>
+            <li><span>Cours &amp; Stages</span></li>
+            <li><span>Concerts &amp; Événements</span></li>
+            <li><span>Projets collectifs</span></li>
+            <li>
+              <span class="is-current" aria-current="page">Ressources</span>
+            </li>
+            <li><span>Boutique</span></li>
+            <li><span>À propos</span></li>
+            <li><span>Contact</span></li>
+          </ul>
+        </div>
+
+        <details class="menu-preview menu-preview--compact">
+          <summary>Menu <span aria-hidden="true">+</span></summary>
+          <div class="menu-preview__panel">
+            <ul>
+              <li><span>Cours &amp; Stages</span></li>
+              <li><span>Concerts &amp; Événements</span></li>
+              <li><span>Projets collectifs</span></li>
+              <li>
+                <span class="is-current" aria-current="page">Ressources</span>
+              </li>
+              <li><span>Boutique</span></li>
+              <li><span>À propos</span></li>
+              <li><span>Contact</span></li>
+            </ul>
+          </div>
+        </details>
+      </div>
+    </header>
+
+    <main id="prototype-main" tabindex="-1">
+      <header class="page-introduction">
+        <p class="eyebrow">Proposition de design · contenu fictif</p>
+        <h1>Ressources</h1>
+        <p class="lead">
+          Cette future page réunirait des liens externes décrits de façon
+          concise et factuelle. Leur présence ne vaudrait ni partenariat ni
+          caution globale du contenu externe ; chaque inclusion resterait
+          soumise à une validation éditoriale.
+        </p>
+        <p class="external-note">
+          Les destinations externes sont signalées par
+          <span aria-hidden="true">↗</span> et s'ouvrent ici dans le même
+          onglet.
+        </p>
+      </header>
+
+      <nav
+        class="state-navigation"
+        aria-label="États de la planche de prototype"
+      >
+        <p>Voir un état :</p>
+        <ul>
+          <li><a href="#etat-vide">Aucune ressource</a></li>
+          <li><a href="#quelques-ressources">Quelques ressources</a></li>
+          <li><a href="#un-theme">Un thème</a></li>
+          <li><a href="#nombreuses-ressources">Nombreuses ressources</a></li>
+          <li><a href="#ressource-masquee">Ressource masquée</a></li>
+          <li><a href="#mobile-320">Guide de contrôle à 320 px</a></li>
+        </ul>
+        <p class="state-navigation__note">
+          Ces états sont présentés ensemble pour la revue ; ils seraient
+          mutuellement exclusifs sur la page publique.
+        </p>
+      </nav>
+
+      <section
+        class="prototype-state"
+        id="etat-vide"
+        aria-labelledby="etat-vide-title"
+      >
+        <header class="state-heading">
+          <p class="state-label">État 1 · zéro ressource publiée</p>
+          <h2 id="etat-vide-title">Aucune ressource</h2>
+        </header>
+        <div class="empty-state">
+          <p>Aucune ressource n'est publiée pour le moment.</p>
+          <p>
+            Cette page sera complétée après réception et vérification des liens.
+          </p>
+        </div>
+      </section>
+
+      <section
+        class="prototype-state"
+        id="quelques-ressources"
+        aria-labelledby="quelques-ressources-title"
+      >
+        <header class="state-heading">
+          <p class="state-label">
+            État 2 · quelques ressources · thèmes multiples
+          </p>
+          <h2 id="quelques-ressources-title">
+            Une sélection courte et groupée
+          </h2>
+        </header>
+
+        <nav class="theme-navigation" aria-label="Thèmes fictifs de cet état">
+          <span>Parcourir :</span>
+          <a href="#theme-exemple-a">Thème exemple A</a>
+          <a href="#theme-exemple-b">Thème exemple B</a>
+        </nav>
+
+        <section class="resource-group" id="theme-exemple-a">
+          <header class="group-heading">
+            <p>Thème fictif</p>
+            <h3 id="theme-a-title">Thème exemple A</h3>
+          </header>
+
+          <div class="resource-list">
+            <article class="resource-item">
+              <h4>
+                <a
+                  class="resource-link"
+                  href="https://example.invalid/ressource-exemple-01"
+                  rel="external"
+                >
+                  Ressource exemple 01
+                  <span class="external-mark" aria-hidden="true">↗</span>
+                  <span class="visually-hidden"> — site externe</span>
+                </a>
+              </h4>
+              <p class="resource-description">
+                Description factuelle fictive de la destination, à remplacer par
+                une phrase fournie puis vérifiée.
+              </p>
+              <ul class="resource-meta">
+                <li>Thème exemple A</li>
+                <li>Type exemple</li>
+                <li>Langue exemple</li>
+              </ul>
+              <p class="resource-url">
+                <span class="resource-url__label">Adresse du site :</span>
+                https://example.invalid/ressource-exemple-01
+              </p>
+              <p class="verification-note">
+                Vérification fictive :
+                <time datetime="2026-08-15">15 août 2026</time>
+              </p>
+            </article>
+
+            <article class="resource-item">
+              <h4>
+                <a
+                  class="resource-link"
+                  href="https://example.invalid/ressource-exemple-titre-long"
+                  rel="external"
+                >
+                  Ressource exemple dont le titre volontairement très long doit
+                  rester lisible sur plusieurs lignes sans rompre la composition
+                  <span class="external-mark" aria-hidden="true">↗</span>
+                  <span class="visually-hidden"> — site externe</span>
+                </a>
+              </h4>
+              <p class="resource-description">
+                Description factuelle fictive destinée à éprouver une notice
+                dont le titre occupe davantage d'espace.
+              </p>
+              <ul class="resource-meta">
+                <li>Thème exemple A</li>
+                <li>Type exemple</li>
+                <li>Public exemple</li>
+              </ul>
+              <p class="resource-url">
+                <span class="resource-url__label">Adresse du site :</span>
+                https://example.invalid/ressource-exemple-titre-long
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section class="resource-group" id="theme-exemple-b">
+          <header class="group-heading">
+            <p>Thème fictif</p>
+            <h3 id="theme-b-title">Thème exemple B</h3>
+          </header>
+
+          <div class="resource-list">
+            <article class="resource-item">
+              <h4>
+                <a
+                  class="resource-link"
+                  href="https://example.invalid/ressource-exemple-03"
+                  rel="external"
+                >
+                  Ressource exemple 03
+                  <span class="external-mark" aria-hidden="true">↗</span>
+                  <span class="visually-hidden"> — site externe</span>
+                </a>
+              </h4>
+              <p class="resource-description">
+                Description factuelle fictive, sans appréciation, notation ou
+                relation supposée avec Uni-Songes.
+              </p>
+              <ul class="resource-meta">
+                <li>Thème exemple B</li>
+                <li>Type exemple</li>
+                <li>Langue exemple</li>
+              </ul>
+              <p class="resource-url">
+                <span class="resource-url__label">Adresse du site :</span>
+                https://example.invalid/ressource-exemple-03
+              </p>
+            </article>
+
+            <article class="resource-item">
+              <h4>
+                <a
+                  class="resource-link"
+                  href="https://example.invalid/ressource-exemple/chemin-volontairement-tres-long/pour-verifier-le-repli-de-l-adresse?parametre-exemple=valeur-fictive#fragment-exemple"
+                  rel="external"
+                >
+                  Ressource exemple 04 · URL longue
+                  <span class="external-mark" aria-hidden="true">↗</span>
+                  <span class="visually-hidden"> — site externe</span>
+                </a>
+              </h4>
+              <p class="resource-description">
+                Description factuelle fictive servant à contrôler le repli d'une
+                adresse longue sans masquer son hôte.
+              </p>
+              <ul class="resource-meta">
+                <li>Thème exemple B</li>
+                <li>Type exemple</li>
+                <li>Langue exemple</li>
+              </ul>
+              <p class="resource-url">
+                <span class="resource-url__label">Adresse du site :</span>
+                https://example.invalid/ressource-exemple/chemin-volontairement-tres-long/pour-verifier-le-repli-de-l-adresse?parametre-exemple=valeur-fictive#fragment-exemple
+              </p>
+            </article>
+          </div>
+        </section>
+      </section>
+
+      <section
+        class="prototype-state"
+        id="un-theme"
+        aria-labelledby="un-theme-title"
+      >
+        <header class="state-heading">
+          <p class="state-label">État 3 · une ressource · un seul thème</p>
+          <h2 id="un-theme-title">
+            Une liste sans navigation de thème superflue
+          </h2>
+        </header>
+
+        <section class="resource-group">
+          <header class="group-heading">
+            <p>Thème fictif unique</p>
+            <h3 id="theme-unique-title">Thème exemple unique</h3>
+          </header>
+
+          <div class="resource-list">
+            <article class="resource-item resource-item--compact">
+              <h4>
+                <a
+                  class="resource-link"
+                  href="https://example.invalid/ressource-exemple-05"
+                  rel="external"
+                >
+                  Ressource exemple 05
+                  <span class="external-mark" aria-hidden="true">↗</span>
+                  <span class="visually-hidden"> — site externe</span>
+                </a>
+              </h4>
+              <p class="resource-description">
+                Cette phrase factuelle fictive vérifie le rythme d'une première
+                notice sans suggérer de qualité, de caution ou de relation
+                réelle.
+              </p>
+              <ul class="resource-meta">
+                <li>Type exemple</li>
+                <li>Langue exemple</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+      </section>
+
+      <section
+        class="prototype-state"
+        id="nombreuses-ressources"
+        aria-labelledby="nombreuses-ressources-title"
+      >
+        <header class="state-heading">
+          <p class="state-label">
+            État 4 · vingt et une ressources · thèmes multiples
+          </p>
+          <h2 id="nombreuses-ressources-title">
+            Une densité éditoriale maîtrisée
+          </h2>
+          <p>
+            Vingt et une notices éprouvent ici le seuil documenté du modèle A.
+            Elles restent groupées dans une liste plate, sans mosaïque,
+            pagination simulée ni défilement infini.
+          </p>
+        </header>
+
+        <nav
+          class="theme-navigation"
+          aria-label="Thèmes fictifs de la liste fournie"
+        >
+          <span>Parcourir :</span>
+          <a href="#nombreuses-theme-a">Thème exemple A</a>
+          <a href="#nombreuses-theme-b">Thème exemple B</a>
+          <a href="#nombreuses-theme-c">Thème exemple C</a>
+        </nav>
+
+        <section
+          class="resource-group resource-group--dense"
+          id="nombreuses-theme-a"
+        >
+          <header class="group-heading">
+            <p>Thème fictif</p>
+            <h3 id="nombreuses-theme-a-title">Thème exemple A</h3>
+          </header>
+          <div class="resource-list">
+            <article class="resource-item resource-item--compact">
+              <h4>
+                <a
+                  class="resource-link"
+                  href="https://example.invalid/ressource-exemple-10"
+                  rel="external"
+                >
+                  Ressource exemple 10
+                  <span class="external-mark" aria-hidden="true">↗</span>
+                  <span class="visually-hidden"> — site externe</span>
+                </a>
+              </h4>
+              <p class="resource-description">
+                Cette notice fictive présente une destination exemple en une
+                phrase neutre, sans promesse, classement ni partenariat
+                sous-entendu.
+              </p>
+              <ul class="resource-meta">
+                <li>Type exemple</li>
+                <li>Langue exemple</li>
+              </ul>
+            </article>
+            <article class="resource-item resource-item--compact">
+              <h4>
+                <a
+                  class="resource-link"
+                  href="https://example.invalid/ressource-exemple-11"
+                  rel="external"
+                >
+                  Ressource exemple 11
+                  <span class="external-mark" aria-hidden="true">↗</span>
+                  <span class="visually-hidden"> — site externe</span>
+                </a>
+              </h4>
+              <p class="resource-description">
+                Cette description fictive occupe deux lignes pour tester le
+                balayage d'une liste fournie tout en restant concise et
+                factuelle.
+              </p>
+              <ul class="resource-meta">
+                <li>Type exemple</li>
+                <li>Public exemple</li>
+              </ul>
+            </article>
+            <article class="resource-item resource-item--compact">
+              <h4>
+                <a
+                  class="resource-link"
+                  href="https://example.invalid/ressource-exemple-12"
+                  rel="external"
+                >
+                  Ressource exemple 12
+                  <span class="external-mark" aria-hidden="true">↗</span>
+                  <span class="visually-hidden"> — site externe</span>
+                </a>
+              </h4>
+              <p class="resource-description">
+                Le contenu de cette phrase est volontairement générique et
+                fictif ; il ne renseigne aucune catégorie ou destination réelle.
+              </p>
+              <ul class="resource-meta">
+                <li>Type exemple</li>
+                <li>Langue exemple</li>
+              </ul>
+            </article>
+            <article class="resource-item resource-item--compact">
+              <h4>
+                <a
+                  class="resource-link"
+                  href="https://example.invalid/ressource-exemple-19"
+                  rel="external"
+                >
+                  Ressource exemple 19
+                  <span class="external-mark" aria-hidden="true">↗</span>
+                  <span class="visually-hidden"> — site externe</span>
+                </a>
+              </h4>
+              <p class="resource-description">
+                Cette notice fictive numéro 19 teste la densité d'une liste
+                fournie sans inventer de qualité, de catégorie ou de relation.
+              </p>
+              <ul class="resource-meta">
+                <li>Type exemple</li>
+                <li>Public exemple</li>
+              </ul>
+            </article>
+            <article class="resource-item resource-item--compact">
+              <h4>
+                <a
+                  class="resource-link"
+                  href="https://example.invalid/ressource-exemple-20"
+                  rel="external"
+                >
+                  Ressource exemple 20
+                  <span class="external-mark" aria-hidden="true">↗</span>
+                  <span class="visually-hidden"> — site externe</span>
+                </a>
+              </h4>
+              <p class="resource-description">
+                Cette notice fictive numéro 20 teste la densité d'une liste
+                fournie sans inventer de qualité, de catégorie ou de relation.
+              </p>
+              <ul class="resource-meta">
+                <li>Type exemple</li>
+                <li>Langue exemple</li>
+              </ul>
+            </article>
+            <article class="resource-item resource-item--compact">
+              <h4>
+                <a
+                  class="resource-link"
+                  href="https://example.invalid/ressource-exemple-21"
+                  rel="external"
+                >
+                  Ressource exemple 21
+                  <span class="external-mark" aria-hidden="true">↗</span>
+                  <span class="visually-hidden"> — site externe</span>
+                </a>
+              </h4>
+              <p class="resource-description">
+                Cette notice fictive numéro 21 teste la densité d'une liste
+                fournie sans inventer de qualité, de catégorie ou de relation.
+              </p>
+              <ul class="resource-meta">
+                <li>Type exemple</li>
+                <li>Public exemple</li>
+              </ul>
+            </article>
+            <article class="resource-item resource-item--compact">
+              <h4>
+                <a
+                  class="resource-link"
+                  href="https://example.invalid/ressource-exemple-22"
+                  rel="external"
+                >
+                  Ressource exemple 22
+                  <span class="external-mark" aria-hidden="true">↗</span>
+                  <span class="visually-hidden"> — site externe</span>
+                </a>
+              </h4>
+              <p class="resource-description">
+                Cette notice fictive numéro 22 teste la densité d'une liste
+                fournie sans inventer de qualité, de catégorie ou de relation.
+              </p>
+              <ul class="resource-meta">
+                <li>Type exemple</li>
+                <li>Langue exemple</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section
+          class="resource-group resource-group--dense"
+          id="nombreuses-theme-b"
+        >
+          <header class="group-heading">
+            <p>Thème fictif</p>
+            <h3 id="nombreuses-theme-b-title">Thème exemple B</h3>
+          </header>
+          <div class="resource-list">
+            <article class="resource-item resource-item--compact">
+              <h4>
+                <a
+                  class="resource-link"
+                  href="https://example.invalid/ressource-exemple-13"
+                  rel="external"
+                >
+                  Ressource exemple 13
+                  <span class="external-mark" aria-hidden="true">↗</span>
+                  <span class="visually-hidden"> — site externe</span>
+                </a>
+              </h4>
+              <p class="resource-description">
+                Cette notice fictive vérifie la répétition régulière des titres,
+                descriptions et métadonnées dans un groupe plus dense.
+              </p>
+              <ul class="resource-meta">
+                <li>Type exemple</li>
+                <li>Langue exemple</li>
+              </ul>
+            </article>
+            <article class="resource-item resource-item--compact">
+              <h4>
+                <a
+                  class="resource-link"
+                  href="https://example.invalid/ressource-exemple-14"
+                  rel="external"
+                >
+                  Ressource exemple 14
+                  <span class="external-mark" aria-hidden="true">↗</span>
+                  <span class="visually-hidden"> — site externe</span>
+                </a>
+              </h4>
+              <p class="resource-description">
+                Cette description neutre sert uniquement au contrôle de la
+                mesure de lecture et ne formule aucune appréciation éditoriale.
+              </p>
+              <ul class="resource-meta">
+                <li>Type exemple</li>
+                <li>Public exemple</li>
+              </ul>
+            </article>
+            <article class="resource-item resource-item--compact">
+              <h4>
+                <a
+                  class="resource-link"
+                  href="https://example.invalid/ressource-exemple-15"
+                  rel="external"
+                >
+                  Ressource exemple 15
+                  <span class="external-mark" aria-hidden="true">↗</span>
+                  <span class="visually-hidden"> — site externe</span>
+                </a>
+              </h4>
+              <p class="resource-description">
+                Le texte fictif reste assez développé pour tester le reflow sans
+                inventer d'usage, de public ou de relation avec Uni-Songes.
+              </p>
+              <ul class="resource-meta">
+                <li>Type exemple</li>
+                <li>Langue exemple</li>
+              </ul>
+            </article>
+            <article class="resource-item resource-item--compact">
+              <h4>
+                <a
+                  class="resource-link"
+                  href="https://example.invalid/ressource-exemple-23"
+                  rel="external"
+                >
+                  Ressource exemple 23
+                  <span class="external-mark" aria-hidden="true">↗</span>
+                  <span class="visually-hidden"> — site externe</span>
+                </a>
+              </h4>
+              <p class="resource-description">
+                Cette notice fictive numéro 23 teste la densité d'une liste
+                fournie sans inventer de qualité, de catégorie ou de relation.
+              </p>
+              <ul class="resource-meta">
+                <li>Type exemple</li>
+                <li>Public exemple</li>
+              </ul>
+            </article>
+            <article class="resource-item resource-item--compact">
+              <h4>
+                <a
+                  class="resource-link"
+                  href="https://example.invalid/ressource-exemple-24"
+                  rel="external"
+                >
+                  Ressource exemple 24
+                  <span class="external-mark" aria-hidden="true">↗</span>
+                  <span class="visually-hidden"> — site externe</span>
+                </a>
+              </h4>
+              <p class="resource-description">
+                Cette notice fictive numéro 24 teste la densité d'une liste
+                fournie sans inventer de qualité, de catégorie ou de relation.
+              </p>
+              <ul class="resource-meta">
+                <li>Type exemple</li>
+                <li>Langue exemple</li>
+              </ul>
+            </article>
+            <article class="resource-item resource-item--compact">
+              <h4>
+                <a
+                  class="resource-link"
+                  href="https://example.invalid/ressource-exemple-25"
+                  rel="external"
+                >
+                  Ressource exemple 25
+                  <span class="external-mark" aria-hidden="true">↗</span>
+                  <span class="visually-hidden"> — site externe</span>
+                </a>
+              </h4>
+              <p class="resource-description">
+                Cette notice fictive numéro 25 teste la densité d'une liste
+                fournie sans inventer de qualité, de catégorie ou de relation.
+              </p>
+              <ul class="resource-meta">
+                <li>Type exemple</li>
+                <li>Public exemple</li>
+              </ul>
+            </article>
+            <article class="resource-item resource-item--compact">
+              <h4>
+                <a
+                  class="resource-link"
+                  href="https://example.invalid/ressource-exemple-26"
+                  rel="external"
+                >
+                  Ressource exemple 26
+                  <span class="external-mark" aria-hidden="true">↗</span>
+                  <span class="visually-hidden"> — site externe</span>
+                </a>
+              </h4>
+              <p class="resource-description">
+                Cette notice fictive numéro 26 teste la densité d'une liste
+                fournie sans inventer de qualité, de catégorie ou de relation.
+              </p>
+              <ul class="resource-meta">
+                <li>Type exemple</li>
+                <li>Langue exemple</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section
+          class="resource-group resource-group--dense"
+          id="nombreuses-theme-c"
+        >
+          <header class="group-heading">
+            <p>Thème fictif</p>
+            <h3 id="nombreuses-theme-c-title">Thème exemple C</h3>
+          </header>
+          <div class="resource-list">
+            <article class="resource-item resource-item--compact">
+              <h4>
+                <a
+                  class="resource-link"
+                  href="https://example.invalid/ressource-exemple-16"
+                  rel="external"
+                >
+                  Ressource exemple 16
+                  <span class="external-mark" aria-hidden="true">↗</span>
+                  <span class="visually-hidden"> — site externe</span>
+                </a>
+              </h4>
+              <p class="resource-description">
+                Cette ressource exemple dispose d'une phrase neutre et fictive
+                pour éprouver une liste longue sans créer de véritable
+                recommandation.
+              </p>
+              <ul class="resource-meta">
+                <li>Type exemple</li>
+                <li>Langue exemple</li>
+              </ul>
+            </article>
+            <article class="resource-item resource-item--compact">
+              <h4>
+                <a
+                  class="resource-link"
+                  href="https://example.invalid/ressource-exemple-17"
+                  rel="external"
+                >
+                  Ressource exemple 17
+                  <span class="external-mark" aria-hidden="true">↗</span>
+                  <span class="visually-hidden"> — site externe</span>
+                </a>
+              </h4>
+              <p class="resource-description">
+                Cette description fictive maintient un rythme éditorial régulier
+                et n'implique ni approbation, ni partenariat, ni classement.
+              </p>
+              <ul class="resource-meta">
+                <li>Type exemple</li>
+                <li>Public exemple</li>
+              </ul>
+            </article>
+            <article class="resource-item resource-item--compact">
+              <h4>
+                <a
+                  class="resource-link"
+                  href="https://example.invalid/ressource-exemple-18"
+                  rel="external"
+                >
+                  Ressource exemple 18
+                  <span class="external-mark" aria-hidden="true">↗</span>
+                  <span class="visually-hidden"> — site externe</span>
+                </a>
+              </h4>
+              <p class="resource-description">
+                Cette dernière notice fictive contrôle la fin d'un groupe dense
+                avec une phrase lisible, factuelle et sans destination réelle.
+              </p>
+              <ul class="resource-meta">
+                <li>Type exemple</li>
+                <li>Langue exemple</li>
+              </ul>
+            </article>
+            <article class="resource-item resource-item--compact">
+              <h4>
+                <a
+                  class="resource-link"
+                  href="https://example.invalid/ressource-exemple-27"
+                  rel="external"
+                >
+                  Ressource exemple 27
+                  <span class="external-mark" aria-hidden="true">↗</span>
+                  <span class="visually-hidden"> — site externe</span>
+                </a>
+              </h4>
+              <p class="resource-description">
+                Cette notice fictive numéro 27 teste la densité d'une liste
+                fournie sans inventer de qualité, de catégorie ou de relation.
+              </p>
+              <ul class="resource-meta">
+                <li>Type exemple</li>
+                <li>Public exemple</li>
+              </ul>
+            </article>
+            <article class="resource-item resource-item--compact">
+              <h4>
+                <a
+                  class="resource-link"
+                  href="https://example.invalid/ressource-exemple-28"
+                  rel="external"
+                >
+                  Ressource exemple 28
+                  <span class="external-mark" aria-hidden="true">↗</span>
+                  <span class="visually-hidden"> — site externe</span>
+                </a>
+              </h4>
+              <p class="resource-description">
+                Cette notice fictive numéro 28 teste la densité d'une liste
+                fournie sans inventer de qualité, de catégorie ou de relation.
+              </p>
+              <ul class="resource-meta">
+                <li>Type exemple</li>
+                <li>Langue exemple</li>
+              </ul>
+            </article>
+            <article class="resource-item resource-item--compact">
+              <h4>
+                <a
+                  class="resource-link"
+                  href="https://example.invalid/ressource-exemple-29"
+                  rel="external"
+                >
+                  Ressource exemple 29
+                  <span class="external-mark" aria-hidden="true">↗</span>
+                  <span class="visually-hidden"> — site externe</span>
+                </a>
+              </h4>
+              <p class="resource-description">
+                Cette notice fictive numéro 29 teste la densité d'une liste
+                fournie sans inventer de qualité, de catégorie ou de relation.
+              </p>
+              <ul class="resource-meta">
+                <li>Type exemple</li>
+                <li>Public exemple</li>
+              </ul>
+            </article>
+            <article class="resource-item resource-item--compact">
+              <h4>
+                <a
+                  class="resource-link"
+                  href="https://example.invalid/ressource-exemple-30"
+                  rel="external"
+                >
+                  Ressource exemple 30
+                  <span class="external-mark" aria-hidden="true">↗</span>
+                  <span class="visually-hidden"> — site externe</span>
+                </a>
+              </h4>
+              <p class="resource-description">
+                Cette notice fictive numéro 30 teste la densité d'une liste
+                fournie sans inventer de qualité, de catégorie ou de relation.
+              </p>
+              <ul class="resource-meta">
+                <li>Type exemple</li>
+                <li>Langue exemple</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+      </section>
+
+      <section
+        class="prototype-state prototype-state--editorial"
+        id="ressource-masquee"
+        aria-labelledby="ressource-masquee-title"
+      >
+        <header class="state-heading">
+          <p class="state-label">
+            État 5 · indisponible ou masquée temporairement
+          </p>
+          <h2 id="ressource-masquee-title">
+            Un retrait sûr, sans lien mort public
+          </h2>
+        </header>
+
+        <p class="editorial-warning">
+          Vue éditoriale simulée — cette notice ne serait jamais affichée dans
+          la liste publique.
+        </p>
+        <article class="resource-item resource-item--unavailable">
+          <h3 class="resource-title-static">
+            Ressource exemple temporairement masquée
+          </h3>
+          <p class="resource-description">
+            Le lien a été retiré pendant sa vérification. L'enregistrement et
+            son historique restent conservés pour la revue.
+          </p>
+          <ul class="resource-meta">
+            <li>Masquée temporairement</li>
+            <li>Contrôle humain requis</li>
+          </ul>
+        </article>
+        <p class="public-result">
+          <strong>Résultat public :</strong> aucune ligne désactivée, aucun lien
+          mort et aucun thème vide. La notice réapparaît seulement après
+          nouvelle validation et republication.
+        </p>
+      </section>
+
+      <section
+        class="prototype-state"
+        id="mobile-320"
+        aria-labelledby="mobile-320-title"
+      >
+        <header class="state-heading">
+          <p class="state-label">Guide de contrôle · mobile et reflow</p>
+          <h2 id="mobile-320-title">La même hiérarchie à 320 px</h2>
+        </header>
+        <div class="mobile-guidance">
+          <p>
+            Réduire le viewport à 320 px transforme cet aperçu entier : le menu
+            non fonctionnel devient un disclosure natif, les métadonnées passent
+            en colonne et les URLs se replient sans défilement horizontal.
+          </p>
+          <ul>
+            <li>ordre de lecture et ordre DOM inchangés ;</li>
+            <li>cibles interactives d'au moins 44 px ;</li>
+            <li>focus visible et skip link conservés ;</li>
+            <li>aucune largeur fixe, image ou grille latérale.</li>
+          </ul>
+        </div>
+      </section>
+    </main>
+
+    <footer class="prototype-footer">
+      <p>
+        Planche de revue propriétaire · aucune route, catégorie ou ressource
+        réelle n'est créée par ce prototype.
+      </p>
+      <a href="#prototype-main">Revenir au début du contenu</a>
+    </footer>
+  </body>
+</html>
