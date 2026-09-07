@@ -1,0 +1,80 @@
+# Canonical Drupal destinations. Keep source variants explicit so Cloudflare
+# Pages does not add an avoidable clean-URL normalization hop first.
+/ https://unisonges.fr/accueil 301
+/index https://unisonges.fr/accueil 301
+/index/ https://unisonges.fr/accueil 301
+/index.html https://unisonges.fr/accueil 301
+
+/cours https://unisonges.fr/cours 301
+/cours/ https://unisonges.fr/cours 301
+/cours/index https://unisonges.fr/cours 301
+/cours/index/ https://unisonges.fr/cours 301
+/cours/index.html https://unisonges.fr/cours 301
+
+/cours-musique-impro-compo https://unisonges.fr/cours/didgeridoo 301
+/cours-musique-impro-compo/ https://unisonges.fr/cours/didgeridoo 301
+/cours-musique-impro-compo/index https://unisonges.fr/cours/didgeridoo 301
+/cours-musique-impro-compo/index/ https://unisonges.fr/cours/didgeridoo 301
+/cours-musique-impro-compo/index.html https://unisonges.fr/cours/didgeridoo 301
+
+/stages https://unisonges.fr/stages 301
+/stages/ https://unisonges.fr/stages 301
+/stages/index https://unisonges.fr/stages 301
+/stages/index/ https://unisonges.fr/stages 301
+/stages/index.html https://unisonges.fr/stages 301
+
+/stages-debutant https://unisonges.fr/stages/didgeridoo 301
+/stages-debutant/ https://unisonges.fr/stages/didgeridoo 301
+/stages-debutant/index https://unisonges.fr/stages/didgeridoo 301
+/stages-debutant/index/ https://unisonges.fr/stages/didgeridoo 301
+/stages-debutant/index.html https://unisonges.fr/stages/didgeridoo 301
+
+/stages-intermediaire https://unisonges.fr/stages/didgeridoo 301
+/stages-intermediaire/ https://unisonges.fr/stages/didgeridoo 301
+/stages-intermediaire/index https://unisonges.fr/stages/didgeridoo 301
+/stages-intermediaire/index/ https://unisonges.fr/stages/didgeridoo 301
+/stages-intermediaire/index.html https://unisonges.fr/stages/didgeridoo 301
+
+/stages-sur-demande https://unisonges.fr/services-prestations-artistiques 301
+/stages-sur-demande/ https://unisonges.fr/services-prestations-artistiques 301
+/stages-sur-demande/index https://unisonges.fr/services-prestations-artistiques 301
+/stages-sur-demande/index/ https://unisonges.fr/services-prestations-artistiques 301
+/stages-sur-demande/index.html https://unisonges.fr/services-prestations-artistiques 301
+
+/concerts-dates https://unisonges.fr/concerts 301
+/concerts-dates/ https://unisonges.fr/concerts 301
+/concerts-dates/index https://unisonges.fr/concerts 301
+/concerts-dates/index/ https://unisonges.fr/concerts 301
+/concerts-dates/index.html https://unisonges.fr/concerts 301
+
+/association-unisonges https://unisonges.fr/association 301
+/association-unisonges/ https://unisonges.fr/association 301
+/association-unisonges/index https://unisonges.fr/association 301
+/association-unisonges/index/ https://unisonges.fr/association 301
+/association-unisonges/index.html https://unisonges.fr/association 301
+
+/djam https://unisonges.fr/djam 301
+/djam/ https://unisonges.fr/djam 301
+/djam/index https://unisonges.fr/djam 301
+/djam/index/ https://unisonges.fr/djam 301
+/djam/index.html https://unisonges.fr/djam 301
+
+/orchestre-des-reveurs https://unisonges.fr/orchestre-des-reveurs 301
+/orchestre-des-reveurs/ https://unisonges.fr/orchestre-des-reveurs 301
+/orchestre-des-reveurs/index https://unisonges.fr/orchestre-des-reveurs 301
+/orchestre-des-reveurs/index/ https://unisonges.fr/orchestre-des-reveurs 301
+/orchestre-des-reveurs/index.html https://unisonges.fr/orchestre-des-reveurs 301
+
+/contact https://unisonges.fr/contact 301
+/contact/ https://unisonges.fr/contact 301
+/contact/index https://unisonges.fr/contact 301
+/contact/index/ https://unisonges.fr/contact 301
+/contact/index.html https://unisonges.fr/contact 301
+
+# A fixed non-sensitive query replaces legacy booking parameters instead of
+# forwarding potentially sensitive values to the Drupal reservation flow.
+/reserver-un-cours https://unisonges.fr/reservation-cours?utm_source=legacy-pages 301
+/reserver-un-cours/ https://unisonges.fr/reservation-cours?utm_source=legacy-pages 301
+/reserver-un-cours/index https://unisonges.fr/reservation-cours?utm_source=legacy-pages 301
+/reserver-un-cours/index/ https://unisonges.fr/reservation-cours?utm_source=legacy-pages 301
+/reserver-un-cours/index.html https://unisonges.fr/reservation-cours?utm_source=legacy-pages 301
