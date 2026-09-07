@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>Connexion — prototype Uni-Songes</title>
+    <link rel="stylesheet" href="prototype.css">
+    <script src="prototype.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Aller au contenu principal</a>
+
+    <div class="ambient-background" aria-hidden="true"></div>
+
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a class="brand" href="/" aria-label="Uni-Songes — accueil">
+          <span class="brand__name">Uni-Songes</span>
+        </a>
+
+        <nav class="site-header__actions" aria-label="Accès rapides">
+          <a class="header-link header-link--reserve" href="/reserver">Réserver</a>
+          <a class="header-link" href="/user/login" data-account-link>Se connecter</a>
+        </nav>
+      </div>
+    </header>
+
+    <div class="app-scrollframe" id="prototype-scrollframe">
+      <aside class="prototype-toolbar" aria-label="Outils du prototype">
+        <details data-state-picker>
+          <summary>
+            <span class="prototype-toolbar__eyebrow">Prototype statique</span>
+            <span data-current-state>État : connexion anonyme</span>
+          </summary>
+          <nav aria-label="États de l’expérience compte">
+            <ul class="prototype-state-list">
+              <li><a href="#state-login" data-state-link="login">Connexion anonyme</a></li>
+              <li><a href="#state-login-error" data-state-link="login-error">Erreur de connexion</a></li>
+              <li><a href="#state-register" data-state-link="register">Inscription</a></li>
+              <li><a href="#state-register-error" data-state-link="register-error">Erreur d’inscription</a></li>
+              <li><a href="#state-verification" data-state-link="verification">Compte créé — vérification requise</a></li>
+              <li><a href="#state-password" data-state-link="password">Mot de passe oublié</a></li>
+              <li><a href="#state-password-confirmation" data-state-link="password-confirmation">Confirmation de réinitialisation</a></li>
+              <li><a href="#state-account" data-state-link="account">Compte authentifié</a></li>
+            </ul>
+          </nav>
+        </details>
+        <p class="prototype-toolbar__note">
+          Le script local neutralise les soumissions ; n’utilisez pas de vraies informations. Le fond uni est un repère neutre pour le fond public existant.
+        </p>
+        <noscript>
+          <p class="prototype-noscript-note">
+            JavaScript est désactivé : les formulaires de démonstration restent volontairement inactifs.
+          </p>
+        </noscript>
+      </aside>
+
+      <main id="main-content" tabindex="-1">
+        <section
+          class="prototype-state"
+          id="state-login"
+          data-state="login"
+          data-state-label="connexion anonyme"
+          data-page-title="Connexion"
+          data-authenticated="false"
+        >
+          <div class="auth-layout">
+            <p class="route-context">
+              <span>Route Drupal</span>
+              <code>/user/login</code>
+            </p>
+
+            <article class="auth-card" aria-labelledby="login-title">
+              <div class="auth-card__heading">
+                <p class="auth-eyebrow">Espace personnel</p>
+                <h1 id="login-title" tabindex="-1">Se connecter</h1>
+                <p id="login-intro">
+                  Retrouvez votre compte Uni-Songes pour poursuivre vos démarches.
+                </p>
+              </div>
+
+              <form
+                class="auth-form user-login-form"
+                id="prototype-user-login-form"
+                method="post"
+                aria-describedby="login-intro login-reservation-note"
+                data-prototype-form
+                inert
+              >
+                <p class="required-note" id="login-required-note">
+                  Les champs indiqués comme obligatoires doivent être renseignés.
+                </p>
+
+                <div class="js-form-item form-item-name form-type-textfield mb-3">
+                  <label class="form-required" for="login-name">
+                    Nom d’utilisateur <span class="required-marker" aria-hidden="true">*</span>
+                  </label>
+                  <input
+                    class="form-control"
+                    id="login-name"
+                    name="name"
+                    type="text"
+                    autocomplete="username"
+                    autocapitalize="none"
+                    autocorrect="off"
+                    spellcheck="false"
+                    required
+                  >
+                </div>
+
+                <div class="js-form-item form-item-pass form-type-password mb-3">
+                  <label class="form-required" for="login-pass">
+                    Mot de passe <span class="required-marker" aria-hidden="true">*</span>
+                  </label>
+                  <input
+                    class="form-control"
+                    id="login-pass"
+                    name="pass"
+                    type="password"
+                    autocomplete="current-password"
+                    required
+                  >
+                </div>
+
+                <a class="auth-link auth-link--quiet" href="/user/password">Mot de passe oublié&nbsp;?</a>
+
+                <div class="form-actions">
+                  <button class="button button--primary btn btn-primary" type="submit">Se connecter</button>
+                </div>
+              </form>
+
+              <p class="reservation-note" id="login-reservation-note">
+                Un compte est nécessaire pour confirmer une réservation. La connexion ne garantit pas la disponibilité d’un créneau.
+              </p>
+
+              <div class="auth-destination">
+                <p>Vous n’avez pas encore de compte&nbsp;?</p>
+                <a class="button button--secondary" href="/user/register">Créer un compte</a>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section
+          class="prototype-state"
+          id="state-login-error"
+          data-state="login-error"
+          data-state-label="erreur de connexion"
+          data-page-title="Erreur de connexion"
+          data-authenticated="false"
+          hidden
+        >
+          <div class="auth-layout">
+            <p class="route-context">
+              <span>Route Drupal</span>
+              <code>/user/login</code>
+            </p>
+
+            <div class="alert-wrapper" data-drupal-messages>
+              <div
+                class="auth-message alert alert-danger"
+                id="login-error-summary"
+                role="alert"
+                aria-labelledby="login-error-heading"
+                tabindex="-1"
+                data-state-focus
+              >
+                <span class="status-symbol" aria-hidden="true">!</span>
+                <div>
+                  <p class="auth-message__title" id="login-error-heading">Erreur — connexion impossible</p>
+                  <p>
+                    <a href="#login-error-name">Nom d’utilisateur ou mot de passe non reconnu.</a>
+                    Vérifiez les informations saisies puis réessayez.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <article class="auth-card" aria-labelledby="login-error-title">
+              <div class="auth-card__heading">
+                <p class="auth-eyebrow">Espace personnel</p>
+                <h1 id="login-error-title" tabindex="-1">Se connecter</h1>
+                <p id="login-error-intro">
+                  Retrouvez votre compte Uni-Songes pour poursuivre vos démarches.
+                </p>
+              </div>
+
+              <p class="fixture-note">
+                <strong>Donnée fictive de démonstration&nbsp;:</strong> «&nbsp;compte.demo&nbsp;» ne correspond pas à un compte réel.
+              </p>
+
+              <form
+                class="auth-form user-login-form"
+                id="prototype-user-login-error-form"
+                method="post"
+                aria-describedby="login-error-intro login-error-summary login-error-reservation-note"
+                data-prototype-form
+                inert
+              >
+                <p class="required-note">
+                  Les champs indiqués comme obligatoires doivent être renseignés.
+                </p>
+
+                <div class="js-form-item form-item-name form-type-textfield mb-3 has-error">
+                  <label class="form-required" for="login-error-name">
+                    Nom d’utilisateur <span class="required-marker" aria-hidden="true">*</span>
+                  </label>
+                  <input
+                    class="form-control"
+                    id="login-error-name"
+                    name="name"
+                    type="text"
+                    value="compte.demo"
+                    autocomplete="username"
+                    autocapitalize="none"
+                    autocorrect="off"
+                    spellcheck="false"
+                    aria-invalid="true"
+                    aria-describedby="login-name-error"
+                    required
+                  >
+                  <div class="invalid-feedback form-item--error-message" id="login-name-error">
+                    Nom d’utilisateur ou mot de passe non reconnu.
+                  </div>
+                </div>
+
+                <div class="js-form-item form-item-pass form-type-password mb-3">
+                  <label class="form-required" for="login-error-pass">
+                    Mot de passe <span class="required-marker" aria-hidden="true">*</span>
+                  </label>
+                  <input
+                    class="form-control"
+                    id="login-error-pass"
+                    name="pass"
+                    type="password"
+                    autocomplete="current-password"
+                    required
+                  >
+                </div>
+
+                <a class="auth-link auth-link--quiet" href="/user/password">Mot de passe oublié&nbsp;?</a>
+
+                <div class="form-actions">
+                  <button class="button button--primary btn btn-primary" type="submit">Réessayer</button>
+                </div>
+              </form>
+
+              <p class="reservation-note" id="login-error-reservation-note">
+                Un compte est nécessaire pour confirmer une réservation. La connexion ne garantit pas la disponibilité d’un créneau.
+              </p>
+
+              <div class="auth-destination">
+                <p>Vous n’avez pas encore de compte&nbsp;?</p>
+                <a class="button button--secondary" href="/user/register">Créer un compte</a>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section
+          class="prototype-state"
+          id="state-register"
+          data-state="register"
+          data-state-label="inscription"
+          data-page-title="Créer un compte"
+          data-authenticated="false"
+          hidden
+        >
+          <div class="auth-layout auth-layout--registration">
+            <p class="route-context">
+              <span>Route Drupal</span>
+              <code>/user/register</code>
+            </p>
+
+            <article class="auth-card" aria-labelledby="register-title">
+              <div class="auth-card__heading">
+                <p class="auth-eyebrow">Espace personnel</p>
+                <h1 id="register-title" tabindex="-1">Créer un compte</h1>
+                <p id="register-intro">
+                  Après l’inscription, vous recevrez un email avec un lien à usage unique pour vérifier votre adresse et choisir votre mot de passe.
+                </p>
+              </div>
+
+              <form
+                class="auth-form user-register-form"
+                id="prototype-user-register-form"
+                method="post"
+                enctype="multipart/form-data"
+                aria-describedby="register-intro register-help"
+                data-prototype-form
+                inert
+              >
+                <p class="required-note" id="register-help">
+                  Les champs indiqués comme obligatoires doivent être renseignés. L’image est facultative.
+                </p>
+
+                <div class="js-form-item form-item-mail form-type-email mb-3">
+                  <label class="form-required" for="register-mail">
+                    Adresse email <span class="required-marker" aria-hidden="true">*</span>
+                  </label>
+                  <input
+                    class="form-control"
+                    id="register-mail"
+                    name="mail"
+                    type="email"
+                    autocomplete="email"
+                    aria-describedby="register-mail-description"
+                    required
+                  >
+                  <small class="description text-muted" id="register-mail-description">
+                    Cette adresse n’est pas rendue publique. Elle sert aux messages liés à votre compte.
+                  </small>
+                </div>
+
+                <div class="js-form-item form-item-name form-type-textfield mb-3">
+                  <label class="form-required" for="register-name">
+                    Nom d’utilisateur <span class="required-marker" aria-hidden="true">*</span>
+                  </label>
+                  <input
+                    class="form-control username"
+                    id="register-name"
+                    name="name"
+                    type="text"
+                    autocomplete="username"
+                    autocapitalize="none"
+                    autocorrect="off"
+                    spellcheck="false"
+                    aria-describedby="register-name-description"
+                    required
+                  >
+                  <small class="description text-muted" id="register-name-description">
+                    Les espaces, points, tirets, apostrophes, tirets bas et le signe @ sont autorisés.
+                  </small>
+                </div>
+
+                <div class="js-form-item form-item-user-picture form-type-managed-file mb-3 form-item--optional">
+                  <label for="register-picture">Image de profil <span>(facultatif)</span></label>
+                  <input
+                    class="form-control"
+                    id="register-picture"
+                    name="files[user_picture_0]"
+                    type="file"
+                    accept="image/png,image/gif,image/jpeg,image/webp"
+                    aria-describedby="register-picture-description"
+                  >
+                  <small class="description text-muted" id="register-picture-description">
+                    Votre visage ou une image qui vous représente. Formats configurés&nbsp;: PNG, GIF, JPG, JPEG ou WebP.
+                  </small>
+                </div>
+
+                <div class="form-actions">
+                  <button class="button button--primary btn btn-primary" type="submit">Créer mon compte</button>
+                </div>
+              </form>
+
+              <p class="reservation-note">
+                Le compte permet de confirmer une réservation, sans garantir la disponibilité d’un créneau.
+              </p>
+
+              <div class="auth-destination auth-destination--compact">
+                <p>Vous avez déjà un compte&nbsp;?</p>
+                <a class="auth-link" href="/user/login">Se connecter</a>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section
+          class="prototype-state"
+          id="state-register-error"
+          data-state="register-error"
+          data-state-label="erreur d’inscription"
+          data-page-title="Erreur d’inscription"
+          data-authenticated="false"
+          hidden
+        >
+          <div class="auth-layout auth-layout--registration">
+            <p class="route-context">
+              <span>Route Drupal</span>
+              <code>/user/register</code>
+            </p>
+
+            <div class="alert-wrapper" data-drupal-messages>
+              <div
+                class="auth-message alert alert-danger"
+                id="register-error-summary"
+                role="alert"
+                aria-labelledby="register-error-heading"
+                tabindex="-1"
+                data-state-focus
+              >
+                <span class="status-symbol" aria-hidden="true">!</span>
+                <div>
+                  <p class="auth-message__title" id="register-error-heading">Erreur — inscription à corriger</p>
+                  <ul>
+                    <li><a href="#register-error-mail">Saisissez une adresse email valide.</a></li>
+                    <li><a href="#register-error-name">Saisissez un nom d’utilisateur.</a></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <article class="auth-card" aria-labelledby="register-error-title">
+              <div class="auth-card__heading">
+                <p class="auth-eyebrow">Espace personnel</p>
+                <h1 id="register-error-title" tabindex="-1">Créer un compte</h1>
+                <p id="register-error-intro">
+                  Après l’inscription, vous recevrez un email avec un lien à usage unique pour vérifier votre adresse et choisir votre mot de passe.
+                </p>
+              </div>
+
+              <p class="fixture-note">
+                <strong>Donnée fictive de démonstration&nbsp;:</strong> «&nbsp;adresse-invalide&nbsp;» illustre une erreur de saisie.
+              </p>
+
+              <form
+                class="auth-form user-register-form"
+                id="prototype-user-register-error-form"
+                method="post"
+                enctype="multipart/form-data"
+                aria-describedby="register-error-intro register-error-summary register-error-help"
+                data-prototype-form
+                inert
+              >
+                <p class="required-note" id="register-error-help">
+                  Les champs indiqués comme obligatoires doivent être renseignés. L’image est facultative.
+                </p>
+
+                <div class="js-form-item form-item-mail form-type-email mb-3 has-error">
+                  <label class="form-required" for="register-error-mail">
+                    Adresse email <span class="required-marker" aria-hidden="true">*</span>
+                  </label>
+                  <input
+                    class="form-control"
+                    id="register-error-mail"
+                    name="mail"
+                    type="email"
+                    value="adresse-invalide"
+                    autocomplete="email"
+                    aria-invalid="true"
+                    aria-describedby="register-error-mail-description register-mail-error"
+                    required
+                  >
+                  <small class="description text-muted" id="register-error-mail-description">
+                    Cette adresse n’est pas rendue publique. Elle sert aux messages liés à votre compte.
+                  </small>
+                  <div class="invalid-feedback form-item--error-message" id="register-mail-error">
+                    Saisissez une adresse email valide.
+                  </div>
+                </div>
+
+                <div class="js-form-item form-item-name form-type-textfield mb-3 has-error">
+                  <label class="form-required" for="register-error-name">
+                    Nom d’utilisateur <span class="required-marker" aria-hidden="true">*</span>
+                  </label>
+                  <input
+                    class="form-control username"
+                    id="register-error-name"
+                    name="name"
+                    type="text"
+                    autocomplete="username"
+                    autocapitalize="none"
+                    autocorrect="off"
+                    spellcheck="false"
+                    aria-invalid="true"
+                    aria-describedby="register-error-name-description register-name-error"
+                    required
+                  >
+                  <small class="description text-muted" id="register-error-name-description">
+                    Les espaces, points, tirets, apostrophes, tirets bas et le signe @ sont autorisés.
+                  </small>
+                  <div class="invalid-feedback form-item--error-message" id="register-name-error">
+                    Saisissez un nom d’utilisateur.
+                  </div>
+                </div>
+
+                <div class="js-form-item form-item-user-picture form-type-managed-file mb-3 form-item--optional">
+                  <label for="register-error-picture">Image de profil <span>(facultatif)</span></label>
+                  <input
+                    class="form-control"
+                    id="register-error-picture"
+                    name="files[user_picture_0]"
+                    type="file"
+                    accept="image/png,image/gif,image/jpeg,image/webp"
+                    aria-describedby="register-error-picture-description"
+                  >
+                  <small class="description text-muted" id="register-error-picture-description">
+                    Votre visage ou une image qui vous représente. Formats configurés&nbsp;: PNG, GIF, JPG, JPEG ou WebP.
+                  </small>
+                </div>
+
+                <div class="form-actions">
+                  <button class="button button--primary btn btn-primary" type="submit">Corriger et créer mon compte</button>
+                </div>
+              </form>
+
+              <div class="auth-destination auth-destination--compact">
+                <p>Vous avez déjà un compte&nbsp;?</p>
+                <a class="auth-link" href="/user/login">Se connecter</a>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section
+          class="prototype-state"
+          id="state-verification"
+          data-state="verification"
+          data-state-label="compte créé — vérification requise"
+          data-page-title="Vérification de l’adresse email"
+          data-authenticated="false"
+          hidden
+        >
+          <div class="auth-layout">
+            <p class="route-context">
+              <span>Contexte Drupal</span>
+              <code>POST /user/register → destination locale ou &lt;front&gt;</code>
+            </p>
+
+            <div class="alert-wrapper" data-drupal-messages>
+              <div
+                class="auth-message alert alert-success"
+                role="status"
+                aria-labelledby="verification-status-heading"
+                tabindex="-1"
+                data-state-focus
+              >
+                <span class="status-symbol" aria-hidden="true">✓</span>
+                <div>
+                  <p class="auth-message__title" id="verification-status-heading">Confirmation — compte créé</p>
+                  <p>Un message avec les prochaines étapes a été envoyé à l’adresse utilisée lors de l’inscription.</p>
+                </div>
+              </div>
+            </div>
+
+            <article class="auth-card auth-card--confirmation" aria-labelledby="verification-title">
+              <div class="auth-card__heading">
+                <p class="auth-eyebrow">Étape suivante</p>
+                <h1 id="verification-title" tabindex="-1">Vérifiez votre adresse email</h1>
+                <p>
+                  Ouvrez le lien reçu par email. Il lance une connexion à usage unique, puis vous permet de choisir votre mot de passe.
+                </p>
+              </div>
+
+              <ol class="calm-steps">
+                <li>Consultez le message envoyé par Uni-Songes.</li>
+                <li>Ouvrez le lien à usage unique.</li>
+                <li>Choisissez votre mot de passe, puis revenez à votre démarche si nécessaire.</li>
+              </ol>
+
+              <p class="reservation-note">
+                L’inscription ne vous connecte pas automatiquement. Après avoir choisi votre mot de passe, revenez à votre réservation si nécessaire.
+              </p>
+
+              <div class="form-actions">
+                <a class="auth-link auth-link--quiet" href="/user/login">Revenir à la connexion</a>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section
+          class="prototype-state"
+          id="state-password"
+          data-state="password"
+          data-state-label="mot de passe oublié"
+          data-page-title="Réinitialiser le mot de passe"
+          data-authenticated="false"
+          hidden
+        >
+          <div class="auth-layout">
+            <p class="route-context">
+              <span>Route Drupal</span>
+              <code>/user/password</code>
+            </p>
+
+            <article class="auth-card" aria-labelledby="password-title">
+              <div class="auth-card__heading">
+                <p class="auth-eyebrow">Accès au compte</p>
+                <h1 id="password-title" tabindex="-1">Réinitialiser le mot de passe</h1>
+                <p id="password-intro">
+                  Indiquez votre nom d’utilisateur ou votre adresse email pour recevoir les instructions de réinitialisation.
+                </p>
+              </div>
+
+              <form
+                class="auth-form user-pass"
+                id="prototype-user-pass"
+                method="post"
+                aria-describedby="password-intro"
+                data-prototype-form
+                inert
+              >
+                <p class="required-note">
+                  Ce champ est obligatoire.
+                </p>
+
+                <div class="js-form-item form-item-name form-type-textfield mb-3">
+                  <label class="form-required" for="password-name">
+                    Nom d’utilisateur ou adresse email <span class="required-marker" aria-hidden="true">*</span>
+                  </label>
+                  <input
+                    class="form-control"
+                    id="password-name"
+                    name="name"
+                    type="text"
+                    autocomplete="username"
+                    autocapitalize="none"
+                    autocorrect="off"
+                    spellcheck="false"
+                    required
+                  >
+                </div>
+
+                <div class="form-actions">
+                  <button class="button button--primary btn btn-primary" type="submit">Envoyer les instructions</button>
+                </div>
+              </form>
+
+              <div class="auth-destination auth-destination--compact">
+                <a class="auth-link" href="/user/login">Revenir à la connexion</a>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section
+          class="prototype-state"
+          id="state-password-confirmation"
+          data-state="password-confirmation"
+          data-state-label="confirmation de réinitialisation"
+          data-page-title="Instructions de réinitialisation"
+          data-authenticated="false"
+          hidden
+        >
+          <div class="auth-layout">
+            <p class="route-context">
+              <span>Contexte Drupal</span>
+              <code>POST /user/password → &lt;front&gt;</code>
+            </p>
+
+            <div class="alert-wrapper" data-drupal-messages>
+              <div
+                class="auth-message alert alert-success"
+                role="status"
+                aria-labelledby="password-confirmation-status-heading"
+                tabindex="-1"
+                data-state-focus
+              >
+                <span class="status-symbol" aria-hidden="true">✓</span>
+                <div>
+                  <p class="auth-message__title" id="password-confirmation-status-heading">Confirmation — demande reçue</p>
+                  <p>Votre demande a été prise en compte.</p>
+                </div>
+              </div>
+            </div>
+
+            <article class="auth-card auth-card--confirmation" aria-labelledby="password-confirmation-title">
+              <div class="auth-card__heading">
+                <p class="auth-eyebrow">Prochaine étape</p>
+                <h1 id="password-confirmation-title" tabindex="-1">Consultez votre boîte de réception</h1>
+                <p>
+                  Si un compte actif correspond aux informations saisies, un email contenant les instructions de réinitialisation vous sera envoyé.
+                </p>
+              </div>
+
+              <p class="reservation-note">
+                Pour votre sécurité, aucune adresse n’est affichée ici.
+              </p>
+
+              <div class="form-actions">
+                <a class="auth-link auth-link--quiet" href="/user/login">Revenir à la connexion</a>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section
+          class="prototype-state"
+          id="state-account"
+          data-state="account"
+          data-state-label="compte authentifié"
+          data-page-title="Mon compte"
+          data-authenticated="true"
+          hidden
+        >
+          <div class="auth-layout auth-layout--account">
+            <p class="route-context">
+              <span>Routes Drupal</span>
+              <code>/user → /user/{uid}</code>
+            </p>
+
+            <article class="auth-card account-card" aria-labelledby="account-title">
+              <div class="auth-card__heading">
+                <p class="auth-eyebrow">Espace personnel</p>
+                <h1 id="account-title" tabindex="-1">Mon compte</h1>
+                <p>Gérez ici les informations essentielles et les accès liés à votre compte.</p>
+              </div>
+
+              <section class="identity-panel" aria-labelledby="identity-heading">
+                <div class="identity-panel__content">
+                  <h2 id="identity-heading">Identité du compte</h2>
+                  <p class="identity-status"><span aria-hidden="true">✓</span> Compte connecté</p>
+                  <dl>
+                    <div>
+                      <dt>Nom d’utilisateur</dt>
+                      <dd class="dynamic-value">Valeur fournie par Drupal</dd>
+                    </div>
+                  </dl>
+                </div>
+              </section>
+
+              <nav class="account-actions" aria-label="Actions du compte">
+                <a class="button button--primary" href="/user/edit">Modifier mes informations</a>
+                <a class="button button--secondary" href="/reservation-cours">Réserver un cours</a>
+                <a class="auth-link auth-link--quiet" href="/user/logout">Se déconnecter</a>
+              </nav>
+
+              <!-- Extension conditionnelle future : ne rendre un résumé de réservation que lorsque des données réelles et utiles existent. -->
+            </article>
+          </div>
+        </section>
+      </main>
+
+      <footer class="site-footer">
+        <div class="site-footer__inner">
+          <p class="site-footer__brand">Uni-Songes</p>
+          <nav aria-label="Navigation de pied de page">
+            <ul>
+              <li><a href="/cours-et-stages">Cours &amp; Stages</a></li>
+              <li><a href="/ateliers">Projets collectifs</a></li>
+              <li><a href="/a-propos">À propos</a></li>
+              <li><a href="/blog">Blog</a></li>
+              <li><a href="/contact">Contact</a></li>
+            </ul>
+          </nav>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>
