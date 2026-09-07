@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      name="description"
+      content="Prototype statique de l’accueil éditorial du Blog Uni-Songes."
+    >
+    <title>Prototype — Accueil éditorial du Blog Uni-Songes</title>
+    <link rel="stylesheet" href="prototype.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#contenu">Aller au contenu principal</a>
+
+    <header class="prototype-header">
+      <div class="prototype-header__inner">
+        <a class="wordmark" href="#contenu" aria-label="Uni-Songes, début du prototype">
+          Uni-Songes
+        </a>
+
+        <nav class="primary-navigation" aria-label="Navigation principale — aperçu statique">
+          <ul role="list">
+            <li><a href="/cours-et-stages">Cours &amp; Stages</a></li>
+            <li><a href="/concerts">Concerts &amp; Événements</a></li>
+            <li><a href="/ateliers">Projets collectifs</a></li>
+            <li><a href="/a-propos">À propos</a></li>
+            <li><a href="/contact">Contact</a></li>
+          </ul>
+        </nav>
+
+        <a class="header-action" href="/reserver">Réserver</a>
+
+        <details class="compact-navigation">
+          <summary>
+            <span>Menu</span>
+            <span class="summary-icon" aria-hidden="true"></span>
+          </summary>
+          <nav aria-label="Navigation principale compacte — aperçu statique">
+            <ul role="list">
+              <li><a href="/cours-et-stages">Cours &amp; Stages</a></li>
+              <li><a href="/concerts">Concerts &amp; Événements</a></li>
+              <li><a href="/ateliers">Projets collectifs</a></li>
+              <li><a href="/a-propos">À propos</a></li>
+              <li><a href="/contact">Contact</a></li>
+              <li><a href="/reserver">Réserver</a></li>
+            </ul>
+          </nav>
+        </details>
+      </div>
+    </header>
+
+    <div class="prototype-scrollframe">
+      <main id="contenu" tabindex="-1">
+        <div class="editorial-surface">
+          <p class="prototype-notice" id="prototype-fixtures" role="note">
+            <strong>Prototype statique.</strong>
+            Les titres, thèmes, dates et résumés portant le badge
+            <span class="fixture-badge">Fixture</span> sont fictifs. Ils ne décrivent
+            aucun Article actuellement publié par Uni-Songes.
+          </p>
+
+          <div class="editorial-layout">
+            <header class="publication-intro">
+              <p class="publication-kicker">Uni-Songes <span aria-hidden="true">·</span> Blog</p>
+              <h1>Le Blog</h1>
+              <p class="publication-deck">
+                Le Blog accueillera les actualités de l'association, des articles
+                artistiques et pédagogiques, ainsi que des réflexions et des ressources
+                autour de ses pratiques et de ses projets.
+              </p>
+              <a class="quiet-link" href="/blog">Parcourir le Blog complet</a>
+            </header>
+
+            <aside class="editorial-rail" aria-labelledby="explorer-title">
+              <h2 id="explorer-title">Explorer</h2>
+
+              <details class="rail-disclosure">
+                <summary>
+                  <span>Articles par thème</span>
+                  <span class="summary-icon" aria-hidden="true"></span>
+                </summary>
+                <div class="rail-panel">
+                  <p id="themes-description" class="rail-explanation">
+                    Choisissez un thème pour parcourir tous les Articles associés,
+                    du plus récent au plus ancien. En production, seuls de vrais
+                    termes Drupal apparaissent.
+                  </p>
+                  <nav aria-label="Explorer les Articles par thème" aria-describedby="themes-description">
+                    <ul class="filter-list" role="list">
+                      <li>
+                        <a class="filter-link is-current" href="?theme=all#articles" aria-current="true">
+                          Tous les articles
+                        </a>
+                      </li>
+                      <li>
+                        <a class="filter-link" href="?theme=fixture-1#articles">
+                          <span class="fixture-badge">Fixture</span>
+                          Exemple de thème
+                        </a>
+                      </li>
+                      <li>
+                        <a class="filter-link" href="?theme=fixture-long#articles">
+                          <span class="fixture-badge">Fixture</span>
+                          Exemple de nom de thème volontairement très long pour vérifier
+                          le retour à la ligne
+                        </a>
+                      </li>
+                    </ul>
+                  </nav>
+                </div>
+              </details>
+
+              <details class="rail-disclosure">
+                <summary>
+                  <span>À propos d’Uni-Songes</span>
+                  <span class="summary-icon" aria-hidden="true"></span>
+                </summary>
+                <div class="rail-panel">
+                  <p>
+                    L'association Uni-Songes a pour mission de favoriser la pratique,
+                    la transmission et la création musicales, ainsi que les rencontres
+                    qui les rendent collectives.
+                  </p>
+                  <a class="quiet-link" href="/a-propos">Découvrir Uni-Songes</a>
+                </div>
+              </details>
+            </aside>
+
+            <section class="article-index" id="articles" aria-labelledby="articles-title">
+              <div class="section-heading">
+                <div>
+                  <p class="section-eyebrow">Dernières publications</p>
+                  <h2 id="articles-title">Articles récents</h2>
+                </div>
+                <p class="section-state">
+                  <span class="fixture-badge">Fixture</span> État avec plusieurs Articles
+                </p>
+              </div>
+
+              <ul class="article-list" role="list">
+                <li>
+                  <article class="article-entry article-entry--latest" id="article-exemple-1">
+                    <p class="article-kicker">
+                      <span class="fixture-badge">Fixture</span> Dernière publication
+                    </p>
+                    <ul class="article-meta" role="list">
+                      <li>
+                        <time datetime="2000-03-12">Date fictive · 12 mars 2000</time>
+                      </li>
+                      <li>
+                        <a href="?theme=fixture-1#articles">Thème fictif · Exemple de thème</a>
+                      </li>
+                    </ul>
+                    <h3>Exemple de titre d’article</h3>
+                    <p class="article-summary">
+                      Exemple de résumé court destiné uniquement à montrer la mesure de
+                      lecture, le rythme vertical et la relation entre le titre et le lien.
+                    </p>
+                    <a class="quiet-link article-read-link" href="#article-exemple-1">
+                      Lire l’article<span class="visually-hidden"> : Exemple de titre d’article</span>
+                    </a>
+                  </article>
+                </li>
+
+                <li>
+                  <article class="article-entry" id="article-exemple-2">
+                    <ul class="article-meta" role="list">
+                      <li>
+                        <time datetime="2000-02-21">Date fictive · 21 février 2000</time>
+                      </li>
+                      <li class="article-meta__long">
+                        <a href="?theme=fixture-long#articles">
+                          Thème fictif · Exemple de nom de thème volontairement très long
+                          pour vérifier le retour à la ligne
+                        </a>
+                      </li>
+                    </ul>
+                    <h3>
+                      Exemple de titre d’article volontairement long pour vérifier une
+                      hiérarchie stable lorsque le titre occupe plusieurs lignes à 320 pixels
+                    </h3>
+                    <p class="article-summary">
+                      Exemple de résumé fictif. La ligne reste textuelle, sans image obligatoire,
+                      sans bouton répété et sans hauteur imposée par le contenu voisin.
+                    </p>
+                    <a class="quiet-link article-read-link" href="#article-exemple-2">
+                      Lire l’article<span class="visually-hidden">
+                        : Exemple de titre d’article volontairement long pour vérifier une
+                        hiérarchie stable lorsque le titre occupe plusieurs lignes à 320 pixels
+                      </span>
+                    </a>
+                  </article>
+                </li>
+
+                <li>
+                  <article class="article-entry" id="article-exemple-3">
+                    <p class="article-kicker">
+                      <span class="fixture-badge">Fixture</span> Sans thème ni résumé
+                    </p>
+                    <ul class="article-meta" role="list">
+                      <li>
+                        <time datetime="2000-01-05">Date fictive · 5 janvier 2000</time>
+                      </li>
+                    </ul>
+                    <h3>Exemple de titre d’article sans thème</h3>
+                    <a class="quiet-link article-read-link" href="#article-exemple-3">
+                      Lire l’article<span class="visually-hidden">
+                        : Exemple de titre d’article sans thème
+                      </span>
+                    </a>
+                  </article>
+                </li>
+              </ul>
+
+              <nav class="pagination" aria-label="Pagination des Articles — première page fictive">
+                <ul role="list">
+                  <li>
+                    <span class="pagination__disabled">
+                      <span aria-hidden="true">←</span> Page précédente
+                      <span class="visually-hidden">indisponible, première page</span>
+                    </span>
+                  </li>
+                  <li><span class="pagination__current" aria-current="page">1</span></li>
+                  <li><a href="?page=1#articles" aria-label="Page 2">2</a></li>
+                  <li>
+                    <a href="?page=1#articles" rel="next">
+                      Page suivante <span aria-hidden="true">→</span>
+                    </a>
+                  </li>
+                </ul>
+              </nav>
+            </section>
+
+            <section class="prototype-states" aria-labelledby="states-title">
+              <div class="section-heading section-heading--states">
+                <div>
+                  <p class="section-eyebrow">Couverture des cas limites</p>
+                  <h2 id="states-title">États de contenu</h2>
+                </div>
+                <p class="section-state">Fixtures séparées du rendu principal</p>
+              </div>
+
+              <div class="state-grid">
+                <section class="state-sample" aria-labelledby="empty-state-title">
+                  <p class="state-number" aria-hidden="true">01</p>
+                  <h3 id="empty-state-title">Aucun Article publié</h3>
+                  <p class="empty-message">
+                    Aucun article publié pour le moment.
+                  </p>
+                </section>
+
+                <section class="state-sample" aria-labelledby="single-state-title">
+                  <p class="state-number" aria-hidden="true">02</p>
+                  <h3 id="single-state-title">Un seul Article</h3>
+                  <article class="single-article-state" id="article-exemple-unique">
+                    <p class="article-kicker"><span class="fixture-badge">Fixture</span></p>
+                    <time datetime="2000-01-01">Date fictive · 1er janvier 2000</time>
+                    <h4>Exemple de titre d’article — état à un seul résultat</h4>
+                    <p>Exemple de résumé court pour l’état à un seul résultat.</p>
+                    <a class="quiet-link article-read-link" href="#article-exemple-unique">
+                      Lire l’article<span class="visually-hidden">
+                        : Exemple de titre d’article — état à un seul résultat
+                      </span>
+                    </a>
+                  </article>
+                </section>
+
+                <section class="state-sample" aria-labelledby="no-theme-state-title">
+                  <p class="state-number" aria-hidden="true">03</p>
+                  <h3 id="no-theme-state-title">Aucun thème disponible</h3>
+                  <p>
+                    Le contrôle conserve « Tous les articles » et n'invente aucune catégorie.
+                  </p>
+                  <ul class="filter-list state-filter-preview" role="list">
+                    <li>
+                      <a class="filter-link is-current" href="?theme=all#articles" aria-current="true">
+                        Tous les articles
+                      </a>
+                    </li>
+                  </ul>
+                  <p class="empty-message">Aucun thème n’est disponible pour le moment.</p>
+                </section>
+
+                <section class="state-sample" aria-labelledby="filtered-empty-state-title">
+                  <p class="state-number" aria-hidden="true">04</p>
+                  <h3 id="filtered-empty-state-title">Thème sans résultat</h3>
+                  <p class="empty-message">
+                    Aucun article n’est associé à ce thème.
+                  </p>
+                  <a class="quiet-link" href="?theme=all#articles">
+                    Voir tous les articles
+                  </a>
+                </section>
+              </div>
+            </section>
+          </div>
+        </div>
+      </main>
+
+      <footer class="prototype-footer">
+        <div class="prototype-footer__inner">
+          <p class="prototype-footer__identity">Uni-Songes</p>
+          <nav aria-label="Navigation de pied de page — proposition statique">
+            <ul role="list">
+              <li><a href="/cours-et-stages">Cours &amp; Stages</a></li>
+              <li><a href="/ateliers">Projets collectifs</a></li>
+              <li><a href="/a-propos">À propos</a></li>
+              <li><a href="/blog">Blog</a></li>
+              <li><a href="/contact">Contact</a></li>
+            </ul>
+          </nav>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>
