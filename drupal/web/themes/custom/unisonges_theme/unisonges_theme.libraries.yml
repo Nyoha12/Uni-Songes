@@ -22,3 +22,10 @@ auth-account:
       css/auth-account.css: { preprocess: false }
   dependencies:
     - unisonges_theme/unisonges-layout
+
+public-footer:
+  css:
+    theme:
+      css/public-footer.css: { preprocess: false }
+  dependencies:
+    - unisonges_theme/unisonges-layout

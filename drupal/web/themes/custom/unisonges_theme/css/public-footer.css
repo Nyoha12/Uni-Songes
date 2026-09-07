@@ -1,0 +1,72 @@
+/* The footer has its own opaque surface; do not inherit Barrio's pale ink. */
+.site-footer.unisonges-public-footer {
+  --public-footer-surface: #fffdf8;
+  --public-footer-ink: #102033;
+  --public-footer-link: #075b55;
+  --public-footer-interactive: #7a3e00;
+  --public-footer-focus: #7a3e00;
+  padding-block: 1rem;
+  background-color: var(--public-footer-surface);
+  color: var(--public-footer-ink);
+  overflow-wrap: anywhere;
+  forced-color-adjust: auto;
+}
+
+.site-footer.unisonges-public-footer .content {
+  background-color: var(--public-footer-surface);
+  color: var(--public-footer-ink);
+}
+
+.site-footer.unisonges-public-footer :is(h1, h2, h3, h4, h5, h6, blockquote) {
+  color: var(--public-footer-ink);
+}
+
+.site-footer.unisonges-public-footer a,
+.site-footer.unisonges-public-footer .content a,
+.site-footer.unisonges-public-footer .content a.is-active {
+  color: var(--public-footer-link);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.site-footer.unisonges-public-footer a:is(:hover, :focus, :active),
+.site-footer.unisonges-public-footer .content a:is(:hover, :focus, :active) {
+  color: var(--public-footer-interactive);
+}
+
+.site-footer.unisonges-public-footer :is(a, button, input, select, textarea, summary):focus-visible {
+  /* Override the route-scoped auth outline too, including forced colors. */
+  outline: 3px solid var(--public-footer-focus) !important;
+  outline-offset: 3px !important;
+}
+
+.site-footer.unisonges-public-footer .unisonges-public-footer__identity {
+  margin-block: 0 0.5rem;
+}
+
+.site-footer.unisonges-public-footer .unisonges-public-footer__navigation ul {
+  margin-block: 0;
+  padding-inline-start: 1.25rem;
+}
+
+.site-footer.unisonges-public-footer .unisonges-public-footer__region {
+  margin-block-start: 0.75rem;
+}
+
+/* On auth routes, content-region blocks are direct children of main (#99). */
+.auth-account-page #main-content.unisonges-public-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+@media (forced-colors: active) {
+  .site-footer.unisonges-public-footer {
+    --public-footer-surface: Canvas;
+    --public-footer-ink: CanvasText;
+    --public-footer-link: LinkText;
+    --public-footer-interactive: LinkText;
+    --public-footer-focus: Highlight;
+    border-color: CanvasText;
+  }
+}

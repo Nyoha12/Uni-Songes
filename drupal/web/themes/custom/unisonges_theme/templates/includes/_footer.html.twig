@@ -1,21 +1,20 @@
-<footer class="site-footer">
-  <div class="container">
-    <p>Uni-Songes</p>
+{{ attach_library('unisonges_theme/public-footer') }}
 
-    {# Render once: metadata or access-denied children need not produce output. #}
-    {% set rendered_footer = footer_region|render %}
-    {% if rendered_footer|trim is not empty %}
-      {{ rendered_footer }}
-    {% else %}
-      <nav aria-label="Navigation de pied de page">
-        <ul>
-          <li><a href="/cours-et-stages">Cours &amp; Stages</a></li>
-          <li><a href="/ateliers">Projets collectifs</a></li>
-          <li><a href="/a-propos">À propos</a></li>
-          <li><a href="/blog">Blog</a></li>
-          <li><a href="/contact">Contact</a></li>
-        </ul>
-      </nav>
-    {% endif %}
+<footer class="site-footer unisonges-public-footer">
+  <div class="container">
+    <p class="unisonges-public-footer__identity">Uni-Songes</p>
+
+    <nav class="unisonges-public-footer__navigation" aria-label="Navigation de pied de page">
+      <ul>
+        <li><a href="/cours-et-stages">Cours &amp; Stages</a></li>
+        <li><a href="/ateliers">Projets collectifs</a></li>
+        <li><a href="/a-propos">À propos</a></li>
+        <li><a href="/blog">Blog</a></li>
+        <li><a href="/contact">Contact</a></li>
+      </ul>
+    </nav>
+
+    {# Complementary region: use normal rendering, including placeholders. #}
+    <div class="unisonges-public-footer__region">{{ footer_region }}</div>
   </div>
 </footer>
