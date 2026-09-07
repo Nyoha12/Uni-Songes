@@ -1,0 +1,13 @@
+name: 'Uni-Songes Member Dashboard'
+type: module
+description: 'Adds a read-only owner summary to the canonical member profile.'
+package: Custom
+core_version_requirement: '^11'
+dependencies:
+  - drupal:comment
+  - drupal:node
+  - drupal:user
+  - commerce:commerce_order
+  - commerce:commerce_price
+  - unisonges_structure:unisonges_structure
+  - webform:webform
