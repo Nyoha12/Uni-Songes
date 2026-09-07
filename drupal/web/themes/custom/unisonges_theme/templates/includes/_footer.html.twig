@@ -2,8 +2,10 @@
   <div class="container">
     <p>Uni-Songes</p>
 
-    {% if footer_region %}
-      {{ footer_region }}
+    {# Render once: metadata or access-denied children need not produce output. #}
+    {% set rendered_footer = footer_region|render %}
+    {% if rendered_footer|trim is not empty %}
+      {{ rendered_footer }}
     {% else %}
       <nav aria-label="Navigation de pied de page">
         <ul>
