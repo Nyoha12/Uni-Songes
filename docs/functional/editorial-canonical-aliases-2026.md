@@ -16,10 +16,13 @@ merge (`36b023c91a4a2723391c3ddb04716c911ac6bfe1`) and the later, unrelated PR
 #104 deployment-permission files. This change does not alter public
 hub routes, node access, Views, publication defaults, global Pathauto or
 Redirect settings, sitemap configuration, robots policy, themes, menus, or
-content. The targeted matrix succeeded except for the literal child-path
-requirement on a very long single-token title, recorded below. PR #113 must
-remain draft until that policy finding is resolved and its affected cases are
-retested; merge remains outside this validation's authority and scope.
+content. The 2026-09-07 targeted continuation proved that the exceptional guard
+roots and native suffixes resolve correctly and work with the helper, access
+rules, and homepage. It also demonstrated a blocking native Redirect-source
+reuse after a title edit. PR #113 remains draft for that concrete conflict;
+merely relaxing the required path depth is insufficient. The two patterns and
+both executable files remain unchanged. Merge is outside this validation's
+authority and scope.
 
 ## Audited baseline
 
@@ -85,6 +88,13 @@ query builder. This catches accent-, case-, or width-equivalent values under
 the active database collation that a PHP string comparison could miss and
 makes Redirect's alias-insert deletion hook ineligible.
 
+This protection belongs to the helper, not to every ordinary Node save.
+The targeted continuation reproduced Pathauto reusing a previous Redirect
+source and Redirect deleting that redirect during the new PathAlias insert.
+No existing PathAlias row changed owner, but the historical public URL moved
+to a different node. The unchanged patterns alone cannot promise permanent
+Redirect-source reservation; see the exact reproduction below.
+
 The tracked and required active site language/default language are both `fr`.
 The helper also accepts a hub alias stored as language-neutral (`und`), but
 requires each hub to round-trip through the alias manager for a French request.
@@ -93,8 +103,8 @@ requires each hub to round-trip through the alias manager for a French request.
 
 | Bundle | Pattern ID | Pattern | Generated namespace |
 | --- | --- | --- | --- |
-| Article (`article`) | `article` | `blog/article/[node:title]` | `/blog/article[/<non-empty-slug>]` |
-| Forum Topic (`forum_topic`) | `forum_topic` | `forum/topic/[node:title]` | `/forum/topic[/<non-empty-slug>]` |
+| Article (`article`) | `article` | `blog/article/[node:title]` | normally `/blog/article/<slug>`; exceptionally `/blog/article`, `/blog/article-0`, etc. |
+| Forum Topic (`forum_topic`) | `forum_topic` | `forum/topic/[node:title]` | normally `/forum/topic/<slug>`; exceptionally `/forum/topic`, `/forum/topic-0`, etc. |
 
 The preferred expressions `blog/[node:title]` and `forum/[node:title]` are not
 safe under the unchanged tracked limits. A cleaned, unbroken 200-character
@@ -110,19 +120,21 @@ global 100-character settings is forbidden in this phase. The fixed,
 non-numeric `article` and `topic` guard segments are therefore the narrow
 configuration-only deviation: the same worst case bottoms out at
 `/blog/article` or `/forum/topic`, and every suffix remains below its hub. The
-runtime pass confirmed that exact result, which avoids the two hubs but is not
-a child below the literal `/blog/article/` or `/forum/topic/` prefix required
-by the continuation matrix. Locked Pathauto/Token has no per-pattern length
-modifier; changing a global limit is forbidden, while adding another fixed
-segment would change every public alias and requires a separately reviewed
-pattern decision. The current patterns are therefore preserved, but this
-finding prevents readiness. No route is activated merely by merging these
-tracked configuration definitions.
+runtime passes confirmed that exact result. The proposed adjusted contract
+would accept these exceptional paths and their native suffixes anywhere below
+`/blog/` or `/forum/`, while keeping normal URLs and both patterns intact.
+The 2026-09-07 tests proved current route availability, uniqueness, canonical
+links, access and helper idempotence under that interpretation. However, the
+required absence of Redirect collisions failed on a later ordinary Node save.
+The adjusted contract therefore has not been accepted unconditionally, and
+readiness remains blocked by Redirect reuse rather than by path depth alone.
+No route is activated merely by merging these configuration definitions.
 
 Neither pattern contains a node ID or any numeric fallback. The fixed bundle
 prefixes prevent a cross-bundle collision. Pathauto also reserves an existing
 alias, exact route, file, or directory and deterministically appends `-0`, then
-`-1`, and so on. It never overwrites the other owner. The helper extends that
+`-1`, and so on. It does not overwrite another existing PathAlias owner. This
+does not reserve a historical Redirect source. The helper extends that
 preflight across every candidate in the same immutable plan and refuses
 case-folded, incompatible-language, Redirect-source, or ownership ambiguity. A
 unique language-neutral (`und`) manual alias remains valid for a French node
@@ -157,7 +169,7 @@ empty-token, and length behavior.
 | title `Forum` | `/blog/article/forum` | `/forum/topic/forum` | cannot equal `/forum` |
 | punctuation-only title | no alias | no alias | blocked as `empty_generated_slug`; no numeric fallback |
 | literal `&lt;b&gt;` text | `/blog/article/b` | `/forum/topic/b` | reproduces Core Token's plain-text escaping before Pathauto cleaning |
-| 200 repeated `A` characters | `/blog/article` | `/forum/topic` | runtime actual; safe from hub overwrite, but not a child path below the required guard prefix, so readiness is blocked |
+| 200 repeated `A` characters, then 200 `B` characters | `/blog/article`, then `/blog/article-0` | `/forum/topic`, then `/forum/topic-0` | current route/ownership/access/helper checks pass; later native Redirect-source reuse blocks unconditional acceptance |
 | `MiXeD UPPER lower` | `/blog/article/mixed-upper-lower` | `/forum/topic/mixed-upper-lower` | lowercase |
 | duplicate `Écoute` then `Ecoute` | `/blog/article/ecoute`, then `/blog/article/ecoute-0` | `/forum/topic/ecoute`, then `/forum/topic/ecoute-0` | transliteration-identical titles are uniquified |
 
@@ -433,10 +445,20 @@ PR #82 requires every dynamically included entity to resolve to exactly one
 unique non-numeric PathAlias before Simple Sitemap inclusion. These patterns
 provide the missing Article/Forum generation policy; the helper supplies a
 guarded path for genuinely alias-free existing content. This change does not
-edit or activate Simple Sitemap configuration, and PR #82 must continue to
-fail closed for any helper blocker.
+edit tracked Simple Sitemap configuration or apply #82's policy. Its module
+was enabled transiently only to satisfy the helper's runtime prerequisites;
+#82 must continue to fail closed for any helper blocker.
 
-The latest open-PR filename audit on 2026-09-03 covered all 22 open PRs and 144
+Read-only inspection of #82 at `55d1a407a9073bbd63e1c36ebf20f5ca717d6773`
+confirmed that its dynamic canonical gate requires an internal, unique,
+non-numeric PathAlias and protects the exact hubs. It does not require another
+segment after `article` or `topic`, so the four exceptional paths meet those
+structural checks. This is not a complete Simple Sitemap runtime validation:
+its generation/inclusion checks remain owned by #82. The 2026-09-07 Chromium
+check confirmed #103's actual homepage link to `/blog/article`, without editing
+either PR's files or the #82 worktree.
+
+The latest open-PR filename audit on 2026-09-07 covered all 22 open PRs and 144
 file rows. Excluding PR #113 itself, there is no exact filename overlap with
 its five files. The remaining semantic adjacency is #82 (the sitemap gate);
 #103 is now part of the reviewed base. Open heads remain mutable, so the guard
@@ -575,7 +597,7 @@ old Redirect after a title edit ending in unpublished denial.
 | Unpublished Forum Topic | Pass | Alias ownership did not alter the existing unpublished access or View filters. |
 | French punctuation and case | Pass | Accents, straight and typographic apostrophes, ampersand, slash, repeated spaces and mixed case matched the slug table. |
 | Duplicate/colliding titles | Pass | Same-title and transliteration collisions used deterministic `-0`; no overwrite, owner transfer or cross-bundle collision occurred. |
-| Long unbroken title | Blocked | A 200-character token bottomed out at `/blog/article` or `/forum/topic`. It never claimed either hub or `/blog-0`/`/forum-0`, but it did not remain a child below `/blog/article/` or `/forum/topic/`. |
+| Long unbroken title | Superseded by targeted continuation below | The original depth finding was reevaluated with the authorized broad-namespace contract. Guard roots/suffixes pass the targeted checks; native reuse of an old Redirect source remains blocking. |
 | Title edit and Redirect | Pass | `/blog/article/souffle-initial` became `/blog/article/souffle-renouvele`; one 301 retained the old path and could not bypass later unpublished denial. |
 | Manual alias | Pass | Explicit `SKIP` stayed unchanged through title edit; unmarked provenance was preserved and blocked helper apply. |
 | Numeric/malformed alias | Pass | Both were classified and preserved; apply refused with no silent migration. |
@@ -583,7 +605,7 @@ old Redirect after a title edit ending in unpublished denial.
 | Helper lifecycle | Pass | Dry-run/apply/second dry-run/second apply proved create-only behavior and idempotence. No title, body, author, publication state or revision changed. |
 | Controlled rollback | Pass | Injected failure returned non-zero, verified root rollback, preserved the missing-alias state and reproduced the immutable plan fingerprint. |
 | Views, access and sitemap non-regression | Pass | No Blog/Forum View, access rule, publication default or Simple Sitemap state/configuration changed. |
-| PR #82 sitemap recognition | Deferred to #82 | This PR deliberately neither activates nor edits Simple Sitemap; #82 remains responsible for runtime inclusion recognition. |
+| PR #82 sitemap recognition | Deferred to #82 | No #82 policy was applied; its runtime inclusion recognition remains deferred. The Simple Sitemap module is only a transient helper prerequisite. |
 | Zero fixtures and environment cleanup | Pass | All runtime fixture nodes and their aliases/Redirects were removed, the snapshot was restored twice, the serving checkout returned to `release/prod`, and DDEV was stopped. |
 
 Cleanup matched the baseline: the normalized database dump SHA-256 was
@@ -600,3 +622,148 @@ serving checkout is clean on the latest `release/prod`, and no DDEV project
 container remains running. Its final commit/tree fingerprint is
 `9ef3d4a2c260af9f3f2fcfe4ac584648bb592e0c` /
 `94316e6bedeae800078f5ecee755b4b2fd3f27dc`.
+
+## Targeted extreme-title continuation, 2026-09-07
+
+The exact tested head was `7306586b1beda708a8d14bff2c0d2cf0a2bc7401`.
+A fresh fetch confirmed that `origin/release/prod` still equals `9ef3d4a2…`
+and already contains the real #103 merge, so no further rebase or history
+rewrite was necessary. All four executable/config hashes in the earlier
+record remained identical. The successful French punctuation, ordinary
+duplicate/transliteration, manual/SKIP, ambiguous provenance, numeric/malformed,
+invalid-title and controlled post-insert rollback evidence was reused.
+Only the extreme-title scenarios and their dependent consumers were exercised.
+
+Before the first Drupal write, the current local state was captured in
+`pr113-extreme-alias-resume-20260907T1445Z`. After the Codespaces interruption,
+the partial module/theme installation and zero-node state were inspected and
+additionally saved as `pr113-extreme-alias-interruption-recovery-20260907`.
+The initial snapshot, not a September 3 snapshot, remained the final restore
+target. The serving checkout was clean at the exact tested head; no other
+agent used DDEV. #90 and #94 continued statically, and #82 was not modified.
+
+The local preparation used Drupal APIs for the exact prerequisite settings,
+four disposable Basic pages, installed modules/themes, and the existing guarded
+Forum/Blog and editorial-home helpers. Their successful plans were
+`f00ab243441e3629875463d2c6fd8265fdb11e9924ea006e08a9f236a8cac02f`
+and `20c2c7cd27af5ebce89eac42c899608370821239643aa65a2243d800fb297a7f`.
+The latter applied its five expected operations. Pathauto/Redirect settings
+and the four patterns were made active only in this disposable local database.
+No configuration import or raw SQL command was run. Normal module installation
+also fetched Drupal.org French translations through Locale; those local
+configuration/file effects were included in cleanup. No Google, PayPal API,
+external email, Mailpit or VPS access occurred.
+
+The CLI checks used a disposable PHP 8.3 DDEV-image container on the project's
+local network, with the complete serving checkout mounted for the Git guards.
+Early local-precondition refusals (incomplete Git mount, PHP 8.4, stale kernel
+cache, exact comment/page metadata and sparse Stage/Concert config shape) were
+resolved in the disposable environment. No production guard was bypassed or
+edited. A preliminary auxiliary config hash differed without a complete value
+snapshot; that integrity check was not counted as passing. The isolated repeat
+below captured all config values and passed before/after equality. The local
+French URL-prefix prerequisite was also aligned before the final URL checks.
+
+| Affected check | Observed result |
+| --- | --- |
+| Real pre-generation resolution | Drupal's router returned not-found for all four paths below; PathAlias ownership and Redirect repository matches were both empty. This checks current routing, not hypothetical future routes. |
+| Published Article, 200 `A` characters, node 41 | One PathAlias (ID 25) at `/blog/article`; Drupal resolved `entity.node.canonical` to node 41; canonical page, Blog and #103 homepage links used it. |
+| Unpublished Article, 200 `B` characters, node 42 | One PathAlias (ID 26) at `/blog/article-0`; anonymous alias and `/node/42` returned 403; absent from Blog and homepage. |
+| Published Forum Topic, 200 `A` characters, node 43 | One PathAlias (ID 27) at `/forum/topic`; correct canonical page and Forum link. |
+| Unpublished Forum Topic, 200 `B` characters, node 44 | One PathAlias (ID 28) at `/forum/topic-0`; anonymous alias and `/node/44` returned 403; absent from Forum. |
+| Hub/ownership boundaries | `/blog` and `/forum` retained their distinct Basic-page owners, nodes 38 and 40. No empty path, numeric canonical, `//`, hub alias, `/blog-0` or `/forum-0` was produced. No existing PathAlias row transferred owner. |
+| Helper lifecycle | Dry-run planned four creations, apply committed exactly four, the next dry-run classified all four aliases as valid with zero blockers, and the next apply returned `NO_CHANGE`. |
+| Integrity during helper apply | Full persisted node fields/revisions, all active config (including Views, access and sitemap), and all 20 preexisting PathAlias entities remained unchanged. |
+| Published Article title edit | `/blog/article` became `/blog/article/article-extreme-redevenu-ordinaire`; Redirect ID 1 returned 301 to the new canonical, ending in HTTP 200. |
+| Unpublished Forum title edit | `/forum/topic-0` became `/forum/topic/forum-extreme-redevenu-ordinaire`; Redirect ID 2 returned 301 to the new canonical, ending in HTTP 403. Publication remained unchanged. |
+| Existing Redirect source, helper | Two new eligible alias-free extreme fixtures, nodes 45/46, produced two blockers. Both dry-run and apply exited 1 before writes and preserved Redirect IDs 1/2. |
+| Existing Redirect source, native Node save | **Failure:** node 45 claimed `/blog/article` (new PathAlias ID 29) and deleted Redirect 1; node 46 claimed `/forum/topic-0` (new PathAlias ID 30) and deleted Redirect 2. Each path had one new owner, but the historical URL no longer redirected to its former node. |
+
+The isolated creation fingerprint was
+`8ee03790a493b19532ad220a0a7a1d70d6ce2ab001eee77ef8beb7e89f987b86`;
+the successful no-op fingerprint was
+`5a9695e8ecf8eaea9dd435b2861e61e30375f4fd07851467c7283dc8201dda4f`.
+The collision dry-run and refused apply shared
+`3df61188e6ae418dc6f5bddb34ff6b225ec2122d7e24794b8ab10e676d4ed8fc`.
+The isolated content/revision hash stayed
+`72744e2f42239a43fc6c1a2b52fda869aedfbec8f238cf076db9f573aee7c830`,
+and its full config hash stayed
+`358650dc027fae6cc63a6f9495d2a3301ece543e718c1030721082f363502ece`.
+The config hash uses sorted config names. Both hashes use PHP serialization
+and differ from the canonical-JSON cleanup hashes below.
+
+The targeted real Chromium run passed two canonical pages, three collection
+checks (Blog, Forum, homepage), four unpublished URL denials and the two
+post-edit redirect chains. Its request interception allowed only
+`http://127.0.0.1:8080`; no general visual matrix was rerun. The later native
+collision was observed through Drupal Node, PathAlias and Redirect APIs, then
+the alias manager and path validator confirmed the new owners. The prior
+controlled rollback test remains valid because the executable bytes did not
+change; it was not reinjected during this continuation.
+
+### Blocking result and smallest review option
+
+Pathauto 1.14's `AliasUniquifier::isReserved()` reserves existing aliases and
+literal routes, but not Redirect sources. Redirect 1.12's
+`redirect_path_alias_insert()` deletes a matching source; its update hook has
+the same deletion behavior. The guarded helper already prevents this, but an
+ordinary Node save does not call that helper. Accepting the shorter guard
+roots does not eliminate this lifecycle conflict, and adding another fixed
+segment would not provide permanent Redirect-source reservation either.
+
+The smallest option to review is an explicit manual, meaningful, non-numeric
+alias with `PathautoState::SKIP` for an exceptional content item, after real
+route/alias/Redirect preflight. This preserves normal patterns and URLs without
+a custom generator. It is only a per-content workaround: it does not reserve
+all historical Redirect sources against every future automatic Node save.
+Adopting an operational exception or requiring a global reservation invariant
+therefore needs an explicit policy decision and its narrowly affected test.
+No such remediation has been applied, and PR #113 remains draft.
+
+### Restoration and durable evidence
+
+All six extreme-content fixtures (41–46) and four prerequisite pages (37–40)
+were deleted through entity APIs; the immediate counts were nodes 0, aliases
+16 and Redirects 0. The initial September 7 snapshot was restored, and the
+canonical fingerprints matched the recorded starting state:
+
+| Restored scope | Result / SHA-256 |
+| --- | --- |
+| Active config | 314 objects; `e96a6b849b5e15c6e16fde5b6494a9e57fe9f7161dd8398c819963ddfdfc2127` |
+| Users | 7, IDs 0–6; `664d8700cbc47f60eb9605f755f01866bbf4dd6b91352eb5f3e97bea74defde9` |
+| Aliases | 16, IDs 1–16; `b48a719ac57860fe4bea9970ed96cd5f4324bfc541b6d23b12773c7fc2b7eb85` |
+| Modules | 59; `66c29bfed12400162f4aeade7bbb5ff309483e2ab8e76fcfac5be1871d4c576c` |
+| Themes | `claro`, `olivero`; `398cebcf832b4579bd342309888aaf8aa6b0ab7cf7c98cda9f58bf069ba5b6a1` |
+| Node/Redirect counts | 0 / 0 |
+| Site defaults | UUID `f50a83bf-a30c-4ddc-bcd1-1cf1fe8e0a3a`; front `/node`; default/admin `olivero`/`claro`; maintenance false |
+| Public `.htaccess` | 486 bytes; `28039dffc5bcf9de06c999f11f9a6c3372bcf1c675fcca2d6e5773680e281061` |
+| Public `sync/.htaccess` | 685 bytes; `4f62c1eb3b42589fccb318763f5012794152d667d159a930a90e5081b83fe1ef` |
+| Serving checkout | clean `release/prod@9ef3d4a2c260af9f3f2fcfe4ac584648bb592e0c`; tree `94316e6bedeae800078f5ecee755b4b2fd3f27dc` |
+
+The public-file inventory again contains only those two unchanged files and
+the original empty `php`/`styles` directories. Generated CSS, JS, Twig cache
+and downloaded translations were moved out of public storage into the local
+evidence directory. The interruption had erased the original `/tmp` archive,
+so its compressed-archive hash was not claimed as reverified; both file bytes
+were compared to the durable interruption backup.
+
+The verification bootstrap warmed technical database caches. After checking
+the semantic fingerprints, the same initial snapshot was restored once more
+and exported without bootstrapping Drupal. Removing only the dump-completion
+timestamp reproduced the original full database hash exactly:
+`e753afc47351ef4869fd87184b5df9602fa40650046e16b53836834cb4b89d7a`.
+DDEV web/database and router are stopped, the temporary CLI containers are
+gone, and runtime ownership is released. The shared DDEV SSH-agent container
+was left as found.
+
+Detailed local logs, scripts, dumps and the recovery archive are retained in
+`/workspaces/Uni-Songes/.git/pr113-evidence/resume-bh0oMS3t/`; they are outside
+the tracked PR and survive `/tmp` cleanup. This committed record and the PR
+body retain the useful findings independently of those local artifacts.
+The final diff contains the same five files, with this continuation modifying
+only this documentation. Final checks passed: PHP lint, Bash syntax,
+ShellCheck 0.9.0, strict parsing of 492 YAML files, installed Pathauto schema
+and dependency/ID/UUID/bundle assertions, UTF-8/NFC, a targeted credential-pattern
+scan, `git diff --check`, exact-file guards and the 22-PR/144-file overlap audit.
+The independent focused Pathauto/access/SEO review and final documentation
+review agreed that the native Redirect collision requires draft status.
