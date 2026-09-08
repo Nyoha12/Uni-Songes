@@ -1,5 +1,113 @@
 # Intégration UX du panier Commerce — 2026
 
+## Validation coordonnée du 8 septembre 2026
+
+PR toujours **draft** : logique native et helper vérifiés, mais traduction et
+présentation mobile ne satisfont pas encore tous les critères. Aucun changement
+fonctionnel supplémentaire n’est justifié dans les trois fichiers de code ;
+cette reprise actualise seulement la documentation.
+
+Les worktrees #86/#90 étaient propres. GitHub annonçait déjà #90 `MERGEABLE` ;
+le rebase réel depuis `ff03126e8e7b47f71bcf536a79e434a9f1d22b3a` est également
+sans conflit, séparément de #86. La base épinglée après fetch est
+`3af525b2be480588866aaf1afabddb4a1c40f55d`, merge #94 confirmé sur GitHub.
+Le HEAD fonctionnel #90 testé est `0605ef843503f1772b93bf7922c186c9dfa83df7`.
+Ses blobs sont inchangés :
+
+- View : `cb23f2b69ab76e3d282ff899da50afa93a352a4d` ;
+- helper : `a95696fec24e66fdf6521d0bc2f78e704344b91e` ;
+- Twig panier vide : `e45fc3ecfc5bbdd8b1737961792de75050a20813`.
+
+Périmètre toujours exactement quatre fichiers : la présente documentation,
+`drupal/config/sync/views.view.commerce_cart_form.yml`,
+`drupal/scripts/apply-cart-ux-2026.sh` et
+`drupal/web/themes/custom/unisonges_theme/templates/commerce/commerce-cart-empty-page.html.twig`.
+
+### Résultats propres à #90
+
+- Petit contrôle sans #86 : hook panier vide et trois liens exacts passent en
+  anonyme/authentifié. La copie ajoutée est française, mais le titre natif reste
+  `Your shopping cart is empty.` faute de catalogue français dans cette base
+  locale. Aucun catalogue n’a été fabriqué ni téléchargé pour faire passer le test.
+- Panier rempli : en-têtes Article/Prix/Quantité/Retirer/Total, boutons, jetons
+  Form API et totaux natifs conservés. Quantité 1 → 2 et total 40 → 80 EUR
+  persistants entre requêtes ; POST négatif rejeté côté serveur, quantité stockée
+  inchangée, un seul message inline #100 avec `role=alert`.
+- Retrait, isolation entre deux utilisateurs et entre deux sessions anonymes,
+  persistance anonyme et entrée de checkout native passent. Le test s’arrête
+  avant tout paiement ou finalisation de commande.
+- Helper réel : dry-run → apply → second dry-run → second apply `NOOP` →
+  rollback dry-run/apply/contrôle. Empreintes brutes de toutes les configurations
+  comparées : seule la View autorisée varie ; le second apply ne change rien et
+  le rollback restaure exactement l’ensemble. Une dérive inconnue injectée dans
+  la fixture est refusée sans aucune écriture du helper.
+
+La View native du bootstrap local avait d’abord été refusée comme dérive
+inconnue. Elle a été préservée, puis une préparation de fixture distincte a
+initialisé par API l’objet `Item` exact nécessaire au test. Ceci ne valide pas
+une migration de cette dérive, ni celle d’un site distant. Les fichiers source
+du helper et de la View n’ont jamais été modifiés pour contourner ses gardes.
+
+### Intégration et limites
+
+Une seule préparation locale, suivie des contrôles propres puis du parcours
+commun : checkout servant détaché sur #90 et chargement du seul Twig #86 exact,
+blob `f0f8f8decb67ac00463dee992d3efe132b79fbda`. La View restait identique au
+HEAD déployé ; aucun commit de PR n’a été fusionné dans l’autre branche.
+
+`/reserver` et panier vide → `/reservation-cours`, destinations connexion et
+inscription exactes, absence de boucle/promesse de créneau réservé, H1 unique,
+messages #100, auth #99 et footer #94 passent. Header, fond, styles et logique
+de réservation/paiement sont inchangés. #114 reste un contrat futur, sans
+dépendance à sa fusion. Les validations statiques inchangées sont réutilisées ;
+gardes de fichiers/PR ouvertes, UTF-8/NFC, diff et secrets sont revérifiés.
+
+Ordinateur, 390/320 px, focus/Tab, message mobile et reflow équivalent 200 %
+(640 CSS px pour 1280 px, pas un zoom navigateur natif) ont été examinés.
+L’inspection visuelle révèle un blocage que les seuls compteurs de scrollbar
+manquaient : le panier rempli déborde dans son conteneur de 246/316 px, avec
+446 px de contenu et `overflow-x: visible`. Les colonnes et le retrait sont
+rognés sur mobile. Le wrapper natif existe, mais sa règle de défilement n’est pas
+effective dans ce runtime ; les sources de styles/attachement sont hors #90.
+Le package Bootstrap existe dans vendor, mais aucun nouveau raccordement de
+bibliothèque n’est ajouté. Le catalogue français Core/Commerce manque également.
+Ces deux critères restent à valider sur une préparation corrigée et autorisée,
+ainsi que le zoom natif. Aucun faux succès ni changement hors périmètre.
+
+Les défauts hérités du calendrier/clipping de `/reserver`, reproduits aussi avec
+le Twig de la base, et la correction de cache propre à #86 sont consignés dans
+sa documentation. Ils ne font pas perdre les preuves propres au panier/helper.
+
+### Sécurité, restauration et reprise
+
+Snapshot frais `pr86-pr90-before-20260908`, fichiers publics et settings préservés
+avant préparation. Site local synthétique, jamais de données de production.
+Cron/Google désactivés, mail collector Core et Guzzle MockHandler effectifs dans
+CLI **et PHP-FPM** (preuve HTTP, précaution #106), seul gateway manuel local.
+Aucun PayPal, Google ou email externe. Les modifications de fixtures sont
+séparées des écritures du helper ; aucun import de configuration ni dépendance
+installée/téléchargée. Aucun autre agent ni autre worktree n’est intervenu.
+
+La restauration du snapshot a supprimé toutes nos fixtures : retour à 7 comptes,
+0 nœud/commande/soumission et 314 configs, sans compte `local.fixture.pr8690.*`.
+Le dump SQL complet avant/après est identique octet pour octet (gzip normalisé,
+SHA-256 `6a4b664a2710f195cb7f8f37ea0e3b86877aa1fdb039f0b75a6dbdcf8d12f485`).
+Checkout servant revenu propre à `release/prod` / `9ef3d4a2c260af9f3f2fcfe4ac584648bb592e0c` ;
+trois settings comparés identiques et archive publique restaurée avec modes/ACL.
+La restauration imposée a recréé web/db via DDEV ; aucun redémarrage préparatoire.
+DDEV est ensuite arrêté (`ddev stop --skip-hooks`), web/db supprimés et verrou
+de session libéré. L’environnement est rendu, sans surveillance ni reprise automatique.
+
+Preuves privées : `.git/pr86-pr90-runtime-20260908.qqwTWM4B/RESUME.md`, logs du
+helper, empreintes complètes TSV, rendus et captures. Les HTML peuvent contenir
+des jetons locaux : ne pas les publier tels quels. Les interruptions dues à des
+sélecteurs de vérification ont été corrigées et reprises au point utile ; elles
+ne sont pas comptées comme régressions applicatives. La reprise doit cibler
+les limites ci-dessus, sans rejouer toute la matrice ni lancer du runtime sans
+nouvelle autorisation.
+
+## Historique de préparation statique — 7 septembre 2026
+
 Statut au 7 septembre 2026 : préparation statique reprise sur la vraie branche
 distante `release/prod`, vérifiée après fetch à
 `9ef3d4a2c260af9f3f2fcfe4ac584648bb592e0c` (fusion #104). Le rebase depuis la
