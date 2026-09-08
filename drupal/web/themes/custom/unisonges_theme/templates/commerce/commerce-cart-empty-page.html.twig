@@ -1,0 +1,19 @@
+{#
+/**
+ * @file
+ * Uni-Songes override for Drupal Commerce's empty cart page.
+ *
+ * Commerce Cart 3.3.2 registers the commerce_cart_empty_page theme hook and
+ * supplies commerce-cart-empty-page.html.twig as its default implementation.
+ */
+#}
+<section class="cart-empty-page unisonges-page-intro" aria-labelledby="cart-empty-title">
+  <h2 id="cart-empty-title">{{ 'Your shopping cart is empty.'|t }}</h2>
+  <p>Pour réserver un cours, commencez par choisir le cours et le créneau.</p>
+  <p>Lorsqu’un billet est disponible, il est proposé depuis la page du stage ou du concert concerné.</p>
+  <nav class="reservation-portal__actions" aria-label="Poursuivre votre visite">
+    <a class="btn btn--cta" href="/reservation-cours">Choisir un cours et un créneau</a>
+    <a class="btn" href="/stages">Découvrir les stages</a>
+    <a class="btn" href="/concerts">Découvrir les concerts</a>
+  </nav>
+</section>
