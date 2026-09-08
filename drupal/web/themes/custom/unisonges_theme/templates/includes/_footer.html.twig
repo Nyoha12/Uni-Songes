@@ -1,7 +1,20 @@
-<footer class="site-footer" role="contentinfo">
-  <div class="container footer-links">
-    <a href="/mentions-legales">Mentions légales</a>
-    <a href="/politique-confidentialite">Politique de confidentialité</a>
-    <a href="/contact">Contact</a>
+{{ attach_library('unisonges_theme/public-footer') }}
+
+<footer class="site-footer unisonges-public-footer">
+  <div class="container">
+    <p class="unisonges-public-footer__identity">Uni-Songes</p>
+
+    <nav class="unisonges-public-footer__navigation" aria-label="Navigation de pied de page">
+      <ul>
+        <li><a href="/cours-et-stages">Cours &amp; Stages</a></li>
+        <li><a href="/ateliers">Projets collectifs</a></li>
+        <li><a href="/a-propos">À propos</a></li>
+        <li><a href="/blog">Blog</a></li>
+        <li><a href="/contact">Contact</a></li>
+      </ul>
+    </nav>
+
+    {# Complementary region: use normal rendering, including placeholders. #}
+    <div class="unisonges-public-footer__region">{{ footer_region }}</div>
   </div>
 </footer>
