@@ -137,19 +137,20 @@ La PR #103 est désormais présente dans `release/prod` et ses fichiers d'accuei
 fichier Contact. Son ID, son UUID, sa route et son stockage restent donc
 indépendants de `contact` et de `unisonges_contact_form`.
 
-### Isolation de la PR #94 en retest
+### Isolation de la PR #94 fusionnée
 
-La PR #94 est ouverte, en brouillon et en retest ; elle n'est ni fusionnée ni
-une dépendance fonctionnelle du formulaire Contact. Ses six fichiers de pied de
-page et de thème ne chevauchent aucun des cinq fichiers Contact. La version
-proposée conserve un seul rendu de `page.content` dans `main`, n'ajoute aucun
+La PR #94 est fusionnée depuis le 8 septembre 2026, au commit
+`3af525b2be480588866aaf1afabddb4a1c40f55d`. Elle n'est pas une dépendance
+fonctionnelle du formulaire Contact. Ses six fichiers de pied de page et de
+thème ne chevauchent aucun des cinq fichiers Contact. Les cinq sources de thème
+fusionnées sont identiques à la version `3352898` déjà auditée. Cette version
+conserve un seul rendu de `page.content` dans `main`, n'ajoute aucun
 chemin de messages et ne modifie ni le Webform `contact`, ni son bloc, ni son
 stockage.
 
-Terminal 3 et la PR #94 possèdent toutefois exclusivement les ressources
-runtime pendant leur retest. Cette exclusivité reporte la matrice Contact sans
-conditionner le fonctionnement ou la fusion future du formulaire au contenu de
-la PR #94.
+La PR #94 consigne la restauration du checkout servant et la libération des
+ressources après son retest. Cet état opérationnel n'est pas réinspecté ici :
+une attribution explicite des ressources à la validation Contact reste requise.
 
 ### JavaScript historique
 
@@ -429,12 +430,14 @@ Les contrôles hors runtime exécutés sur le diff comprennent :
   sélecteurs hors de la portée authentification/compte ;
 - contrôle de la PR #103 fusionnée : fichiers, ID, UUID, bloc, route et
   espace de stockage indépendants ;
-- contrôle statique de la PR #94 ouverte : aucun chevauchement de fichiers,
-  aucun nouveau chemin de messages et aucune dépendance fonctionnelle Contact ;
+- contrôle statique de la version de la PR #94 ensuite fusionnée : aucun
+  chevauchement de fichiers, aucun nouveau chemin de messages et aucune
+  dépendance fonctionnelle Contact ;
 - lecture des sources verrouillées Drupal 11.3.3 et Webform 6.3.0-beta7 : accès
   aux formulaires et soumissions, jetons, routes, validation des champs requis,
   e-mail, options fermées, longueurs, confirmation inline et override de langue ;
-- unicité dans la base actuelle de 398 UUID et de 69 IDs de blocs ;
+- unicité de 398 UUID et de 69 IDs de blocs dans le snapshot Contact audité sur
+  la base `3e53bc5` ;
 - `bash -n` et ShellCheck sur le lanceur ;
 - `php -l` sur le helper ;
 - `git diff --check`, garde de cinq fichiers, recherche de secrets et contrôle
@@ -451,21 +454,25 @@ intégrité des bibliothèques, titres sémantiques, cycle inline des messages d
 PR #100, présentation authentification/compte de la PR #99, accueil éditorial de
 la PR #103 et garde opérationnel de la PR #104 sont fusionnés dans
 `release/prod` à `3e53bc5b3d1b3ded9a207bc2e16ec48aa84b9bdf`. La branche Contact
-locale est rebasée sur cet état.
+est rebasée sur cet état. Le fetch du 8 septembre retrouve ensuite la fusion de
+#94 à `3af525b`. Ses sources de thème déjà auditées sont identiques ; les
+configurations, la pile verrouillée et les sources Contact/#99/#100 n'ont pas
+changé. Cette seule fusion ne nécessite donc ni nouveau rebase ni répétition
+des contrôles fonctionnels statiques.
 
-La validation runtime reste en attente uniquement parce que Terminal 3 et la
-PR #94 possèdent actuellement DDEV et le checkout servant. La fusion de la PR
-#94 n'est pas requise : ses ressources doivent seulement être explicitement
-libérées avant le test Contact. Aucun DDEV, Docker, Drush, Chromium, Playwright,
-Mailpit, navigateur, serveur local ou VPS n'est utilisé pour ce rafraîchissement
+La validation runtime reste à planifier dans une session Contact explicitement
+autorisée, après la libération consignée par Terminal 3 / PR #94. Aucun DDEV,
+Docker, Drush, Chromium, Playwright, Mailpit, navigateur, serveur local ou VPS
+n'est utilisé pour ce rafraîchissement
 statique. La PR #85 reste en brouillon ; cette préparation technique ne vaut ni
 autorisation de publication, ni preuve d'activation en production.
 
 ### Ordre runtime restant
 
-1. attendre la libération explicite des ressources par Terminal 3 / PR #94 ;
-2. récupérer `release/prod` et, seulement si sa tête a avancé, actualiser la
-   branche puis répéter les gardes affectés ;
+1. obtenir une attribution explicite des ressources pour la validation Contact ;
+2. récupérer `release/prod`, comparer les entrées pertinentes si sa tête a
+   avancé, puis actualiser la branche et les seuls contrôles affectés si cette
+   comparaison le nécessite ;
 3. dans le DDEV local autorisé, lancer le dry-run et l'application ciblée, sans
    import complet ou partiel ;
 4. exécuter la matrice compacte ci-dessous ;
