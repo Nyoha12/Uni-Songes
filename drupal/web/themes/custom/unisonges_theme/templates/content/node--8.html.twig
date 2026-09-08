@@ -6,6 +6,10 @@
 {% set register_url = portal.register_url|default('/user/register?destination=/reservation-cours') %}
 {% set reservation_form = unisonges_reservation_form|default([]) %}
 
+{# Keep the original form's uncacheable policy even when its markup is hidden.
+   Account and right changes must never reuse another portal state. #}
+{{ {'#cache': {'contexts': ['user'], 'max-age': 0}} }}
+
 <article class="unisonges-node-page reservation-portal">
   {% include '@unisonges_theme/includes/_hero.html.twig' with {
     title: 'Réserver un cours',

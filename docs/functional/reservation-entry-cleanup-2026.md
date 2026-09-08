@@ -7,11 +7,100 @@ présente `/reservation-cours` comme parcours principal pour tous les visiteurs.
 L’ancien formulaire n’est rendu que pour un compte connecté que l’état serveur
 autorise déjà à l’utiliser.
 
-Cette modification est strictement statique. Elle ne change ni route, ni PHP,
+Cette modification reste limitée au template et à sa documentation. Elle ne change ni route, ni PHP,
 ni Webform, ni produit Commerce, ni logique de créneau, de commande, de
 notification, de file Google ou de consommation des droits.
 
-## Périmètre Git et rebase
+## Validation coordonnée du 8 septembre 2026
+
+La nouvelle autorisation commune #86/#90 remplace les anciennes attributions
+runtime ci-dessous. Les deux worktrees étaient propres. Après fetch, les deux
+branches ont été rebasées séparément, sans conflit, sur
+`3af525b2be480588866aaf1afabddb4a1c40f55d`, vraie `origin/release/prod` et merge
+#94 vérifié sur GitHub. Aucun merge croisé, nouvelle branche ou nouvelle PR.
+
+### Correction démontrée et état testé
+
+Le HEAD #86 rebasé `082dd12c817ae9991769208a68e9998d1f207598` conservait le
+blob statique précédent. Drupal réel a révélé un défaut non détectable par ces
+rendus isolés : une visite sans droit mettait cette variante en cache et la
+servait ensuite à un autre compte pourtant éligible. Le formulaire serveur
+existait, `can_book` était vrai et son `max-age` valait zéro ; le masquer
+empêchait ces métadonnées de remonter. Une visite éligible à cache froid
+fonctionnait, puis la séquence sans droit → droit reproduisait le défaut.
+
+La seule correction fonctionnelle ajoute un tableau de rendu sans HTML portant
+le contexte `user` et `max-age: 0`. Elle conserve ainsi la politique non cachée
+du formulaire original, même masqué ou vide, sans recalculer les droits.
+Le Twig corrigé testé a le blob `f0f8f8decb67ac00463dee992d3efe132b79fbda`.
+La combinaison utilisait le checkout détaché #90
+`0605ef843503f1772b93bf7922c186c9dfa83df7` plus ce seul fichier exact ; le
+garde Git du helper #90 restait intact.
+
+### Preuves acquises
+
+- Contrôle #86 seul : 20 assertions réussies, puis compilation/rendu Twig PHP
+  réel des cinq états, HTML structurel, liens exacts, destinations, H1/H2, ARIA,
+  formulaire unique, UTF-8/NFC et absence d’achat préalable. Les revues statiques
+  précédentes restent réutilisées ; le changement de cache est testé séparément.
+- Anonyme et connecté sans droit : parcours principal seul, aucun ancien
+  formulaire ni section secondaire vide. Droit payé valide ou `pending_payment` :
+  parcours principal en premier, formulaire original une fois. Droit expiré :
+  pas de formulaire. Cache froid, répétition et alternance des comptes vérifiés.
+- Formulaire vide/contexte absent : garde validé par le moteur Twig Drupal avec
+  contexte contrôlé ; ce n’est pas présenté comme une panne HTTP du Webform.
+- Soumission HTTP historique sur le seul compte fixture dédié : une réservation,
+  solde 1 → 0, puis section absente à la requête suivante. La préparation du
+  solde 2 → 1 est comptée séparément. Deux emails capturés localement ; une ligne
+  Google reste `pending`, sans identifiant externe ni synchronisation.
+- Parcours commun avec #90 : destinations login/register exactes, aucun cycle,
+  aucun créneau promis par le panier ; H1 unique, présentation #99, messages
+  inline uniques #100, footer #94, header et fond inchangés. La configuration
+  locale `register=visitors` a été alignée sur la source pour lever un 403 de
+  préparation, sans soumettre d’inscription.
+- Ordinateur, 390/320 px, focus/Tab des CTA et focus du submit inspectés ; reflow
+  équivalent 200 % via viewport CSS 640 px pour 1280 px, pas un zoom navigateur
+  natif. Aucun nouveau message PHP d’erreur attribué aux deux changements.
+
+### Limites qui maintiennent la PR en draft
+
+Le calendrier historique utilise des dates `DIV` sans rôle ni `tabindex` : la
+sélection du jour n’est pas atteignable au clavier. À 320 px, son contenu impose
+308,78 px dans un `main` de 246 px et rogne aussi le héros/CTA. La mesure et le
+défaut sont strictement identiques avec le Twig de la base et celui de #86.
+L’absence de scrollbar horizontale ne valide donc pas l’absence de rognage.
+Ces problèmes de widget/styles sont signalés, pas corrigés hors périmètre.
+
+Il reste à reprendre uniquement ces contrôles après correction autorisée de la
+base, ainsi que le vrai zoom navigateur. Les limites propres au panier et à son
+catalogue français sont consignées dans la documentation #90 ; aucune dépendance
+à sa fusion ou aux mécanismes futurs #114 n’est introduite.
+
+Les preuves privées sont conservées sous
+`.git/pr86-pr90-runtime-20260908.qqwTWM4B/` : `RESUME.md`, `fixed86-results.json`,
+`render5.log`, `static-check.log`, `common-tail-results.json`,
+`legacy-after-state.log`, `baseline320-results.json`, `candidate320-results.json`
+et captures. Elles ne doivent pas être publiées telles quelles : les HTML peuvent
+contenir des jetons de sessions locales. Aucun autre agent n’est intervenu.
+
+### Sécurité et restauration
+
+Snapshot frais `pr86-pr90-before-20260908`, fichiers publics et settings
+préservés avant préparation ; données exclusivement synthétiques. Cron/Google
+désactivés, mails collectés localement, Guzzle MockHandler et seul gateway
+manuel vérifiés en CLI et PHP-FPM, conformément à la précaution #106.
+Le snapshot restauré retire uniquement les fixtures de cette session et rend
+le dump SQL complet strictement identique à l’original : SHA-256 gzip normalisé
+`6a4b664a2710f195cb7f8f37ea0e3b86877aa1fdb039f0b75a6dbdcf8d12f485`.
+Retour à 7 comptes, 0 nœud/commande/soumission et 314 configurations.
+Les trois settings sont identiques et l’archive publique est restaurée avec
+modes/ACL. Checkout servant propre sur `release/prod` à
+`9ef3d4a2c260af9f3f2fcfe4ac584648bb592e0c`. Le redémarrage web/db effectué par
+la restauration DDEV était nécessaire à celle-ci, pas à la préparation.
+DDEV a ensuite été arrêté, web/db supprimés par `ddev stop --skip-hooks` et le
+verrou de session libéré. Aucun runtime ne sera repris sans nouvelle autorisation.
+
+## Historique du périmètre Git et rebase — 7 septembre
 
 - À la reprise du 7 septembre 2026, la branche locale et
   `origin/codex-simplify-reservation-entry` pointaient toutes deux sur
@@ -34,7 +123,7 @@ notification, de file Google ou de consommation des droits.
 Les noms de fichiers de toutes les PR ouvertes ont été relus sur GitHub après le
 rebase. En excluant cette PR #86, aucune ne modifie l’un de ses deux chemins.
 
-Terminal 3 / PR #94 conserve l’usage exclusif de DDEV et du checkout servant.
+Lors de cette préparation statique, Terminal 3 / PR #94 conservait l’usage exclusif de DDEV et du checkout servant.
 Aucun autre worktree n’a été consulté ou modifié. Le sujet d’alias de la PR
 #113 reste hors périmètre.
 
@@ -220,8 +309,8 @@ séparément le nombre de séances payées réellement valides, le nombre de dro
 
 ## Validation statique
 
-Les contrôles de cette PR restent hors DDEV, Docker, Drush, Chromium, Mailpit et
-VPS. Ils couvrent :
+Les contrôles statiques initiaux ont été réalisés hors DDEV, Docker, Drush,
+Chromium, Mailpit et VPS. Ils couvrent :
 
 - syntaxe et délimiteurs Twig ;
 - structure HTML des cinq rendus contrôlés ;
@@ -259,13 +348,12 @@ assertions de liens, titres, formulaire, ARIA, HTML et copie. Les gardes
 ciblées, le contrôle des intégrations et les revues indépendantes se concluent
 également sans blocage.
 
-## Matrice runtime différée
+## Matrice initialement différée — historique
 
-Terminal 3 / PR #94 possède exclusivement l’environnement DDEV et le checkout
-servant. Aucun DDEV, Docker, Drush, Chromium, Mailpit ou VPS n’a été utilisé
-ici. Les vérifications suivantes ne doivent pas être déclarées réussies dans
-cette PR statique et ne démarrent pas automatiquement à la libération des
-ressources.
+Au 7 septembre, Terminal 3 / PR #94 possédait exclusivement DDEV et le checkout
+servant. La matrice suivante était différée. Seule la nouvelle autorisation
+coordonnée du 8 septembre a permis les validations détaillées plus haut ; elle
+ne transforme pas les critères encore bloqués en succès.
 
 ### Anonyme
 
