@@ -1,0 +1,31 @@
+uuid: fd67a4c0-e06a-46f0-af88-acc5c0b28f8f
+langcode: fr
+status: true
+dependencies:
+  config:
+    - webform.webform.contact
+  module:
+    - system
+    - webform
+  theme:
+    - unisonges_theme
+id: unisonges_contact_form
+theme: unisonges_theme
+region: content
+weight: 50
+provider: null
+plugin: webform_block
+settings:
+  id: webform_block
+  label: 'Formulaire de contact'
+  label_display: visible
+  provider: webform
+  webform_id: contact
+  default_data: ''
+  redirect: false
+  lazy: false
+visibility:
+  request_path:
+    id: request_path
+    negate: false
+    pages: /contact
